@@ -1,0 +1,204 @@
+.apt-unit-tabs-wrap{
+    display:flex;
+    align-items:center;
+    gap:8px;
+
+    margin-bottom:0;
+}
+
+.apt-unit-tabs{
+    flex:1;
+
+    display:flex;
+    gap:2px;
+
+    overflow-x:auto;
+
+    scrollbar-width:none;
+}
+
+.apt-unit-tabs::-webkit-scrollbar{
+    display:none;
+}
+
+/* 탭 */
+
+.apt-unit-tab{
+    flex-shrink:0;
+
+    padding:10px 18px;
+
+    border:1px solid #dbe3ea;
+    border-bottom:none;
+
+    border-radius:10px 10px 0 0;
+
+    background:#f8fafc;
+
+    color:#64748b;
+
+    font-size:13px;
+    font-weight:600;
+
+    cursor:pointer;
+
+    transition:all .15s ease;
+}
+
+.apt-unit-tab:hover{
+    background:#f1f5f9;
+}
+
+.apt-unit-tab.active{
+    background:#fff;
+
+    color:#0f172a;
+
+    border-color:#dbe3ea;
+
+    position:relative;
+
+    z-index:2;
+}
+
+/* 좌우 화살표 */
+
+.apt-tab-arrow{
+    width:34px;
+    height:34px;
+
+    border:1px solid #dbe3ea;
+    border-radius:8px;
+
+    background:#fff;
+
+    color:#475569;
+
+    font-size:18px;
+    font-weight:700;
+
+    cursor:pointer;
+
+    transition:.15s;
+}
+
+.apt-tab-arrow:hover{
+    background:#f8fafc;
+}
+
+/* 동 추가 */
+
+.apt-unit-add{
+    width:34px;
+    height:34px;
+
+    border:none;
+    border-radius:8px;
+
+    background:#2563eb;
+    color:#fff;
+
+    font-size:20px;
+    font-weight:700;
+
+    cursor:pointer;
+
+    transition:.15s;
+}
+
+.apt-unit-add:hover{
+    opacity:.9;
+}
+
+/* 동 수정 영역 */
+
+.apt-unit-form{
+    margin-top:-1px;
+
+    padding:20px;
+
+    border:1px solid #dbe3ea;
+    border-radius:0 10px 10px 10px;
+
+    background:#fff;
+
+    display:grid;
+
+    grid-template-columns:
+        minmax(180px, 2fr)
+        minmax(120px, 1fr)
+        minmax(140px, 1fr)
+        minmax(120px, 1fr);
+
+    gap:16px;
+}
+
+/* 입력폼 */
+
+.apt-form-row{
+    display:flex;
+    flex-direction:column;
+
+    gap:6px;
+}
+
+.apt-form-row label{
+    font-size:12px;
+    font-weight:700;
+
+    color:#475569;
+}
+
+.apt-form-row .c-input{
+    width:100%;
+    height:38px;
+
+    border:1px solid #dbe3ea;
+    border-radius:8px;
+
+    background:#fff;
+}
+
+/* readonly */
+
+.apt-form-row .c-input[readonly]{
+    background:#f1f5f9 !important;
+
+    border:1px solid #dbe3ea !important;
+
+    color:#64748b !important;
+
+    font-weight:500;
+
+    cursor:default;
+}
+
+/* 빈 화면 */
+
+.apt-unit-empty{
+    padding:40px;
+
+    border:1px dashed #cbd5e1;
+    border-radius:10px;
+
+    text-align:center;
+
+    color:#94a3b8;
+}
+
+/* 반응형 */
+
+@media (max-width:1200px){
+
+    .apt-unit-form{
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width:768px){
+
+    .apt-unit-form{
+        grid-template-columns:1fr;
+    }
+}

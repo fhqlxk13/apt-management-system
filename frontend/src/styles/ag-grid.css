@@ -1,0 +1,129 @@
+.stts-apply {
+    background-color: #ffd000ab;
+    color: #000005;
+    padding: 2px 7px;
+    font-weight: 'bold';
+}
+
+.stts-pass {
+    background-color: #008800b9;
+    color: #ffffff;
+    padding: 2px 7px;
+    font-weight: 'bold';
+}
+
+.stts-reject {
+    background-color: #d81111ce;
+    color: #ffffff;
+    padding: 2px 7px;
+    font-weight: 'bold';
+}
+
+.stts {
+    background-color: skyblue;
+    color: #000000;
+    padding: 2px 7px;
+    font-weight: 'bold';
+}
+
+.check {
+    padding: 2px 8px;
+    color: rgb(15, 92, 0);
+}
+
+.reject {
+    padding: 2px 8px;
+    color: rgb(223, 0, 0);
+}
+
+.supplement {
+    padding: 2px 8px;
+    color: grey;
+}
+
+.btn-pass {
+    margin-top: 5px;
+    border: 1px;
+    border-radius: 5px;
+    padding: 0px;
+    padding-top: 2px;
+    background-color: rgb(179, 228, 181);
+    height: 27px;
+    width: 27px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    /* 색상이 부드럽게 변하도록 추가 */
+}
+
+.btn-pass:hover {
+    background-color: rgb(106, 236, 46);
+    border: 1px solid #135200;
+}
+
+.btn-reject {
+    margin-top: 5px;
+    border: 1px;
+    border-radius: 5px;
+    padding: 0px;
+    padding-top: 2px;
+    background-color: rgb(255, 212, 212);
+    height: 27px;
+    width: 27px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-reject:hover {
+    background-color: rgb(255, 150, 150);
+    border: 1px solid #ff4d4d;
+}
+
+.btn-supplement {
+    margin-top: 5px;
+    border: 1px;
+    border-radius: 5px;
+    padding: 0px;
+    padding-top: 2px;
+    background-color: rgb(255, 255, 120);
+    height: 27px;
+    width: 27px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-supplement:hover {
+    background-color: rgb(255, 238, 0);
+    border: 1px solid #494800;
+}
+
+.btn-confirm {
+    background-color: #4a90e2;
+    color: white;
+    border-radius: 5px;
+    width: 40px;
+    height: 26px;
+    margin-top: 7px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.btn-confirm:active {
+    /* 1. 살짝 아래로 내려가는 효과 */
+    transform: translateY(2px);
+
+    /* 2. 배경색을 조금 더 어둡게 해서 눌린 느낌 강조 */
+    background-color: #357abd;
+
+    /* 3. 버튼 그림자가 있었다면 제거 (선택 사항) */
+    box-shadow: none;
+}
+
+.btn-confirm:hover {
+    transform: translateY(0.5px);
+
+    background-color: #357abd;
+    border: 1.5px solid #003e7c;
+}

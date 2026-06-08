@@ -1,0 +1,73 @@
+/* =========================
+   리스트 row
+========================= */
+
+.apt-list-item{
+    display:flex;
+    align-items:center;
+
+    gap:20px;
+
+    height:54px;
+
+    padding:0 18px;
+
+    border-bottom:1px solid #eef2f7;
+
+    cursor:pointer;
+
+    transition:
+        background .12s ease;
+}
+
+.apt-list-item:last-child{
+    border-bottom:none;
+}
+
+.apt-list-item:hover{
+    background:#f8fafc;
+}
+
+/* 선택 */
+
+.apt-list-item.selected{
+    background:#eff6ff;
+
+    box-shadow:
+        inset 4px 0 0 #2563eb;
+}
+
+/* =========================
+   아파트명
+========================= */
+
+.apt-list-name{
+    width:240px;
+
+    flex-shrink:0;
+
+    font-size:14px;
+    font-weight:700;
+
+    color:#1e293b;
+
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+
+/* =========================
+   주소
+========================= */
+
+.apt-list-address{
+    flex:1;
+
+    font-size:13px;
+
+    color:#64748b;
+
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}

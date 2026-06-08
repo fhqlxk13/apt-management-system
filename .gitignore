@@ -21,6 +21,10 @@ target/
 *.iws
 *.iml
 *.ipr
+.env
+*.env
+*.json
+/tokens/
 
 ### NetBeans ###
 /nbproject/private/
@@ -44,3 +48,13 @@ src/main/resources/application.properties
 src/main/resources/credentials.json
 src/main/resources/google-drive-key.json
 src/main/resources/tts-key.json
+
+# React frontend
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.env.*
+src/main/resources/application.properties.*
+!frontend/package.json
+!frontend/package-lock.json

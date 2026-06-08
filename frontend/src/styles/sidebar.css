@@ -1,0 +1,158 @@
+:root {
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --border: #e8eaed;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --accent: #e9e2e2;
+  --sb-bg: #2f4158;
+  /* 사이드바 배경색 */
+  --sb-icon: #fff4e4;
+  --sb-label: #ffffff;
+  font-family: 'Noto Sans KR', sans-serif;
+  --background: #f8f9ff;
+  --on-background: #0d1c2e;
+  --primary: #002045;
+  --on-primary: #ffffff;
+  --primary-container: #1a365d;
+  --on-primary-container: #86a0cd;
+  --primary-fixed: #d6e3ff;
+  --secondary: #555f71;
+  --on-secondary: #ffffff;
+  --secondary-container: #d6e0f6;
+  --on-secondary-container: #596376;
+  --surface: #f8f9ff;
+  --surface-container-low: #eff4ff;
+  --surface-container-lowest: #ffffff;
+  --surface-container-high: #dce9ff;
+  --surface-container-highest: #d4e4fc;
+  --outline: #74777f;
+  --outline-variant: #c4c6cf;
+  --error: #ba1a1a;
+  --error-container: #ffdad6;
+  --on-error-container: #93000a;
+  --on-surface-variant: #43474e;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+#wrapper {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+}
+
+#sidebar {
+  width: 240px;
+  height: 100vh;
+  background: var(--sb-bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: sticky;
+  top: 0;
+  transition: width 0.3s ease;
+  flex-shrink: 0;
+}
+
+#sidebar.collapsed {
+  width: 80px;
+}
+
+.sidebar-logo {
+  padding: 20px 20px 15px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.logo-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #009785FF;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-nav {
+  flex: 1;
+  overflow: auto;
+  padding: 7px 10px 10px 7px;
+}
+
+.nav-divider {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+  margin: 8px 10px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  color: var(--sb-icon);
+  text-decoration: none;
+  border-radius: 8px;
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.nav-item.active {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--accent);
+}
+
+.admin-card {
+  margin: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sidebar-btn {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
+.section-label {
+  font-size: 11px;
+  color: #a0cab6;
+}
+
+.luci-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* 5. 스크롤바 커스텀 (사이드바 등) */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+#sidebar ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
