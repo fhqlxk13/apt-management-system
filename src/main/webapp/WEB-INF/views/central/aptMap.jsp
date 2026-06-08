@@ -494,7 +494,7 @@
 
 <!-- 카카오 지도 SDK -->
 <script type="text/javascript"
-        src="//dapi.kakao.com/v2/maps/sdk.js?appkey=46f7d3996e1205738757a1e4f1ed1f04"></script>
+        src="//your_KEY"></script>
 
 <script>
     const CONTEXT_PATH = '${pageContext.request.contextPath}';
