@@ -1,0 +1,205 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.member.resident.statsCustom.mapper.IResidentCustomStatsMapper">
+
+    <select id="selectMyHouse"
+            resultType="kr.or.ddit.domain.member.resident.statsCustom.dto.ResidentCustomStatsHouseDTO">
+        SELECT
+               ac.apt_cmplex_no AS aptCmplexNo,
+               ac.apt_cmplex_nm AS aptCmplexNm,
+               au.dong_no AS dongNo,
+               au.dong_nm AS dongNm,
+               ad.ho_no AS hoNo,
+               ad.ho AS ho,
+               au.dong_nm || '동 ' || ad.ho || '호' AS displayDongHo,
+               aht.ho_ty_no AS hoTyNo,
+               aht.exclusive_size AS exclusiveSize
+        FROM hshld_head hh
+             INNER JOIN apt_detail ad ON ad.ho_no = hh.ho_no
+             INNER JOIN apt_unit au ON au.dong_no = ad.dong_no
+             INNER JOIN apt_complex ac ON ac.apt_cmplex_no = au.apt_cmplex_no
+             LEFT JOIN apt_ho_ty aht ON aht.ho_ty_no = ad.ho_ty_no
+                  AND aht.apt_cmplex_no = ac.apt_cmplex_no
+        WHERE hh.user_no = #{userNo}
+          AND ac.apt_cmplex_no = #{aptCmplexNo}
+        ORDER BY ad.ho_no
+        FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <select id="selectMyFirstHouse"
+            resultType="kr.or.ddit.domain.member.resident.statsCustom.dto.ResidentCustomStatsHouseDTO">
+        SELECT
+               ac.apt_cmplex_no AS aptCmplexNo,
+               ac.apt_cmplex_nm AS aptCmplexNm,
+               au.dong_no AS dongNo,
+               au.dong_nm AS dongNm,
+               ad.ho_no AS hoNo,
+               ad.ho AS ho,
+               au.dong_nm || '동 ' || ad.ho || '호' AS displayDongHo,
+               aht.ho_ty_no AS hoTyNo,
+               aht.exclusive_size AS exclusiveSize
+        FROM hshld_head hh
+             INNER JOIN apt_detail ad ON ad.ho_no = hh.ho_no
+             INNER JOIN apt_unit au ON au.dong_no = ad.dong_no
+             INNER JOIN apt_complex ac ON ac.apt_cmplex_no = au.apt_cmplex_no
+             LEFT JOIN apt_ho_ty aht ON aht.ho_ty_no = ad.ho_ty_no
+                  AND aht.apt_cmplex_no = ac.apt_cmplex_no
+        WHERE hh.user_no = #{userNo}
+        ORDER BY ac.apt_cmplex_no, ad.ho_no
+        FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <select id="selectLatestBillYm" resultType="string">
+        SELECT MAX(bill_ym)
+        FROM bill
+        WHERE ho_no = #{hoNo}
+    </select>
+
+    <select id="selectSummary"
+            resultType="kr.or.ddit.domain.member.resident.statsCustom.dto.ResidentCustomStatsSummaryDTO">
+        SELECT
+               #{billYm} AS billYm,
+               (
+                   SELECT b.bill_no
+                   FROM bill b
+                   WHERE b.ho_no = #{hoNo}
+                     AND b.bill_ym = #{billYm}
+                   FETCH FIRST 1 ROWS ONLY
+               ) AS billNo,
+               NVL((
+                   SELECT b.bill_tot_amt
+                   FROM bill b
+                   WHERE b.ho_no = #{hoNo}
+                     AND b.bill_ym = #{billYm}
+                   FETCH FIRST 1 ROWS ONLY
+               ), 0) AS currentBillAmt,
+               NVL((
+                   SELECT b.bill_tot_amt
+                   FROM bill b
+                   WHERE b.ho_no = #{hoNo}
+                     AND b.bill_ym = TO_CHAR(ADD_MONTHS(TO_DATE(#{billYm}, 'YYYYMM'), -1), 'YYYYMM')
+                   FETCH FIRST 1 ROWS ONLY
+               ), 0) AS previousBillAmt,
+               NVL((
+                   SELECT ROUND(AVG(b.bill_tot_amt), 0)
+                   FROM bill b
+                        INNER JOIN apt_detail ad ON ad.ho_no = b.ho_no
+                        INNER JOIN apt_unit au ON au.dong_no = ad.dong_no
+                   WHERE au.apt_cmplex_no = #{aptCmplexNo}
+                     AND b.bill_ym = #{billYm}
+               ), 0) AS similarAvgAmt
+        FROM dual
+    </select>
+
+    <select id="selectMonthlyList"
+            resultType="kr.or.ddit.domain.member.resident.statsCustom.dto.ResidentCustomStatsMonthlyDTO">
+        SELECT
+               ym.bill_ym AS billYm,
+               NVL(my_bill.bill_tot_amt, 0) AS myBillAmt,
+               NVL(avg_bill.similar_avg_amt, 0) AS similarAvgAmt
+        FROM (
+            SELECT bill_ym
+            FROM (
+                SELECT b.bill_ym
+                FROM bill b
+                WHERE b.ho_no = #{hoNo}
+                ORDER BY b.bill_ym DESC
+            )
+            WHERE ROWNUM <![CDATA[<=]]> 3
+        ) ym
+        LEFT JOIN bill my_bill ON my_bill.ho_no = #{hoNo}
+             AND my_bill.bill_ym = ym.bill_ym
+        LEFT JOIN (
+            SELECT b.bill_ym,
+                   ROUND(AVG(b.bill_tot_amt), 0) AS similar_avg_amt
+            FROM bill b
+                 INNER JOIN apt_detail ad ON ad.ho_no = b.ho_no
+                 INNER JOIN apt_unit au ON au.dong_no = ad.dong_no
+            WHERE au.apt_cmplex_no = #{aptCmplexNo}
+            GROUP BY b.bill_ym
+        ) avg_bill ON avg_bill.bill_ym = ym.bill_ym
+        ORDER BY ym.bill_ym
+    </select>
+
+    <select id="selectMeterList"
+            resultType="kr.or.ddit.domain.member.resident.statsCustom.dto.ResidentCustomStatsMeterDTO">
+        WITH meter_code AS (
+            SELECT 'ELC' AS meter_ty_cd, '전기' AS meter_ty_nm, 'kWh' AS unit_nm, 1 AS sort_no FROM dual
+            UNION ALL SELECT 'WTR', '수도', '㎥', 2 FROM dual
+            UNION ALL SELECT 'GAS', '가스', '㎥', 3 FROM dual
+        ),
+        latest_meter AS (
+            SELECT *
+            FROM (
+                SELECT
+                       ad.ho_no,
+                       f.facility_ty_cd,
+                       NVL(m.curr_val, 0) - NVL(m.pre_val, 0) AS usage_val,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY ad.ho_no, f.facility_ty_cd
+                           ORDER BY m.meter_dt DESC, m.meter_hstry_no DESC
+                       ) AS rn
+                FROM meter_hstry m
+                     INNER JOIN facility f ON f.facility_no = m.facility_no
+                     INNER JOIN apt_detail ad ON ad.ho_no = m.ho_no
+                     INNER JOIN apt_unit au ON au.dong_no = ad.dong_no
+                WHERE au.apt_cmplex_no = #{aptCmplexNo}
+                  AND TO_CHAR(m.meter_dt, 'YYYYMM') = #{billYm}
+                  AND f.facility_ty_cd IN ('ELC', 'WTR', 'GAS')
+                  AND m.meter_rslt_cd IS NOT NULL
+            )
+            WHERE rn = 1
+        ),
+        avg_meter AS (
+            SELECT facility_ty_cd,
+                   ROUND(AVG(usage_val), 0) AS avg_usage_val
+            FROM latest_meter
+            GROUP BY facility_ty_cd
+        )
+        SELECT
+               mc.meter_ty_cd AS meterTyCd,
+               mc.meter_ty_nm AS meterTyNm,
+               mc.unit_nm AS unitNm,
+               NVL(my_meter.usage_val, 0) AS myUsageVal,
+               NVL(avg_meter.avg_usage_val, 0) AS avgUsageVal
+        FROM meter_code mc
+             LEFT JOIN latest_meter my_meter ON my_meter.facility_ty_cd = mc.meter_ty_cd
+                  AND my_meter.ho_no = #{hoNo}
+             LEFT JOIN avg_meter ON avg_meter.facility_ty_cd = mc.meter_ty_cd
+        ORDER BY mc.sort_no
+    </select>
+
+    <select id="selectFacilityList"
+            resultType="kr.or.ddit.domain.member.resident.statsCustom.dto.ResidentCustomStatsFacilityDTO">
+        SELECT *
+        FROM (
+            SELECT
+                   PF.CMN_FACILITY_NM AS facilityNm,
+                   COUNT(*) AS useCnt
+            FROM FACILITY_HSTRY FH
+                 INNER JOIN PUBLIC_ITEM PI ON PI.CMN_FACILITY_ITEM_NO = FH.CMN_FACILITY_ITEM_NO
+                 INNER JOIN PUBLIC_FACILITY PF ON PF.CMN_FACILITY_NO = PI.CMN_FACILITY_NO
+            WHERE FH.USER_NO = #{userNo}
+              AND PF.APT_CMPLEX_NO = #{aptCmplexNo}
+              AND FH.RSVT_STTS_CD IN ('PENDING', 'APPROVED')
+              AND FH.RSVT_DT >= TRUNC(SYSDATE, 'MM')
+              AND FH.RSVT_DT <![CDATA[<]]> ADD_MONTHS(TRUNC(SYSDATE, 'MM'), 1)
+            GROUP BY PF.CMN_FACILITY_NM
+            ORDER BY COUNT(*) DESC, PF.CMN_FACILITY_NM
+        )
+        WHERE ROWNUM <![CDATA[<=]]> 5
+    </select>
+
+    <select id="selectComplaint"
+            resultType="kr.or.ddit.domain.member.resident.statsCustom.dto.ResidentCustomStatsComplaintDTO">
+        SELECT
+               NVL(SUM(CASE WHEN cvpl_stts_cd = 'APLY' THEN 1 ELSE 0 END), 0) AS appliedCnt,
+               <!-- RCPT는 관리자 승인 완료 상태이므로 '처리중'이 아닌 '완료'로 집계 -->
+               NVL(SUM(CASE WHEN cvpl_stts_cd = 'POCS' THEN 1 ELSE 0 END), 0) AS processingCnt,
+               NVL(SUM(CASE WHEN cvpl_stts_cd IN ('RCPT', 'END') THEN 1 ELSE 0 END), 0) AS doneCnt
+        FROM cvpl
+        WHERE user_no = #{userNo}
+          AND apt_cmplex_no = #{aptCmplexNo}
+          AND NVL(cvpl_stts_cd, 'APLY') != 'CNCL'
+    </select>
+</mapper>

@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.central.admin.mapper.AnnRegisterMapper">
+    <insert id="insertAnn" parameterType="map">
+        <selectKey keyProperty="annNo" resultType="string" order="BEFORE">
+            SELECT 'ANN' || LPAD(
+            NVL(MAX(TO_NUMBER(REGEXP_REPLACE(ann_no, '[^0-9]', ''))), 0) + 1
+            , 4, '0')
+            FROM center_ann_board_post
+        </selectKey>
+        INSERT INTO center_ann_board_post (             /*kr.or.ddit.domain.central.admin.mapper.AnnRegisterMapper.insertAnn*/
+        ann_no
+        , board_no
+        , ttl
+        , cn
+        , pblanc_bgng_dt
+        , pblanc_end_dt
+        , rcrt_bgng_dt
+        , rcrt_end_dt
+        , mvin_prd_dt
+        , wrtr_id
+        , reg_dttm
+        , sbmsn_doc
+        , del_yn
+        , opn_yn
+        , apt_cmplex_no
+        ) VALUES (
+        #{annNo}
+        , (SELECT board_no FROM center_board_instance
+        WHERE apt_cmplex_no = #{aptCmplexNo}
+        AND board_ty_cd = 'ANN'
+        AND ROWNUM = 1)
+        , #{ttl}
+        , #{cn}
+        , TO_DATE(#{pblancBgngDt}, 'YYYY-MM-DD')
+        , TO_DATE(#{pblancEndDt}, 'YYYY-MM-DD')
+        , TO_DATE(#{rcrtBgngDt}, 'YYYY-MM-DD')
+        , TO_DATE(#{rcrtEndDt}, 'YYYY-MM-DD')
+        , TO_DATE(#{mvinPrdDt}, 'YYYY-MM-DD')
+        , #{wrtrId}
+        , SYSDATE
+        , #{sbmsnDoc}
+        , 'N'
+        , 'Y'
+        , #{aptCmplexNo}
+        )
+    </insert>
+
+    <!-- 공고등록시 임대모집 유형 코드 변경 -->
+    <update id="updateRentListStts" parameterType="map">
+        UPDATE rent_listing             /*kr.or.ddit.domain.central.admin.mapper.AnnRegisterMapper.updateRentListStts*/
+        SET rcrt_lstg_stts_cd = 'SUBSCRIBE'
+           ,ann_no = #{annNo}
+        WHERE rent_lstg_no = #{rentLstgNo}
+    </update>
+
+    <!-- GENERAL 매물이 있는 단지 기준 지역·단지 조회 (rent_listing과 동일 조건) -->
+    <sql id="rentListingAptJoin">
+        FROM apt_complex ac
+        INNER JOIN apt_ho_ty aht ON ac.apt_cmplex_no = aht.apt_cmplex_no
+        INNER JOIN apt_detail ad ON ad.ho_ty_no = aht.ho_ty_no
+        INNER JOIN rent_listing rl ON rl.ho_no = ad.ho_no
+        WHERE rl.rcrt_lstg_stts_cd = 'GENERAL'
+    </sql>
+
+    <!-- 시/도 조회 -->
+    <select id="selectSidoList" resultType="string">
+        SELECT DISTINCT ac.sido_nm
+        <include refid="rentListingAptJoin"/>
+          AND ac.sido_nm IS NOT NULL
+        ORDER BY ac.sido_nm
+    </select>
+
+    <!-- 시/군/구 조회 -->
+    <select id="selectSigunguList" resultType="string">
+        SELECT DISTINCT ac.sigungu_nm
+        <include refid="rentListingAptJoin"/>
+          AND ac.sido_nm = #{sidoNm}
+          AND ac.sigungu_nm IS NOT NULL
+        ORDER BY ac.sigungu_nm
+    </select>
+
+    <!-- 읍/면/동 조회 -->
+    <select id="selectEmdList" resultType="string">
+        SELECT DISTINCT ac.emd_nm
+        <include refid="rentListingAptJoin"/>
+          AND ac.sido_nm = #{sidoNm}
+          AND ac.sigungu_nm = #{sigunguNm}
+          AND ac.emd_nm IS NOT NULL
+        ORDER BY ac.emd_nm
+    </select>
+
+    <!-- 아파트 목록 조회하기 (GENERAL 매물이 있는 단지만) -->
+    <select id="selectAptList" resultType="kr.or.ddit.domain.apt.main.vo.AptComplexVO">
+        SELECT DISTINCT ac.apt_cmplex_no
+              ,ac.apt_cmplex_nm
+        <include refid="rentListingAptJoin"/>
+        <if test="sidoNm != null and sidoNm != ''">
+            AND ac.sido_nm = #{sidoNm}
+        </if>
+        <if test="sigunguNm != null and sigunguNm != ''">
+            AND ac.sigungu_nm = #{sigunguNm}
+        </if>
+        <if test="emdNm != null and emdNm != ''">
+            AND ac.emd_nm = #{emdNm}
+        </if>
+        ORDER BY ac.apt_cmplex_nm ASC
+    </select>
+
+    <!-- 도로명주소 조회하기 -->
+    <select id="selectDorojuso" resultType="String" parameterType="string">
+        SELECT dorojuso
+        FROM apt_complex
+        WHERE apt_cmplex_no = #{aptCmplexNo}
+    </select>
+
+    <!-- 아파트 호 타입 및 상세정보 조회하기 -->
+    <select id="selectHoTyNo" resultType="map" parameterType="string">
+        SELECT aht.ho_ty_no
+              ,aht.ty_nm
+              ,aht.exclusive_size
+              ,aht.room_cnt
+              ,aht.bathroom_cnt
+              ,COUNT(ad.ho_no) AS unit_cnt
+        FROM apt_ho_ty aht
+        LEFT JOIN apt_detail ad ON ad.ho_ty_no = aht.ho_ty_no
+        WHERE aht.apt_cmplex_no = #{aptCmplexNo}
+        GROUP BY aht.ho_ty_no
+               , aht.ty_nm
+               , aht.exclusive_size
+               , aht.room_cnt
+               , aht.bathroom_cnt
+    </select>
+
+    <!-- 제출서류 목록 조회 -->
+    <select id="selectSbmsnDocList" resultType="map" parameterType="string">    /*kr.or.ddit.domain.central.admin.mapper.AnnRegisterMapper.selectSbmsnDocList*/
+        SELECT DISTINCT rcd.sbmsn_doc_ty_cd
+                        , cc.code_name
+        FROM rent_ctrt_doc rcd
+        INNER JOIN common_code cc ON rcd.sbmsn_doc_ty_cd = cc.code_no_cd
+        AND cc.group_code_no = 'SUBMIT_DOC_TY'
+        WHERE rcd.rent_lstg_no IN
+        <foreach collection="list" item="rentLstgNo" open="(" separator="," close=")">
+            #{rentLstgNo}
+        </foreach>
+    </select>
+
+    <!--매물조회-->
+    <select id="selectRentList" resultType="map" parameterType="string">    /*kr.or.ddit.domain.central.admin.mapper.AnnRegisterMapper.selectRentList*/
+        SELECT rl.rent_lstg_no
+              ,au.dong_nm
+              ,ad.ho
+              ,aht.ho_ty_no
+              ,aht.ty_nm
+              ,aht.exclusive_size
+              ,aht.room_cnt
+              ,aht.bathroom_cnt
+              ,rl.dpst_amt
+              ,rl.mthly_rent_amt
+        FROM rent_listing rl
+        INNER JOIN apt_detail ad ON rl.ho_no = ad.ho_no
+        INNER JOIN apt_unit au ON ad.dong_no = au.dong_no
+        INNER JOIN apt_ho_ty aht ON ad.ho_ty_no = aht.ho_ty_no
+        WHERE aht.apt_cmplex_no = #{aptCmplexNo}
+        AND rl.rcrt_lstg_stts_cd = 'GENERAL'
+        ORDER BY TO_NUMBER(NVL(NULLIF(REGEXP_REPLACE(au.dong_nm, '[^0-9]'), ''), '0'))
+               , TO_NUMBER(NVL(NULLIF(REGEXP_REPLACE(ad.ho, '[^0-9]'), ''), '0'))
+    </select>
+
+    <select id="selectBoardNo" resultType="String" parameterType="string">
+        SELECT board_no
+        FROM center_board_instance
+        WHERE apt_cmplex_no = #{aptCmplexNo}
+          AND ROWNUM = 1
+    </select>
+
+    <insert id="insertBoardInstance" parameterType="string">
+        INSERT INTO center_board_instance (board_no, board_nm, board_ty_cd, use_yn, apt_cmplex_no)
+        VALUES (#{aptCmplexNo} || '_ANN', '공고게시판', 'ANN', 'Y', #{aptCmplexNo})
+    </insert>
+
+
+
+
+</mapper>

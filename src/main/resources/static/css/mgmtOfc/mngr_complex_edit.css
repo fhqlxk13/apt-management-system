@@ -1,0 +1,583 @@
+/* =========================================================
+   단지 정보 수정
+========================================================= */
+
+#complexEditPage .form-input,
+#complexEditPage .form-select {
+    height: 38px;
+    padding: 0 12px;
+
+    font-size: 13px;
+
+    border-radius: 8px;
+}
+
+#complexEditPage .field-label {
+    margin-bottom: 6px;
+
+    font-size: 12px;
+    font-weight: 600;
+
+    color: #4b5563;
+}
+
+#complexEditPage .form-row {
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+/* =========================================================
+   읽기 전용 정보
+========================================================= */
+
+.info-value {
+    height: 38px;
+
+    display: flex;
+    align-items: center;
+
+    padding: 0 12px;
+
+    border: 1px solid #dfe3e8;
+    border-radius: 8px;
+
+    background: #f8fafc;
+
+    font-size: 13px;
+    font-weight: 500;
+
+    color: #374151;
+}
+
+/* =========================================================
+   주소 영역
+========================================================= */
+
+.address-inline-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.address-inline-group .flex-1 {
+    flex: 1;
+}
+
+.btn-address {
+    height: 38px;
+
+    padding: 0 16px;
+
+    border-radius: 8px;
+
+    flex-shrink: 0;
+
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* =========================================================
+   업로드 영역
+========================================================= */
+
+.complex-upload-box {
+    padding: 18px;
+
+    border: 2px dashed #d1d5db;
+    border-radius: 10px;
+
+    background: #fafafa;
+
+    text-align: center;
+    cursor: pointer;
+
+    transition: 0.2s ease;
+}
+
+.complex-upload-box:hover {
+    background: #f3f4f6;
+}
+
+.complex-upload-box.drag-over {
+    border-color: #2e5c38;
+    background: #eef6f0;
+}
+
+.complex-upload-box .material-symbols-rounded {
+    display: block;
+
+    margin-bottom: 6px;
+
+    font-size: 28px;
+
+    color: #6b7280;
+}
+
+.complex-upload-title {
+    font-size: 13px;
+    font-weight: 600;
+
+    color: #374151;
+}
+
+.complex-upload-desc {
+    margin-top: 4px;
+
+    font-size: 11px;
+
+    color: #6b7280;
+}
+
+/* =========================================================
+   이미지 미리보기
+========================================================= */
+
+.complex-preview {
+    margin-top: 12px;
+}
+
+.complex-preview-list {
+    display: flex;
+    flex-wrap: wrap;
+
+    gap: 10px;
+
+    margin-top: 12px;
+}
+
+.complex-preview-item {
+    position: relative;
+
+    width: 84px;
+    height: 84px;
+}
+
+.complex-preview-img {
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.complex-preview-remove {
+    position: absolute;
+
+    top: -6px;
+    right: -6px;
+
+    width: 20px;
+    height: 20px;
+
+    border: none;
+    border-radius: 50%;
+
+    background: #dc2626;
+    color: white;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+}
+
+.complex-preview-remove .material-symbols-rounded {
+    font-size: 13px;
+}
+
+/* =========================================================
+   하단 버튼
+========================================================= */
+
+.complex-footer-panel {
+    padding: 0;
+}
+
+.complex-footer {
+    padding: 18px 20px;
+    border-top: none;
+}
+
+/* =========================================================
+   4열 정보
+========================================================= */
+
+.cols-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+
+    gap: 14px;
+}
+
+.card-body,
+.panel-body {
+    padding: 14px 16px !important;
+}
+
+#complexEditPage .form-row {
+    margin-bottom: 12px;
+}
+
+/* =========================================================
+   기본 정보 영역 정리
+========================================================= */
+
+/* 기본 3열은 동일 비율 */
+#complexEditPage .form-row.cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+/* 기본 정보만 비율 조정 */
+#complexEditPage .form-row.cols-3.basic-info-row {
+    grid-template-columns: 1.2fr 0.8fr 1fr;
+}
+
+/* 2칸 비율 */
+#complexEditPage .form-row.cols-2 {
+    grid-template-columns: 1fr 1fr;
+}
+
+/* 입력/조회 박스 통일 */
+#complexEditPage .form-input,
+#complexEditPage .info-value {
+    width: 100%;
+}
+
+/* 읽기 전용 박스 */
+#complexEditPage .info-value {
+    height: 38px;
+
+    display: flex;
+    align-items: center;
+
+    padding: 0 12px;
+
+    border: 1px solid #d6dbe2;
+    border-radius: 8px;
+
+    background: #f8fafc;
+
+    font-size: 13px;
+    font-weight: 500;
+
+    color: #374151;
+}
+
+/* 주소 영역 */
+#complexEditPage .address-inline-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* 주소 텍스트 */
+#complexEditPage #dorojuso {
+    flex: 1;
+}
+
+/* =========================================================
+   주소 동기화 버튼
+========================================================= */
+
+.btn-address-sync {
+    min-width: 150px;
+    height: 38px;
+
+    padding: 0 16px;
+
+    border-radius: 8px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+
+    flex-shrink: 0;
+
+    font-size: 12px;
+    font-weight: 700;
+    background: #2e5c38;
+    border: 1px solid #2e5c38;
+    color: #fff;
+
+    transition: 0.15s ease;
+}
+
+.btn-address-sync:hover {
+    background: #24482c;
+    border-color: #24482c;
+}
+
+.btn-address-sync .material-symbols-rounded {
+    font-size: 16px;
+}
+
+/* 동기화 중 */
+.btn-address-sync.syncing .material-symbols-rounded {
+    animation: rotateSync 1s linear infinite;
+}
+
+@keyframes rotateSync {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 주소검색 버튼 아이콘 */
+#complexEditPage .btn-address .material-symbols-rounded {
+    font-size: 16px;
+}
+
+/* =========================================================
+   단지 이미지 헤더
+========================================================= */
+
+.complex-image-header{
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+}
+
+.complex-image-header .field-label{
+    margin-bottom: 0 !important;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    color: #1f2937;
+}
+
+.btn-file-add{
+    height: 34px;
+
+    padding: 0 14px;
+
+    border-radius: 9px;
+
+
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+
+    font-size: 12px;
+    font-weight: 700;
+
+
+    cursor: pointer;
+
+    transition: all .15s ease;
+
+    background: #2e5c38;
+    border: 1px solid #2e5c38;
+    color: #fff;
+}
+
+.btn-file-add:hover{
+    background: #24482c;
+    border-color: #24482c;
+
+    color: #fff;
+
+    transform: translateY(-1px);
+}
+
+.btn-file-add .material-symbols-rounded{
+    font-size: 17px;
+}
+
+/* =========================================================
+   파일 리스트 박스
+========================================================= */
+
+.complex-file-box{
+    height: 320px;
+
+    padding: 8px;
+
+    border: 1px solid #dfe3e8;
+    border-radius: 12px;
+
+    background: #fbfcfd;
+
+    overflow-y: auto;
+}
+
+.complex-file-box::-webkit-scrollbar{
+    width: 8px;
+}
+
+.complex-file-box::-webkit-scrollbar-thumb{
+    background: #d1d5db;
+    border-radius: 999px;
+}
+
+.complex-file-box::-webkit-scrollbar-track{
+    background: transparent;
+}
+
+/* =========================================================
+   파일 리스트 아이템
+========================================================= */
+
+.complex-file-item{
+    position: relative;
+
+    min-height: 42px;
+
+    padding: 0 10px 0 12px;
+
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+
+    background: #fff;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 10px;
+}
+
+.complex-file-name{
+    flex: 1;
+
+    min-width: 0;
+
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.complex-file-remove{
+    width: 28px;
+    height: 28px;
+
+    border: none;
+    border-radius: 8px;
+
+    background: transparent;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    cursor: pointer;
+
+    transition: .15s ease;
+}
+
+.complex-file-remove:hover{
+    background: #fee2e2;
+}
+
+.complex-file-remove .material-symbols-rounded{
+    font-size: 18px;
+    color: #dc2626;
+}
+
+/* =========================================================
+   hover 썸네일
+========================================================= */
+
+.complex-thumb-preview{
+    display: none;
+
+    position: absolute;
+
+    top: 48px;
+    left: 0;
+
+    width: 240px;
+
+    border-radius: 14px;
+
+    overflow: hidden;
+
+    background: #fff;
+
+    box-shadow: 0 12px 30px rgba(0,0,0,.18);
+
+    z-index: 100;
+}
+
+.complex-thumb-preview img{
+    width: 100%;
+    display: block;
+}
+
+.complex-file-item:hover .complex-thumb-preview{
+    display: block;
+}
+
+/* =========================================================
+   드래그 정렬
+========================================================= */
+
+.complex-file-item{
+    cursor: grab;
+}
+
+.complex-file-item:active{
+    cursor: grabbing;
+}
+
+.sortable-ghost{
+    opacity: 0.45;
+}
+
+.sortable-chosen .complex-thumb-preview{
+    display: none !important;
+}
+
+.complex-file-name{
+    position: relative;
+}
+
+.complex-thumb-hover{
+    display: none;
+    position: absolute;
+    top: 30px;
+    left: 0;
+    z-index: 100;
+
+    width: 220px;
+    padding: 6px;
+
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.complex-file-name:hover .complex-thumb-hover{
+    display: block;
+}
+
+.complex-thumb-img{
+    width: 100%;
+    border-radius: 8px;
+}
+
+.form-input[readonly]{
+    background: #f3f4f6;
+    color: #64748b;
+    cursor: default;
+    border-color: #d1d5db;
+}
+
+.form-input[readonly]:focus{
+    outline: none;
+    box-shadow: none;
+    border-color: #d1d5db;
+}

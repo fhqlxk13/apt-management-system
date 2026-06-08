@@ -1,0 +1,24 @@
+ body { font-family: 'Manrope', sans-serif; background-color: #f8faf6; color: #191c1a; }
+.font-headline { font-family: 'Plus Jakarta Sans', sans-serif; }
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+/* Accordion custom styling! */
+.nav-item[open] summary .expand-icon { transform: rotate(180deg); }
+.nav-item summary::-webkit-details-marker { display: none; }
+.nav-item summary { list-style: none; }
+#sidebar-nav {
+    width: 18rem;
+}
+
+aside {
+    width: 18rem !important;
+}
+
+ /* =========================
+    현재 활성화 메뉴
+    ========================= */
+ .sidebar-active {
+     background-color: #eef5f0;
+     color: #226046 !important;
+     font-weight: 700;
+ }

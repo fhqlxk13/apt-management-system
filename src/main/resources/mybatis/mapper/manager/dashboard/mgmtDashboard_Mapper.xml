@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.dashboard.mapper.IMgmtDashboardMapper">
+
+    <resultMap id="billStatMap" type="kr.or.ddit.domain.apt.mgmtOffice.dashboard.dto.MgmtDashboardBillStatDTO">
+        <result property="billYm" column="BILL_YM"/>
+        <result property="total" column="TOTAL"/>
+        <result property="paid" column="PAID"/>
+        <result property="unpaid" column="UNPAID"/>
+        <result property="overdue" column="OVERDUE"/>
+        <result property="totalAmount" column="TOTAL_AMOUNT"/>
+    </resultMap>
+
+    <resultMap id="monthlyStatMap" type="kr.or.ddit.domain.apt.mgmtOffice.dashboard.dto.MgmtDashboardMonthlyStatDTO">
+        <result property="cvplTotal" column="CVPL_TOTAL"/>
+        <result property="cvplDone" column="CVPL_DONE"/>
+        <result property="checkTotal" column="CHECK_TOTAL"/>
+        <result property="checkDone" column="CHECK_DONE"/>
+        <result property="authTotal" column="AUTH_TOTAL"/>
+        <result property="authDone" column="AUTH_DONE"/>
+    </resultMap>
+
+    <resultMap id="complaintMap" type="kr.or.ddit.domain.apt.mgmtOffice.dashboard.dto.MgmtDashboardRecentComplaintDTO">
+        <result property="cvplNo" column="CVPL_NO"/>
+        <result property="ttl" column="TTL"/>
+        <result property="hoNo" column="HO_NO"/>
+        <result property="regDt" column="REG_DT"/>
+        <result property="cvplSttsCd" column="CVPL_STTS_CD"/>
+        <result property="prrtCd" column="PRRT_CD"/>
+    </resultMap>
+
+    <resultMap id="residentAuthMap" type="kr.or.ddit.domain.apt.mgmtOffice.dashboard.dto.MgmtDashboardRecentResidentAuthDTO">
+        <result property="rqstNo" column="RQST_NO"/>
+        <result property="userNm" column="USER_NM"/>
+        <result property="hoNo" column="HO_NO"/>
+        <result property="rqstTy" column="RQST_TY"/>
+        <result property="regDt" column="REG_DT"/>
+        <result property="rqstSttsCd" column="RQST_STTS_CD"/>
+    </resultMap>
+
+    <resultMap id="checkMap" type="kr.or.ddit.domain.apt.mgmtOffice.dashboard.dto.MgmtDashboardRecentCheckDTO">
+        <result property="facilityNm" column="FACILITY_NM"/>
+        <result property="chkTyCd" column="CHK_TY_CD"/>
+        <result property="chkDt" column="CHK_DT"/>
+        <result property="chkSttsCd" column="CHK_STTS_CD"/>
+    </resultMap>
+
+    <resultMap id="reservationStatMap" type="kr.or.ddit.domain.apt.mgmtOffice.dashboard.dto.MgmtDashboardReservationStatDTO">
+        <result property="todayCount" column="TODAY_CNT"/>
+        <result property="pendingCount" column="PENDING_CNT"/>
+        <result property="weekApprovedCount" column="WEEK_APPROVED_CNT"/>
+        <result property="weekRejectedCount" column="WEEK_REJECTED_CNT"/>
+        <result property="topFacilityNm" column="TOP_FACILITY_NM"/>
+        <result property="topFacilityCount" column="TOP_FACILITY_CNT"/>
+    </resultMap>
+
+    <resultMap id="recentReservationMap" type="kr.or.ddit.domain.apt.mgmtOffice.dashboard.dto.MgmtDashboardRecentReservationDTO">
+        <result property="cmnFacilityNm" column="CMN_FACILITY_NM"/>
+        <result property="userNm" column="USER_NM"/>
+        <result property="hoNo" column="HO_NO"/>
+        <result property="rsvtDt" column="RSVT_DT"/>
+        <result property="rsvtBgngDttm" column="RSVT_BGNG_DTTM"/>
+        <result property="rsvtSttsCd" column="RSVT_STTS_CD"/>
+    </resultMap>
+
+    <resultMap id="topFacilityMap" type="kr.or.ddit.domain.apt.mgmtOffice.dashboard.dto.MgmtDashboardTopFacilityDTO">
+        <result property="cmnFacilityNm" column="CMN_FACILITY_NM"/>
+        <result property="rsvtCount" column="RSVT_COUNT"/>
+    </resultMap>
+
+    <resultMap id="operationTrendMap" type="kr.or.ddit.domain.apt.mgmtOffice.dashboard.dto.MgmtDashboardOperationTrendDTO">
+        <result property="dayLabel" column="DAY_LABEL"/>
+        <result property="cvplCnt" column="CVPL_CNT"/>
+        <result property="checkCnt" column="CHECK_CNT"/>
+        <result property="authCnt" column="AUTH_CNT"/>
+    </resultMap>
+
+    <select id="countPendingComplaint" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM CVPL C
+        WHERE C.APT_CMPLEX_NO = #{aptCmplexNo}
+          <!-- RCPT(접수완료)는 관리자가 승인까지 마친 상태이므로 미처리에서 제외 -->
+          AND C.CVPL_STTS_CD IN ('APLY', 'POCS')
+    </select>
+
+    <select id="countPendingResidentAuth" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM RESIDENT_RQST RR
+        WHERE RR.APRV_DT IS NULL
+          AND RR.RJCT_RSN_CN IS NULL
+    </select>
+
+    <select id="countUseRestrictWithin7" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM FACILITY_CHECK_HSTRY FCH
+                 INNER JOIN FACILITY F ON FCH.FACILITY_NO = F.FACILITY_NO
+                 INNER JOIN MGMT_OFFICE MO ON MO.APT_CMPLEX_NO = F.APT_CMPLEX_NO
+        WHERE MO.MGMT_OFC_NO = #{mgmtOfcNo}
+          AND NVL(FCH.USE_RESTRICT_YN, 'N') = 'Y'
+          AND FCH.USE_RESTRICT_BGNG_DT &lt; TRUNC(SYSDATE) + 8
+          AND FCH.USE_RESTRICT_END_DT &gt; SYSDATE
+    </select>
+
+    <select id="countBillUnpaidOverdue" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM BILL B
+                 INNER JOIN APT_DETAIL AD ON B.HO_NO = AD.HO_NO
+                 INNER JOIN APT_UNIT AU ON AD.DONG_NO = AU.DONG_NO
+        WHERE AU.APT_CMPLEX_NO = #{aptCmplexNo}
+          AND B.BILL_YM = (
+              SELECT MAX(B2.BILL_YM)
+              FROM BILL B2
+                       INNER JOIN APT_DETAIL AD2 ON B2.HO_NO = AD2.HO_NO
+                       INNER JOIN APT_UNIT AU2 ON AD2.DONG_NO = AU2.DONG_NO
+              WHERE AU2.APT_CMPLEX_NO = #{aptCmplexNo}
+                AND B2.BILL_YM &lt;= TO_CHAR(SYSDATE, 'YYYYMM')
+          )
+          AND B.PYMT_STTS_CD IN ('READY', 'UNPAID', 'OVERDUE')
+    </select>
+
+    <select id="selectBillStat" parameterType="string" resultMap="billStatMap">
+        SELECT B.BILL_YM,
+               COUNT(*) AS TOTAL,
+               NVL(SUM(CASE WHEN B.PYMT_STTS_CD = 'PAID' THEN 1 ELSE 0 END), 0) AS PAID,
+               NVL(SUM(CASE WHEN B.PYMT_STTS_CD IN ('READY', 'UNPAID') THEN 1 ELSE 0 END), 0) AS UNPAID,
+               NVL(SUM(CASE WHEN B.PYMT_STTS_CD = 'OVERDUE' THEN 1 ELSE 0 END), 0) AS OVERDUE,
+               NVL(SUM(B.BILL_TOT_AMT), 0) AS TOTAL_AMOUNT
+        FROM BILL B
+                 INNER JOIN APT_DETAIL AD ON B.HO_NO = AD.HO_NO
+                 INNER JOIN APT_UNIT AU ON AD.DONG_NO = AU.DONG_NO
+        WHERE AU.APT_CMPLEX_NO = #{aptCmplexNo}
+          AND B.BILL_YM = (
+              SELECT MAX(B2.BILL_YM)
+              FROM BILL B2
+                       INNER JOIN APT_DETAIL AD2 ON B2.HO_NO = AD2.HO_NO
+                       INNER JOIN APT_UNIT AU2 ON AD2.DONG_NO = AU2.DONG_NO
+              WHERE AU2.APT_CMPLEX_NO = #{aptCmplexNo}
+                AND B2.BILL_YM &lt;= TO_CHAR(SYSDATE, 'YYYYMM')
+          )
+        GROUP BY B.BILL_YM
+    </select>
+
+    <select id="selectMonthlyStat" resultMap="monthlyStatMap">
+        SELECT
+            (SELECT COUNT(*)
+             FROM CVPL C
+             WHERE C.APT_CMPLEX_NO = #{aptCmplexNo}
+               AND C.CVPL_REG_DT &gt;= TRUNC(SYSDATE, 'MM')
+               AND C.CVPL_REG_DT &lt; ADD_MONTHS(TRUNC(SYSDATE, 'MM'), 1)) AS CVPL_TOTAL,
+            (SELECT COUNT(*)
+             FROM CVPL C
+             WHERE C.APT_CMPLEX_NO = #{aptCmplexNo}
+               AND C.CVPL_STTS_CD IN ('RCPT', 'COMP')
+               AND C.CVPL_REG_DT &gt;= TRUNC(SYSDATE, 'MM')
+               AND C.CVPL_REG_DT &lt; ADD_MONTHS(TRUNC(SYSDATE, 'MM'), 1)) AS CVPL_DONE,
+            (SELECT COUNT(*)
+             FROM FACILITY_CHECK_HSTRY FCH
+                      INNER JOIN FACILITY F ON FCH.FACILITY_NO = F.FACILITY_NO
+                      INNER JOIN MGMT_OFFICE MO ON MO.APT_CMPLEX_NO = F.APT_CMPLEX_NO
+             WHERE MO.MGMT_OFC_NO = #{mgmtOfcNo}
+               AND FCH.CHK_DT &gt;= TRUNC(SYSDATE, 'MM')
+               AND FCH.CHK_DT &lt; ADD_MONTHS(TRUNC(SYSDATE, 'MM'), 1)) AS CHECK_TOTAL,
+            (SELECT COUNT(*)
+             FROM FACILITY_CHECK_HSTRY FCH
+                      INNER JOIN FACILITY F ON FCH.FACILITY_NO = F.FACILITY_NO
+                      INNER JOIN MGMT_OFFICE MO ON MO.APT_CMPLEX_NO = F.APT_CMPLEX_NO
+             WHERE MO.MGMT_OFC_NO = #{mgmtOfcNo}
+               AND FCH.CHK_STTS_CD = 'DONE'
+               AND FCH.CHK_DT &gt;= TRUNC(SYSDATE, 'MM')
+               AND FCH.CHK_DT &lt; ADD_MONTHS(TRUNC(SYSDATE, 'MM'), 1)) AS CHECK_DONE,
+            (SELECT COUNT(*)
+             FROM RESIDENT_RQST RR
+             WHERE RR.RCPT_DT &gt;= TRUNC(SYSDATE, 'MM')
+               AND RR.RCPT_DT &lt; ADD_MONTHS(TRUNC(SYSDATE, 'MM'), 1)) AS AUTH_TOTAL,
+            (SELECT COUNT(*)
+             FROM RESIDENT_RQST RR
+             WHERE (RR.APRV_DT IS NOT NULL OR RR.RJCT_RSN_CN IS NOT NULL)
+               AND RR.RCPT_DT &gt;= TRUNC(SYSDATE, 'MM')
+               AND RR.RCPT_DT &lt; ADD_MONTHS(TRUNC(SYSDATE, 'MM'), 1)) AS AUTH_DONE
+        FROM DUAL
+    </select>
+
+    <select id="selectRecentComplaintList" parameterType="string" resultMap="complaintMap">
+        SELECT *
+        FROM (
+            SELECT C.CVPL_NO,
+                   C.CVPL_TTL AS TTL,
+                   AU.DONG_NM || ' ' || AD.HO AS HO_NO,
+                   TO_CHAR(C.CVPL_REG_DT, 'YYYY-MM-DD') AS REG_DT,
+                   C.CVPL_STTS_CD,
+                   C.CVPL_PRRT AS PRRT_CD
+            FROM CVPL C
+                     LEFT JOIN APT_DETAIL AD ON C.HO_NO = AD.HO_NO
+                     LEFT JOIN APT_UNIT AU ON AD.DONG_NO = AU.DONG_NO
+            WHERE C.APT_CMPLEX_NO = #{aptCmplexNo}
+            ORDER BY C.CVPL_REG_DT DESC
+        )
+        WHERE ROWNUM &lt;= 4
+    </select>
+
+    <select id="selectRecentResidentAuthList" parameterType="string" resultMap="residentAuthMap">
+        SELECT *
+        FROM (
+            SELECT RR.RQST_NO,
+                   M.USER_NM,
+                   AU.DONG_NM || ' ' || AD.HO AS HO_NO,
+                   RR.RQST_TY_CD AS RQST_TY,
+                   TO_CHAR(RR.RCPT_DT, 'YYYY-MM-DD') AS REG_DT,
+                   CASE
+                       WHEN RR.RJCT_RSN_CN IS NOT NULL THEN 'RJCT'
+                       WHEN RR.APRV_DT IS NOT NULL THEN 'APRV'
+                       ELSE 'WAIT'
+                   END AS RQST_STTS_CD
+            FROM RESIDENT_RQST RR
+                     LEFT JOIN MEMBER M ON RR.USER_NO = M.USER_NO
+                     LEFT JOIN APT_DETAIL AD ON RR.HO_NO = AD.HO_NO
+                     LEFT JOIN APT_UNIT AU ON AD.DONG_NO = AU.DONG_NO
+            ORDER BY
+                CASE
+                    WHEN RR.APRV_DT IS NULL AND RR.RJCT_RSN_CN IS NULL THEN 0
+                    ELSE 1
+                END,
+                RR.RCPT_DT DESC
+        )
+        WHERE ROWNUM &lt;= 4
+    </select>
+
+    <select id="selectRecentCheckList" parameterType="string" resultMap="checkMap">
+        SELECT *
+        FROM (
+            SELECT F.FACILITY_NM,
+                   FCH.CHK_TY_CD,
+                   TO_CHAR(FCH.CHK_DT, 'YYYY-MM-DD') AS CHK_DT,
+                   FCH.CHK_STTS_CD
+            FROM FACILITY_CHECK_HSTRY FCH
+                     INNER JOIN FACILITY F ON FCH.FACILITY_NO = F.FACILITY_NO
+                     INNER JOIN MGMT_OFFICE MO ON MO.APT_CMPLEX_NO = F.APT_CMPLEX_NO
+            WHERE MO.MGMT_OFC_NO = #{mgmtOfcNo}
+              AND FCH.CHK_DT &gt;= TRUNC(SYSDATE, 'IW')
+              AND FCH.CHK_DT &lt; TRUNC(SYSDATE, 'IW') + 7
+            ORDER BY FCH.CHK_DT DESC, FCH.FAC_CHK_HSTRY_NO DESC
+        )
+        WHERE ROWNUM &lt;= 4
+    </select>
+
+    <select id="selectReservationStat" parameterType="string" resultMap="reservationStatMap">
+        SELECT
+            (SELECT COUNT(*)
+             FROM FACILITY_HSTRY FH
+             JOIN PUBLIC_ITEM PI ON PI.CMN_FACILITY_ITEM_NO = FH.CMN_FACILITY_ITEM_NO
+             JOIN PUBLIC_FACILITY PF ON PF.CMN_FACILITY_NO = PI.CMN_FACILITY_NO
+             WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+               AND TRUNC(FH.RSVT_DT) = TRUNC(SYSDATE)
+               AND FH.RSVT_STTS_CD IN ('PENDING','APPROVED')) AS TODAY_CNT,
+            (SELECT COUNT(*)
+             FROM FACILITY_HSTRY FH
+             JOIN PUBLIC_ITEM PI ON PI.CMN_FACILITY_ITEM_NO = FH.CMN_FACILITY_ITEM_NO
+             JOIN PUBLIC_FACILITY PF ON PF.CMN_FACILITY_NO = PI.CMN_FACILITY_NO
+             WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+               AND FH.RSVT_STTS_CD = 'PENDING') AS PENDING_CNT,
+            (SELECT COUNT(*)
+             FROM FACILITY_HSTRY FH
+             JOIN PUBLIC_ITEM PI ON PI.CMN_FACILITY_ITEM_NO = FH.CMN_FACILITY_ITEM_NO
+             JOIN PUBLIC_FACILITY PF ON PF.CMN_FACILITY_NO = PI.CMN_FACILITY_NO
+             WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+               AND FH.RSVT_STTS_CD = 'APPROVED'
+               AND FH.RSVT_DT &gt;= TRUNC(SYSDATE, 'IW')
+               AND FH.RSVT_DT &lt; TRUNC(SYSDATE, 'IW') + 7) AS WEEK_APPROVED_CNT,
+            (SELECT COUNT(*)
+             FROM FACILITY_HSTRY FH
+             JOIN PUBLIC_ITEM PI ON PI.CMN_FACILITY_ITEM_NO = FH.CMN_FACILITY_ITEM_NO
+             JOIN PUBLIC_FACILITY PF ON PF.CMN_FACILITY_NO = PI.CMN_FACILITY_NO
+             WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+               AND FH.RSVT_STTS_CD IN ('REJECTED','CANCELLED','EXPIRED')
+               AND FH.RSVT_DT &gt;= TRUNC(SYSDATE, 'IW')
+               AND FH.RSVT_DT &lt; TRUNC(SYSDATE, 'IW') + 7) AS WEEK_REJECTED_CNT,
+            (SELECT CMN_FACILITY_NM FROM (
+                 SELECT PF.CMN_FACILITY_NM
+                 FROM FACILITY_HSTRY FH
+                 JOIN PUBLIC_ITEM PI ON PI.CMN_FACILITY_ITEM_NO = FH.CMN_FACILITY_ITEM_NO
+                 JOIN PUBLIC_FACILITY PF ON PF.CMN_FACILITY_NO = PI.CMN_FACILITY_NO
+                 WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+                   AND FH.RSVT_DT &gt;= TRUNC(SYSDATE, 'MM')
+                   AND FH.RSVT_DT &lt; ADD_MONTHS(TRUNC(SYSDATE, 'MM'), 1)
+                 GROUP BY PF.CMN_FACILITY_NM
+                 ORDER BY COUNT(*) DESC
+             ) WHERE ROWNUM = 1) AS TOP_FACILITY_NM,
+            (SELECT CNT FROM (
+                 SELECT COUNT(*) AS CNT
+                 FROM FACILITY_HSTRY FH
+                 JOIN PUBLIC_ITEM PI ON PI.CMN_FACILITY_ITEM_NO = FH.CMN_FACILITY_ITEM_NO
+                 JOIN PUBLIC_FACILITY PF ON PF.CMN_FACILITY_NO = PI.CMN_FACILITY_NO
+                 WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+                   AND FH.RSVT_DT &gt;= TRUNC(SYSDATE, 'MM')
+                   AND FH.RSVT_DT &lt; ADD_MONTHS(TRUNC(SYSDATE, 'MM'), 1)
+                 GROUP BY PF.CMN_FACILITY_NM
+                 ORDER BY COUNT(*) DESC
+             ) WHERE ROWNUM = 1) AS TOP_FACILITY_CNT
+        FROM DUAL
+    </select>
+
+    <select id="selectRecentReservationList" parameterType="string" resultMap="recentReservationMap">
+        SELECT *
+        FROM (
+            SELECT PF.CMN_FACILITY_NM,
+                   M.USER_NM,
+                   OAU.DONG_NM || ' ' || OAD.HO AS HO_NO,
+                   TO_CHAR(FH.RSVT_DT, 'YYYY-MM-DD') AS RSVT_DT,
+                   TO_CHAR(FH.RSVT_BGNG_DTTM, 'HH24:MI') AS RSVT_BGNG_DTTM,
+                   FH.RSVT_STTS_CD
+            FROM FACILITY_HSTRY FH
+            JOIN PUBLIC_ITEM PI ON PI.CMN_FACILITY_ITEM_NO = FH.CMN_FACILITY_ITEM_NO
+            JOIN PUBLIC_FACILITY PF ON PF.CMN_FACILITY_NO = PI.CMN_FACILITY_NO
+            LEFT JOIN MEMBER M ON M.USER_NO = FH.USER_NO
+            LEFT JOIN (
+                SELECT * FROM (
+                    SELECT IHH.USER_NO, IHH.HO_NO, IAU.APT_CMPLEX_NO,
+                           ROW_NUMBER() OVER (PARTITION BY IHH.USER_NO, IAU.APT_CMPLEX_NO
+                                              ORDER BY CASE WHEN IHH.HEAD_YN = 'Y' THEN 0 ELSE 1 END,
+                                                       IHH.MOVE_IN_DT DESC NULLS LAST,
+                                                       IHH.HO_NO) AS RN
+                    FROM HSHLD_HEAD IHH
+                    JOIN APT_DETAIL IAD ON IAD.HO_NO = IHH.HO_NO
+                    JOIN APT_UNIT IAU ON IAU.DONG_NO = IAD.DONG_NO
+                    WHERE NVL(IHH.INOUT_CD, 'IN') != 'OUT'
+                ) WHERE RN = 1
+            ) RHH ON RHH.USER_NO = FH.USER_NO AND RHH.APT_CMPLEX_NO = PF.APT_CMPLEX_NO
+            LEFT JOIN APT_DETAIL OAD ON OAD.HO_NO = RHH.HO_NO
+            LEFT JOIN APT_UNIT OAU ON OAU.DONG_NO = OAD.DONG_NO
+            WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+            ORDER BY
+                CASE WHEN FH.RSVT_STTS_CD = 'PENDING' THEN 0 ELSE 1 END,
+                FH.RSVT_DT DESC, FH.RSVT_BGNG_DTTM DESC
+        )
+        WHERE ROWNUM &lt;= 4
+    </select>
+
+    <select id="selectTopFacilityList" parameterType="string" resultMap="topFacilityMap">
+        SELECT *
+        FROM (
+            SELECT PF.CMN_FACILITY_NM,
+                   COUNT(*) AS RSVT_COUNT
+            FROM FACILITY_HSTRY FH
+            JOIN PUBLIC_ITEM PI ON PI.CMN_FACILITY_ITEM_NO = FH.CMN_FACILITY_ITEM_NO
+            JOIN PUBLIC_FACILITY PF ON PF.CMN_FACILITY_NO = PI.CMN_FACILITY_NO
+            WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+              AND FH.RSVT_DT &gt;= TRUNC(SYSDATE, 'MM')
+              AND FH.RSVT_DT &lt; ADD_MONTHS(TRUNC(SYSDATE, 'MM'), 1)
+            GROUP BY PF.CMN_FACILITY_NM
+            ORDER BY COUNT(*) DESC
+        )
+        WHERE ROWNUM &lt;= 3
+    </select>
+
+    <select id="selectOperationTrend" resultMap="operationTrendMap">
+        SELECT TO_CHAR(D.DT, 'MM-DD') AS DAY_LABEL,
+               (SELECT COUNT(*) FROM CVPL C
+                WHERE C.APT_CMPLEX_NO = #{aptCmplexNo}
+                  AND C.CVPL_STTS_CD IN ('RCPT', 'COMP')
+                  AND TRUNC(C.CVPL_REG_DT) = D.DT) AS CVPL_CNT,
+               (SELECT COUNT(*) FROM FACILITY_CHECK_HSTRY FCH
+                     INNER JOIN FACILITY F ON FCH.FACILITY_NO = F.FACILITY_NO
+                     INNER JOIN MGMT_OFFICE MO ON MO.APT_CMPLEX_NO = F.APT_CMPLEX_NO
+                WHERE MO.MGMT_OFC_NO = #{mgmtOfcNo}
+                  AND FCH.CHK_STTS_CD = 'DONE'
+                  AND TRUNC(FCH.CHK_DT) = D.DT) AS CHECK_CNT,
+               (SELECT COUNT(*) FROM RESIDENT_RQST RR
+                WHERE (RR.APRV_DT IS NOT NULL OR RR.RJCT_RSN_CN IS NOT NULL)
+                  AND TRUNC(NVL(RR.APRV_DT, RR.RCPT_DT)) = D.DT) AS AUTH_CNT
+        FROM (
+            SELECT TRUNC(SYSDATE) - LEVEL + 1 AS DT FROM DUAL CONNECT BY LEVEL &lt;= 7
+        ) D
+        ORDER BY D.DT
+    </select>
+</mapper>

@@ -1,0 +1,369 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.member.resident.mapper.IResidentNoticeBoardMapper">
+
+        <resultMap id="residentBoardNoticeMap"
+                   type="kr.or.ddit.domain.member.resident.dto.ResidentNoticeBoardDTO">
+            <id property="annNo" column="ann_no"/>
+            <result property="boardNo" column="board_no"/>
+            <result property="aptCmplexNo" column="apt_cmplex_no"/>
+            <result property="ttl" column="ttl"/>
+            <result property="cn" column="cn"/>
+            <result property="wrtrId" column="wrtr_id"/>
+            <result property="regDttm" column="reg_dttm"/>
+            <result property="mdfDttm" column="mdf_dttm"/>
+            <result property="inqCnt" column="inq_cnt"/>
+            <result property="delYn" column="del_yn"/>
+            <result property="atchFileId" column="atch_file_id"/>
+            <result property="boardTyCd" column="board_ty_cd"/>
+            <result property="boardNm" column="board_nm"/>
+            <result property="topFixYn" column="top_fix_yn"/>
+            <result property="fileCnt" column="file_cnt"/>
+            <result property="fileOgName" column="file_og_name"/>
+            <result property="mimeType" column="mime_type"/>
+            <result property="googleId" column="google_id"/>
+        </resultMap>
+
+        <select id="selectResidentBoardNoticeCount"
+                parameterType="kr.or.ddit.domain.member.resident.dto.ResidentNoticeBoardDTO"
+                resultType="int">
+            /* IResidentBoardNoticeMapper.selectResidentBoardNoticeCount */
+            SELECT COUNT(*)
+            FROM apt_ann_board_post aabp
+            INNER JOIN apt_board_instance abi
+            ON aabp.board_no = abi.board_no
+            WHERE aabp.del_yn = 'N'
+            AND abi.use_yn = 'Y'
+            AND abi.board_ty_cd = 'NOTICE'
+            AND abi.apt_cmplex_no = #{aptCmplexNo}
+            <if test="searchTtl != null and searchTtl != ''">
+                AND aabp.ttl LIKE '%' || #{searchTtl} || '%'
+            </if>
+            <if test="searchStartDt != null and searchStartDt != ''">
+                AND TRUNC(aabp.reg_dttm) <![CDATA[>=]]> TO_DATE(#{searchStartDt}, 'YYYY-MM-DD')
+            </if>
+            <if test="searchEndDt != null and searchEndDt != ''">
+                AND TRUNC(aabp.reg_dttm) <![CDATA[<=]]> TO_DATE(#{searchEndDt}, 'YYYY-MM-DD')
+            </if>
+        </select>
+
+    <select id="selectResidentBoardNoticeList"
+            parameterType="kr.or.ddit.domain.member.resident.dto.ResidentNoticeBoardDTO"
+            resultMap="residentBoardNoticeMap">
+        /*
+        * 입주민 공지사항 목록 조회
+        *
+        * ATTACH_FILE JOIN 금지
+        * → 첨부파일이 2개면 공지글도 2줄로 중복 조회됨.
+        */
+
+        SELECT *
+        FROM (
+        SELECT ROWNUM AS rnum,
+        notice_list.*
+        FROM (
+        SELECT
+        aabp.ann_no
+        , aabp.board_no
+        , abi.apt_cmplex_no
+        , aabp.ttl
+        , aabp.wrtr_id
+        , TO_CHAR(aabp.reg_dttm, 'YYYY-MM-DD') AS reg_dttm
+        , TO_CHAR(aabp.mdf_dttm, 'YYYY-MM-DD') AS mdf_dttm
+        , NVL(aabp.inq_cnt, 0) AS inq_cnt
+        , aabp.del_yn
+        , aabp.atch_file_id
+        , abi.board_ty_cd
+        , abi.board_nm
+        , aabp.top_fix_yn
+
+        /*
+        * 첨부파일 개수만 조회
+        */
+        , (
+        SELECT COUNT(*)
+        FROM attach_file af
+        WHERE TO_CHAR(af.file_group_no) = aabp.atch_file_id
+        ) AS file_cnt
+
+        FROM apt_ann_board_post aabp
+        INNER JOIN apt_board_instance abi
+        ON aabp.board_no = abi.board_no
+
+        WHERE aabp.del_yn = 'N'
+        AND abi.use_yn = 'Y'
+        AND abi.board_ty_cd = 'NOTICE'
+        AND abi.apt_cmplex_no = #{aptCmplexNo}
+
+        <if test="searchTtl != null and searchTtl != ''">
+            AND aabp.ttl LIKE '%' || #{searchTtl} || '%'
+        </if>
+
+        <if test="searchStartDt != null and searchStartDt != ''">
+            AND TRUNC(aabp.reg_dttm) <![CDATA[>=]]> TO_DATE(#{searchStartDt}, 'YYYY-MM-DD')
+        </if>
+
+        <if test="searchEndDt != null and searchEndDt != ''">
+            AND TRUNC(aabp.reg_dttm) <![CDATA[<=]]> TO_DATE(#{searchEndDt}, 'YYYY-MM-DD')
+        </if>
+
+        ORDER BY
+        CASE
+        WHEN aabp.top_fix_yn = 'Y'
+        AND (
+        SELECT COUNT(*)
+        FROM apt_ann_board_post y
+        INNER JOIN apt_board_instance yb
+        ON y.board_no = yb.board_no
+        WHERE yb.apt_cmplex_no = abi.apt_cmplex_no
+        AND yb.board_ty_cd = 'NOTICE'
+        AND yb.use_yn = 'Y'
+        AND y.del_yn = 'N'
+        AND y.top_fix_yn = 'Y'
+        AND (
+        y.reg_dttm > aabp.reg_dttm
+        OR (
+        y.reg_dttm = aabp.reg_dttm
+        AND TO_NUMBER(REGEXP_REPLACE(y.ann_no, '[^0-9]', '')) >
+        TO_NUMBER(REGEXP_REPLACE(aabp.ann_no, '[^0-9]', ''))
+        )
+        )
+        ) <![CDATA[<]]> 5
+        THEN 0
+        ELSE 1
+        END,
+        aabp.reg_dttm DESC,
+        TO_NUMBER(REGEXP_REPLACE(aabp.ann_no, '[^0-9]', '')) DESC
+        ) notice_list
+        WHERE ROWNUM <![CDATA[<=]]> #{endRow}
+        )
+        WHERE rnum <![CDATA[>=]]> #{startRow}
+    </select>
+
+    <select id="selectResidentBoardNoticeDetail"
+            parameterType="kr.or.ddit.domain.member.resident.dto.ResidentNoticeBoardDTO"
+            resultMap="residentBoardNoticeMap">
+
+        /*
+         * 입주민 공지사항 상세 조회
+         *
+         * 중요:
+         * selectOne()으로 호출되므로 반드시 1건만 조회되어야 한다.
+         *
+         * 첨부파일 JOIN 금지
+         * → 첨부파일 개수만큼 게시글이 중복될 수 있음.
+         */
+
+        SELECT
+            aabp.ann_no
+             , aabp.board_no
+             , abi.apt_cmplex_no
+             , aabp.ttl
+             , aabp.cn
+             , aabp.wrtr_id
+             , TO_CHAR(aabp.reg_dttm, 'YYYY-MM-DD') AS reg_dttm
+             , TO_CHAR(aabp.mdf_dttm, 'YYYY-MM-DD') AS mdf_dttm
+             , NVL(aabp.inq_cnt, 0) AS inq_cnt
+             , aabp.del_yn
+             , aabp.atch_file_id
+             , abi.board_ty_cd
+             , abi.board_nm
+             , aabp.top_fix_yn
+
+            /*
+             * 첨부파일 개수만 조회
+             */
+             , (
+            SELECT COUNT(*)
+            FROM attach_file af
+            WHERE TO_CHAR(af.file_group_no) = aabp.atch_file_id
+        ) AS file_cnt
+
+        FROM apt_ann_board_post aabp
+                 INNER JOIN apt_board_instance abi
+                            ON aabp.board_no = abi.board_no
+
+        WHERE aabp.del_yn = 'N'
+          AND abi.use_yn = 'Y'
+          AND abi.board_ty_cd = 'NOTICE'
+          AND abi.apt_cmplex_no = #{aptCmplexNo}
+          AND aabp.ann_no = #{annNo}
+
+    </select>
+
+<!--        <select id="selectResidentBoardNoticeDetail"-->
+<!--                parameterType="kr.or.ddit.domain.member.resident.dto.ResidentNoticeBoardDTO"-->
+<!--                resultMap="residentBoardNoticeMap">-->
+<!--            /* IResidentBoardNoticeMapper.selectResidentBoardNoticeDetail */-->
+<!--            SELECT aabp.ann_no-->
+<!--                 , aabp.board_no-->
+<!--                 , abi.apt_cmplex_no-->
+<!--                 , aabp.ttl-->
+<!--                 , aabp.cn-->
+<!--                 , aabp.wrtr_id-->
+<!--                 , TO_CHAR(aabp.reg_dttm, 'YYYY-MM-DD') reg_dttm-->
+<!--                 , TO_CHAR(aabp.mdf_dttm, 'YYYY-MM-DD') mdf_dttm-->
+<!--                 , NVL(aabp.inq_cnt, 0) inq_cnt-->
+<!--                 , aabp.del_yn-->
+<!--                 , aabp.atch_file_id-->
+<!--                 , abi.board_ty_cd-->
+<!--                 , abi.board_nm-->
+<!--                 , aabp.top_fix_yn-->
+<!--            FROM apt_ann_board_post aabp-->
+<!--                     INNER JOIN apt_board_instance abi-->
+<!--                                ON aabp.board_no = abi.board_no-->
+<!--                     LEFT JOIN ATTACH_FILE F-->
+<!--                               ON TO_CHAR(F.FILE_GROUP_NO) = P.ATCH_FILE_ID-->
+<!--            WHERE aabp.del_yn = 'N'-->
+<!--              AND abi.use_yn = 'Y'-->
+<!--              AND abi.board_ty_cd = 'NOTICE'-->
+<!--              AND abi.apt_cmplex_no = #{aptCmplexNo}-->
+<!--              AND aabp.ann_no = #{annNo}-->
+<!--        </select>-->
+
+        <update id="updateResidentBoardNoticeInqCnt"
+                parameterType="kr.or.ddit.domain.member.resident.dto.ResidentNoticeBoardDTO">
+            /* IResidentBoardNoticeMapper.updateResidentBoardNoticeInqCnt */
+            UPDATE apt_ann_board_post
+            SET inq_cnt = NVL(inq_cnt, 0) + 1
+            WHERE ann_no = #{annNo}
+              AND del_yn = 'N'
+              AND board_no IN (
+                SELECT board_no
+                FROM apt_board_instance
+                WHERE apt_cmplex_no = #{aptCmplexNo}
+                  AND board_ty_cd = 'NOTICE'
+                  AND use_yn = 'Y'
+            )
+        </update>
+
+    <!--
+     이전글
+     기준: 현재 목록 화면에 보이는 정렬 순서 기준으로 현재 글의 아래쪽 글
+
+     ROW_NUMBER란?
+     → 조회 결과에 1, 2, 3 같은 순번을 붙이는 Oracle 함수.
+     왜 사용?
+     → REG_DTTM 날짜가 같은 글이 여러 개 있어도 정확히 이전/다음 글을 찾기 위해.
+ -->
+    <select id="selectPrevResidentNotice"
+            parameterType="kr.or.ddit.domain.member.resident.dto.ResidentNoticeBoardDTO"
+            resultType="kr.or.ddit.domain.member.resident.dto.ResidentNoticeBoardDTO">
+        SELECT
+            ANN_NO,
+            TTL,
+            REG_DTTM,
+            TOP_FIX_YN
+        FROM (
+                 SELECT
+                     X.*,
+                     ROW_NUMBER() OVER (
+                         ORDER BY
+                             X.TOP_FIX_YN DESC,
+                             X.REG_DTTM DESC,
+                             X.ANN_NO DESC
+                         ) AS RN
+                 FROM APT_ANN_BOARD_POST X
+                          INNER JOIN APT_BOARD_INSTANCE B
+                                     ON X.BOARD_NO = B.BOARD_NO
+                 WHERE B.APT_CMPLEX_NO = #{aptCmplexNo}
+                   AND B.BOARD_TY_CD = 'NOTICE'
+                   AND B.USE_YN = 'Y'
+                   AND X.DEL_YN = 'N'
+             )
+        WHERE RN = (
+            SELECT RN + 1
+            FROM (
+                     SELECT
+                         X.ANN_NO,
+                         ROW_NUMBER() OVER (
+                             ORDER BY
+                                 X.TOP_FIX_YN DESC,
+                                 X.REG_DTTM DESC,
+                                 X.ANN_NO DESC
+                             ) AS RN
+                     FROM APT_ANN_BOARD_POST X
+                              INNER JOIN APT_BOARD_INSTANCE B
+                                         ON X.BOARD_NO = B.BOARD_NO
+                     WHERE B.APT_CMPLEX_NO = #{aptCmplexNo}
+                       AND B.BOARD_TY_CD = 'NOTICE'
+                       AND B.USE_YN = 'Y'
+                       AND X.DEL_YN = 'N'
+                 )
+            WHERE ANN_NO = #{annNo}
+        )
+    </select>
+
+    <!--
+    다음글
+    기준: 현재 목록 화면에 보이는 정렬 순서 기준으로 현재 글의 위쪽 글
+-->
+    <select id="selectNextResidentNotice"
+            parameterType="kr.or.ddit.domain.member.resident.dto.ResidentNoticeBoardDTO"
+            resultType="kr.or.ddit.domain.member.resident.dto.ResidentNoticeBoardDTO">
+        SELECT
+            ANN_NO,
+            TTL,
+            REG_DTTM,
+            TOP_FIX_YN
+        FROM (
+                 SELECT
+                     X.*,
+                     ROW_NUMBER() OVER (
+                         ORDER BY
+                             X.TOP_FIX_YN DESC,
+                             X.REG_DTTM DESC,
+                             X.ANN_NO DESC
+                         ) AS RN
+                 FROM APT_ANN_BOARD_POST X
+                          INNER JOIN APT_BOARD_INSTANCE B
+                                     ON X.BOARD_NO = B.BOARD_NO
+                 WHERE B.APT_CMPLEX_NO = #{aptCmplexNo}
+                   AND B.BOARD_TY_CD = 'NOTICE'
+                   AND B.USE_YN = 'Y'
+                   AND X.DEL_YN = 'N'
+             )
+        WHERE RN = (
+            SELECT RN - 1
+            FROM (
+                     SELECT
+                         X.ANN_NO,
+                         ROW_NUMBER() OVER (
+                             ORDER BY
+                                 X.TOP_FIX_YN DESC,
+                                 X.REG_DTTM DESC,
+                                 X.ANN_NO DESC
+                             ) AS RN
+                     FROM APT_ANN_BOARD_POST X
+                              INNER JOIN APT_BOARD_INSTANCE B
+                                         ON X.BOARD_NO = B.BOARD_NO
+                     WHERE B.APT_CMPLEX_NO = #{aptCmplexNo}
+                       AND B.BOARD_TY_CD = 'NOTICE'
+                       AND B.USE_YN = 'Y'
+                       AND X.DEL_YN = 'N'
+                 )
+            WHERE ANN_NO = #{annNo}
+        )
+    </select>
+
+    <select id="selectResidentNoticeAttachFileList"
+            parameterType="kr.or.ddit.domain.member.resident.dto.ResidentNoticeBoardDTO"
+            resultMap="residentBoardNoticeMap">
+        /*
+         * 입주민 공지사항 첨부파일 목록 조회
+         *
+         * 한 공지에 파일이 여러 개일 수 있으므로 List로 조회한다.
+         */
+
+        SELECT
+            TO_CHAR(af.file_group_no) AS atch_file_id
+             , af.file_og_name
+             , af.mime_type
+             , af.google_id
+        FROM attach_file af
+        WHERE TO_CHAR(af.file_group_no) = #{atchFileId}
+        ORDER BY af.file_sort_order ASC
+    </select>
+
+
+    </mapper>

@@ -1,0 +1,221 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%--
+    시설/협력업체 선택 모달
+    - 부모 JSP의 facilityList, partnerList, checkTypeList 등 기존 모델을 최대한 사용함
+    - 서버 검색 API 호출용 필터를 함께 제공함
+    - manager-common.js 기준 닫기 속성(data-modal-close)을 사용함
+--%>
+
+<%-- 시설 선택 모달 --%>
+<div class="modal-overlay" id="facilityModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">시설 선택</h3>
+            <button type="button" class="modal-close" data-modal-close>
+                <span class="material-symbols-rounded">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <%-- 시설 검색 필터: 서버 검색 API 파라미터와 id를 맞춤 --%>
+            <div class="modal-filter-grid">
+                <div class="form-field">
+                    <label class="field-label">시설유형</label>
+                    <select class="form-select" id="facilityFilterType">
+                        <option value="">전체</option>
+                        <optgroup label="일반시설">
+                            <c:forEach var="type" items="${assetFacilityTypeList}">
+                                <option value="${fn:escapeXml(type.codeNoCd)}">${type.codeName}</option>
+                            </c:forEach>
+                        </optgroup>
+                        <optgroup label="편의시설">
+                            <c:forEach var="type" items="${publicFacilityTypeList}">
+                                <option value="${fn:escapeXml(type.codeNoCd)}">${type.codeName}</option>
+                            </c:forEach>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label class="field-label">동</label>
+                    <select class="form-select" id="facilityFilterDong">
+                        <option value="">전체</option>
+                        <c:forEach var="facility" items="${facilityList}">
+                            <c:if test="${not empty facility.dongNo}">
+                                <option value="${fn:escapeXml(facility.dongNo)}">${empty facility.dongNm ? facility.dongNo : facility.dongNm}</option>
+                            </c:if>
+                        </c:forEach>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label class="field-label">사용여부</label>
+                    <select class="form-select" id="facilityFilterUseYn">
+                        <option value="">전체</option>
+                        <option value="Y">사용</option>
+                        <option value="N">미사용</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label class="field-label">위치</label>
+                    <input type="text" class="form-input" id="facilityFilterLoc" placeholder="위치 검색">
+                </div>
+                <div class="form-field">
+                    <label class="field-label">통합검색</label>
+                    <input type="text" class="form-input" id="facilityModalSearch" placeholder="시설번호, 시설명, 시설유형 검색">
+                </div>
+                <div class="form-field">
+                    <label class="field-label">&nbsp;</label>
+                    <div class="modal-filter-actions">
+                        <button type="button" class="btn btn-primary" id="facilitySearchBtn">검색</button>
+                        <button type="button" class="btn" id="facilitySearchResetBtn">초기화</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-table-wrap">
+                <table class="modal-table">
+                    <colgroup>
+                        <col style="width:16%;">
+                        <col style="width:22%;">
+                        <col style="width:15%;">
+                        <col style="width:25%;">
+                        <col style="width:10%;">
+                        <col style="width:12%;">
+                    </colgroup>
+                    <thead>
+                    <tr>
+                        <th>시설번호</th>
+                        <th>시설명</th>
+                        <th>시설유형</th>
+                        <th>위치</th>
+                        <th>사용</th>
+                        <th>선택</th>
+                    </tr>
+                    </thead>
+                    <tbody id="facilityModalTbody">
+                    <c:choose>
+                        <c:when test="${not empty facilityList}">
+                            <c:forEach var="facility" items="${facilityList}">
+                                <tr class="facility-modal-row"
+                                    data-key="${fn:escapeXml(facility.facilityNo)} ${fn:escapeXml(facility.facilityNm)} ${fn:escapeXml(facility.facilityTyNm)} ${fn:escapeXml(facility.locCn)}"
+                                    data-facility-no="${fn:escapeXml(facility.facilityNo)}"
+                                    data-facility-nm="${fn:escapeXml(facility.facilityNm)}"
+                                    data-facility-ty="${fn:escapeXml(facility.facilityTyNm)}"
+                                    data-loc-cn="${fn:escapeXml(facility.locCn)}"
+                                    data-use-yn="${fn:escapeXml(facility.useYn)}"
+                                    data-instl-dt="${fn:escapeXml(facility.instlDt)}">
+                                    <td>${facility.facilityNo}</td>
+                                    <td class="td-left">${facility.facilityNm}</td>
+                                    <td>${facility.facilityTyNm}</td>
+                                    <td class="td-left">${empty facility.locCn ? '-' : facility.locCn}</td>
+                                    <td>${facility.useYn eq 'Y' ? 'Y' : 'N'}</td>
+                                    <td>
+                                        <button type="button" class="btn select-facility-btn">선택</button>
+                                    </td>
+                                </tr>
+                            </c:forEach>
+                        </c:when>
+                        <c:otherwise>
+                            <tr>
+                                <td colspan="6">선택 가능한 시설이 없습니다.</td>
+                            </tr>
+                        </c:otherwise>
+                    </c:choose>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%-- 협력업체 선택 모달 --%>
+<div class="modal-overlay" id="partnerModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">협력업체 선택</h3>
+            <button type="button" class="modal-close" data-modal-close>
+                <span class="material-symbols-rounded">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <%-- 협력업체 검색 필터: 서버 검색 API 파라미터와 id를 맞춤 --%>
+            <div class="modal-filter-grid">
+                <div class="form-field">
+                    <label class="field-label">업종</label>
+                    <input type="text" class="form-input" id="partnerFilterBizTy" placeholder="업종 검색">
+                </div>
+                <div class="form-field">
+                    <label class="field-label">사용여부</label>
+                    <select class="form-select" id="partnerFilterUseYn">
+                        <option value="">전체</option>
+                        <option value="Y">사용</option>
+                        <option value="N">미사용</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label class="field-label">담당자</label>
+                    <input type="text" class="form-input" id="partnerFilterPicNm" placeholder="담당자명 검색">
+                </div>
+                <div class="form-field full">
+                    <label class="field-label">통합검색</label>
+                    <input type="text" class="form-input" id="partnerModalSearch" placeholder="업체번호, 업체명, 업종, 담당자, 연락처 검색">
+                </div>
+            </div>
+            <div class="modal-filter-actions">
+                <button type="button" class="btn btn-primary" id="partnerSearchBtn">검색</button>
+                <button type="button" class="btn" id="partnerSearchResetBtn">초기화</button>
+            </div>
+
+            <div class="modal-table-wrap">
+                <table class="modal-table">
+                    <colgroup>
+                        <col style="width:16%;">
+                        <col style="width:25%;">
+                        <col style="width:19%;">
+                        <col style="width:14%;">
+                        <col style="width:14%;">
+                        <col style="width:12%;">
+                    </colgroup>
+                    <thead>
+                    <tr>
+                        <th>업체번호</th>
+                        <th>업체명</th>
+                        <th>업종</th>
+                        <th>담당자</th>
+                        <th>연락처</th>
+                        <th>선택</th>
+                    </tr>
+                    </thead>
+                    <tbody id="partnerModalTbody">
+                    <c:choose>
+                        <c:when test="${not empty partnerList}">
+                            <c:forEach var="partner" items="${partnerList}">
+                                <tr class="partner-modal-row"
+                                    data-key="${fn:escapeXml(partner.partnerNo)} ${fn:escapeXml(partner.partnerNm)} ${fn:escapeXml(partner.bizTyNm)} ${fn:escapeXml(partner.picNm)} ${fn:escapeXml(partner.picTelno)}"
+                                    data-partner-no="${fn:escapeXml(partner.partnerNo)}"
+                                    data-partner-nm="${fn:escapeXml(partner.partnerNm)}"
+                                    data-biz-ty="${fn:escapeXml(partner.bizTyNm)}"
+                                    data-pic-nm="${fn:escapeXml(partner.picNm)}"
+                                    data-pic-telno="${fn:escapeXml(partner.picTelno)}"
+                                    data-pic-email="${fn:escapeXml(partner.picEmail)}">
+                                    <td>${partner.partnerNo}</td>
+                                    <td class="td-left">${partner.partnerNm}</td>
+                                    <td>${empty partner.bizTyNm ? '-' : partner.bizTyNm}</td>
+                                    <td>${empty partner.picNm ? '-' : partner.picNm}</td>
+                                    <td>${empty partner.picTelno ? '-' : partner.picTelno}</td>
+                                    <td>
+                                        <button type="button" class="btn select-partner-btn">선택</button>
+                                    </td>
+                                </tr>
+                            </c:forEach>
+                        </c:when>
+                        <c:otherwise>
+                            <tr>
+                                <td colspan="6">선택 가능한 협력업체가 없습니다.</td>
+                            </tr>
+                        </c:otherwise>
+                    </c:choose>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

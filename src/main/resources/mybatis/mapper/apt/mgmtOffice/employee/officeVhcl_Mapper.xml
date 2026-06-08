@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.employee.mapper.OfficeVhclMapper">
+
+    <insert id="insertVehicle">
+        INSERT INTO RSID_VHCL
+        (
+            RSID_VHCL_NO,
+            VHCL_NM,
+            VHCL_NO,
+            VHCL_STTS_CD,
+            USER_NO,
+            HO_NO,
+            VHCL_FILE_NO
+        )
+        VALUES
+            (
+                #{rsidVhclNo},
+                #{vhclNm},
+                #{vhclNo},
+                #{vhclSttsCd},
+                #{userNo},
+                #{hoNo},
+                #{vhclFileNo}
+            )
+    </insert>
+
+    <select id="getVehicleList"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.member.resident.vo.RsidVhclVO">
+
+        SELECT
+            RV.RSID_VHCL_NO AS rsidVhclNo,
+            RV.VHCL_STTS_CD AS vhclSttsCd,
+            RV.VHCL_NM AS vhclNm,
+            RV.VHCL_NO AS vhclNo,
+            M.USER_NM AS userNm,
+            RV.USER_NO AS userNo,
+            RV.HO_NO AS hoNo,
+            CASE
+                WHEN AD.HO IS NOT NULL THEN
+                    (CASE
+                        WHEN INSTR(AD.DONG_NO, '_') > 0 THEN SUBSTR(AD.DONG_NO, INSTR(AD.DONG_NO, '_') + 1)
+                        ELSE AD.DONG_NO
+                    END) || '동 ' || AD.HO || '호'
+                ELSE RV.HO_NO
+            END AS unitDisplay,
+            RV.VHCL_FILE_NO AS vhclFileNo,
+            RV.REG_DT AS regDt,
+            RV.MDF_DT AS mdfDt
+
+        FROM RSID_VHCL RV
+                 LEFT JOIN MEMBER M
+                           ON M.USER_NO = RV.USER_NO
+                 LEFT JOIN APT_DETAIL AD
+                           ON AD.HO_NO = RV.HO_NO
+
+        WHERE RV.HO_NO LIKE #{aptCmplexNo} || '%'
+
+        ORDER BY RV.REG_DT DESC
+
+    </select>
+
+    <select id="selectVehicleById"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.member.resident.vo.RsidVhclVO">
+        SELECT
+            RV.RSID_VHCL_NO,
+            RV.VHCL_STTS_CD,
+            RV.VHCL_NM,
+            RV.VHCL_NO,
+            M.USER_NM AS USER_NM,
+            RV.USER_NO,
+            RV.HO_NO,
+            CASE
+                WHEN AD.HO IS NOT NULL THEN
+                    (CASE
+                        WHEN INSTR(AD.DONG_NO, '_') > 0 THEN SUBSTR(AD.DONG_NO, INSTR(AD.DONG_NO, '_') + 1)
+                        ELSE AD.DONG_NO
+                    END) || '동 ' || AD.HO || '호'
+                ELSE RV.HO_NO
+            END AS UNIT_DISPLAY,
+            RV.VHCL_FILE_NO,
+            RV.REG_DT,
+            RV.MDF_DT
+        FROM RSID_VHCL RV
+            LEFT JOIN MEMBER M ON M.USER_NO = RV.USER_NO
+            LEFT JOIN APT_DETAIL AD ON AD.HO_NO = RV.HO_NO
+        WHERE RV.RSID_VHCL_NO = #{rsidVhclNo}
+    </select>
+
+    <update id="updateVehicle">
+        UPDATE RSID_VHCL
+        SET
+            VHCL_NM = #{vhclNm},
+            VHCL_NO = #{vhclNo},
+            USER_NO = #{userNo},
+            HO_NO = #{hoNo},
+            MDF_DT = SYSDATE
+        WHERE RSID_VHCL_NO = #{rsidVhclNo}
+    </update>
+
+    <delete id="deleteVehicle">
+        DELETE
+        FROM RSID_VHCL
+        WHERE RSID_VHCL_NO = #{rsidVhclNo}
+    </delete>
+
+
+    <select id="searchResident"
+            parameterType="map"
+            resultType="map">
+
+        SELECT
+            HH.USER_NO,
+            HH.INOUT_CD,
+            HH.HEAD_YN
+        FROM HSHLD_HEAD HH
+                 INNER JOIN MEMBER M
+                            ON M.USER_NO = HH.USER_NO
+        WHERE HH.HO_NO = #{hoNo}
+          AND REPLACE(TRIM(M.USER_NM), ' ', '') =
+              REPLACE(TRIM(#{residentName}), ' ', '')
+
+    </select>
+
+
+    <update id="updateVehicleStatus">
+
+        UPDATE RSID_VHCL
+        SET VHCL_STTS_CD = #{status}
+        WHERE RSID_VHCL_NO = #{rsidVhclNo}
+
+    </update>
+
+
+</mapper>

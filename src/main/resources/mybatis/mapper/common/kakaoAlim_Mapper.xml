@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    카카오 알림 Mapper XML
+
+    Mapper XML이란?
+    Java Mapper 인터페이스와 실제 SQL을 연결하는 파일입니다.
+
+    흐름
+    Service → Mapper Interface → Mapper XML → Oracle DB
+-->
+<mapper namespace="kr.or.ddit.common.kakao.mapper.IKakaoAlimMapper">
+
+    <!--
+        다음 알림번호 생성
+
+        SEQUENCE란?
+        자동 증가 번호 생성 객체입니다.
+        알림번호, 게시글번호, 예약번호 등을 만들 때 사용합니다.
+
+        예) KAKAO000001
+    -->
+    <select id="selectNextAlimNo" resultType="string">
+        SELECT 'KAKAO' || LPAD(SEQ_KAKAO_ALIM.NEXTVAL, 6, '0')
+        FROM DUAL
+    </select>
+
+    <!--
+        카카오 알림 저장
+
+        예약 승인, 예약 거절, 입주 승인 등의 알림을
+        KAKAO_ALIM 테이블에 저장합니다.
+
+        parameterType이란?
+        Java 객체(KakaoAlimVO)의 값을 SQL에서 사용하도록 연결합니다.
+    -->
+    <insert id="insertKakaoAlim"
+            parameterType="kr.or.ddit.common.kakao.vo.KakaoAlimVO">
+        INSERT INTO KAKAO_ALIM (
+                                 ALIM_NO
+                               , USER_NO
+                               , ALIM_TY_CD
+                               , ALIM_TTL
+                               , ALIM_CN
+                               , LINK_URL
+                               , READ_YN
+                               , SND_DTTM
+                               , RGTR_ID
+        ) VALUES (
+                   #{alimNo}
+                 , #{userNo}
+                 , #{alimTyCd}
+                 , #{alimTtl}
+                 , #{alimCn}
+                 , #{linkUrl}
+                 , 'N'
+                 , SYSDATE
+                 , #{rgtrId}
+                 )
+    </insert>
+
+    <!--
+        내 알림 목록 조회
+
+        로그인한 사용자의 알림 목록을 조회합니다.
+        최신이 아래에 보이도록 SND_DTTM ASC 정렬을 사용합니다.
+    -->
+    <select id="selectMyKakaoAlimList"
+            parameterType="string"
+            resultType="kr.or.ddit.common.kakao.vo.KakaoAlimVO">
+        SELECT
+            ALIM_NO,
+            USER_NO,
+            ALIM_TY_CD,
+            ALIM_TTL,
+            ALIM_CN,
+            LINK_URL,
+            READ_YN,
+
+            /* 카카오톡 시간 표시용 */
+            TO_CHAR(SND_DTTM, 'YYYY-MM-DD HH24:MI:SS') AS sndDttm,
+
+            RGTR_ID
+        FROM KAKAO_ALIM
+        WHERE USER_NO = #{userNo}
+        ORDER BY SND_DTTM ASC
+    </select>
+
+    <!--
+        알림 읽음 처리
+
+        사용자가 알림을 클릭하면 READ_YN 값을 N → Y로 변경합니다.
+
+        N : 안 읽음
+        Y : 읽음
+    -->
+    <update id="updateReadYn">
+        UPDATE KAKAO_ALIM
+        SET READ_YN = 'Y'
+        WHERE ALIM_NO = #{alimNo}
+          AND USER_NO = #{userNo}
+    </update>
+
+    <!--
+        읽지 않은 알림 개수 조회
+
+        상단 종모양 알림 배지 숫자 표시용입니다.
+
+        예)
+        COUNT = 3 → 🔔 3
+    -->
+    <select id="selectUnreadCount"
+            parameterType="string"
+            resultType="int">
+        SELECT COUNT(*)
+        FROM KAKAO_ALIM
+        WHERE USER_NO = #{userNo}
+          AND READ_YN = 'N'
+    </select>
+
+</mapper>

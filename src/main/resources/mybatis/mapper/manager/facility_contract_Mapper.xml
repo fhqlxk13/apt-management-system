@@ -1,0 +1,715 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.contract.mapper.IFacilityContractMapper">
+
+    <!-- 다음 계약번호 -->
+    <select id="selectNextContNo" resultType="string">
+        select 'CONT' || lpad(seq_facility_contract.nextval, 4, '0')
+        from dual
+    </select>
+
+    <!-- 다음 검침 설정번호 -->
+    <select id="selectNextUtilityProviderNo" resultType="string">
+        select 'UTP' || lpad(seq_meter_work.nextval, 4, '0')
+        from dual
+    </select>
+
+    <!-- 관리사무소 번호 기준 단지번호 -->
+    <select id="selectAptCmplexNoByMgmtOfcNo" parameterType="string" resultType="string">
+        select apt_cmplex_no
+        from mgmt_office
+        where mgmt_ofc_no = #{mgmtOfcNo}
+    </select>
+
+    <!-- 계약 목록 전체 건수 조회 -->
+    <select id="selectContractTotalCount"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.contract.vo.FacilityContractSearchVO"
+            resultType="int">
+        select count(*)
+        from facility_contract fc
+        inner join partner p
+        on fc.partner_no = p.partner_no
+        inner join mgmt_office mo
+        on p.apt_cmplex_no = mo.apt_cmplex_no
+        where mo.mgmt_ofc_no = #{mgmtOfcNo}
+
+        <if test="contTyCd != null and contTyCd != ''">
+            and fc.cont_ty_cd = #{contTyCd}
+        </if>
+
+        <if test="partnerNo != null and partnerNo != ''">
+            and fc.partner_no = #{partnerNo}
+        </if>
+
+        <if test="contTargetCd != null and contTargetCd != ''">
+            and fc.cont_target_cd = #{contTargetCd}
+        </if>
+
+        <if test="contSttsCd != null and contSttsCd != ''">
+            and fc.cont_stts_cd = #{contSttsCd}
+        </if>
+
+        <if test="periodStartDt != null and periodStartDt != ''">
+            and fc.cont_bgng_dt &gt;= to_date(#{periodStartDt}, 'yyyy-mm-dd')
+        </if>
+
+        <if test="periodEndDt != null and periodEndDt != ''">
+            and fc.cont_end_dt &lt; to_date(#{periodEndDt}, 'yyyy-mm-dd') + 1
+        </if>
+
+        <if test="minContAmt != null">
+            and fc.cont_amt &gt;= #{minContAmt}
+        </if>
+
+        <if test="maxContAmt != null">
+            and fc.cont_amt &lt;= #{maxContAmt}
+        </if>
+
+        <if test="keyword != null and keyword != ''">
+            and (
+            lower(fc.cont_nm) like '%' || lower(#{keyword}) || '%'
+            or lower(fc.cont_no) like '%' || lower(#{keyword}) || '%'
+            or lower(p.partner_nm) like '%' || lower(#{keyword}) || '%'
+            or lower(p.partner_no) like '%' || lower(#{keyword}) || '%'
+            or exists (
+            select 1
+            from facility_contract_target fct2
+            inner join facility f2
+            on fct2.facility_no = f2.facility_no
+            where fct2.cont_no = fc.cont_no
+            and lower(f2.facility_nm) like '%' || lower(#{keyword}) || '%'
+            )
+            )
+        </if>
+    </select>
+
+    <!-- 계약 목록 조회 -->
+    <select id="selectContractList"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.contract.vo.FacilityContractDTO">
+        select *
+        from (
+        select rownum rn
+        , a.*
+        from (
+        select fc.cont_no
+        , fc.facility_no
+        , fc.partner_no
+        , p.partner_nm
+        , p.biz_ty_nm
+        , fc.cont_nm
+        , fc.bid_ty_cd
+        , bid_ty.code_name as bid_ty_nm
+        , fc.cont_dt
+        , fc.cont_stts_cd
+        , cont_stts.code_name as cont_stts_nm
+        , fc.cont_amt
+        , fc.pymt_dt
+        , fc.cont_bgng_dt
+        , fc.cont_end_dt
+        , fc.cont_ty_cd
+        , cont_ty.code_name as cont_ty_nm
+        , fc.cont_target_cd
+        , fc.cont_cn
+        , fc.rmrk_cn
+        , fc.reg_dt
+        , fc.mdf_dt
+        , fc.file_group_no
+        , nvl(t.target_count, 0) as target_count
+        , t.target_summary
+        , nvl(af.file_count, 0) as file_count
+        from facility_contract fc
+        inner join partner p
+        on fc.partner_no = p.partner_no
+        inner join mgmt_office mo
+        on p.apt_cmplex_no = mo.apt_cmplex_no
+        left join common_code cont_ty
+        on cont_ty.group_code_no = 'CONT_TY'
+        and cont_ty.code_no_cd = fc.cont_ty_cd
+        left join common_code bid_ty
+        on bid_ty.group_code_no = 'BID_TY'
+        and bid_ty.code_no_cd = fc.bid_ty_cd
+        left join common_code cont_stts
+        on cont_stts.group_code_no = 'CONTRACT_STTS'
+        and cont_stts.code_no_cd = fc.cont_stts_cd
+        left join (
+        select fct.cont_no
+        , count(*) as target_count
+        , min(f.facility_nm) as target_summary
+        from facility_contract_target fct
+        inner join facility f
+        on fct.facility_no = f.facility_no
+        group by fct.cont_no
+        ) t
+        on fc.cont_no = t.cont_no
+        left join (
+        select file_group_no
+        , count(*) as file_count
+        from attach_file
+        group by file_group_no
+        ) af
+        on fc.file_group_no = af.file_group_no
+        where mo.mgmt_ofc_no = #{search.mgmtOfcNo}
+
+        <if test="search.contTyCd != null and search.contTyCd != ''">
+            and fc.cont_ty_cd = #{search.contTyCd}
+        </if>
+
+        <if test="search.partnerNo != null and search.partnerNo != ''">
+            and fc.partner_no = #{search.partnerNo}
+        </if>
+
+        <if test="search.contTargetCd != null and search.contTargetCd != ''">
+            and fc.cont_target_cd = #{search.contTargetCd}
+        </if>
+
+        <if test="search.contSttsCd != null and search.contSttsCd != ''">
+            and fc.cont_stts_cd = #{search.contSttsCd}
+        </if>
+
+        <if test="search.periodStartDt != null and search.periodStartDt != ''">
+            and fc.cont_bgng_dt &gt;= to_date(#{search.periodStartDt}, 'yyyy-mm-dd')
+        </if>
+
+        <if test="search.periodEndDt != null and search.periodEndDt != ''">
+            and fc.cont_end_dt &lt; to_date(#{search.periodEndDt}, 'yyyy-mm-dd') + 1
+        </if>
+
+        <if test="search.minContAmt != null">
+            and fc.cont_amt &gt;= #{search.minContAmt}
+        </if>
+
+        <if test="search.maxContAmt != null">
+            and fc.cont_amt &lt;= #{search.maxContAmt}
+        </if>
+
+        <if test="search.keyword != null and search.keyword != ''">
+            and (
+            lower(fc.cont_nm) like '%' || lower(#{search.keyword}) || '%'
+            or lower(fc.cont_no) like '%' || lower(#{search.keyword}) || '%'
+            or lower(p.partner_nm) like '%' || lower(#{search.keyword}) || '%'
+            or lower(p.partner_no) like '%' || lower(#{search.keyword}) || '%'
+            or exists (
+            select 1
+            from facility_contract_target fct2
+            inner join facility f2
+            on fct2.facility_no = f2.facility_no
+            where fct2.cont_no = fc.cont_no
+            and lower(f2.facility_nm) like '%' || lower(#{search.keyword}) || '%'
+            )
+            )
+        </if>
+
+        order by fc.reg_dt desc nulls last
+        , nvl(fc.cont_bgng_dt, fc.reg_dt) desc
+        , to_number(regexp_substr(fc.cont_no, '[0-9]+')) desc
+        , fc.cont_no desc
+        ) a
+        where rownum &lt;= #{pagingVO.endRow}
+        )
+        where rn &gt;= #{pagingVO.startRow}
+    </select>
+
+    <!-- 계약 현황 카드 조회 -->
+    <select id="selectContractSummary"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.contract.vo.FacilityContractSearchVO"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.contract.vo.FacilityContractSummaryVO">
+        select count(*) as total_cnt
+        , sum(
+        case
+        when (fc.cont_end_dt is null or fc.cont_end_dt &gt;= trunc(sysdate))
+        and nvl(fc.cont_stts_cd, 'ACTIVE') not in ('END', 'TERM')
+        then 1
+        else 0
+        end
+        ) as active_cnt
+        , sum(
+        case
+        when fc.cont_end_dt is not null
+        and fc.cont_end_dt &gt;= trunc(sysdate)
+        and fc.cont_end_dt &lt; trunc(sysdate) + 31
+        and nvl(fc.cont_stts_cd, 'ACTIVE') not in ('END', 'TERM')
+        then 1
+        else 0
+        end
+        ) as expire_soon_cnt
+        , sum(
+        case
+        when fc.cont_end_dt is not null
+        and fc.cont_end_dt &lt; trunc(sysdate)
+        then 1
+        else 0
+        end
+        ) as expired_cnt
+        from facility_contract fc
+        inner join partner p
+        on fc.partner_no = p.partner_no
+        inner join mgmt_office mo
+        on p.apt_cmplex_no = mo.apt_cmplex_no
+        where mo.mgmt_ofc_no = #{mgmtOfcNo}
+
+        <if test="contTyCd != null and contTyCd != ''">
+            and fc.cont_ty_cd = #{contTyCd}
+        </if>
+
+        <if test="partnerNo != null and partnerNo != ''">
+            and fc.partner_no = #{partnerNo}
+        </if>
+
+        <if test="contTargetCd != null and contTargetCd != ''">
+            and fc.cont_target_cd = #{contTargetCd}
+        </if>
+
+        <if test="contSttsCd != null and contSttsCd != ''">
+            and fc.cont_stts_cd = #{contSttsCd}
+        </if>
+
+        <if test="periodStartDt != null and periodStartDt != ''">
+            and fc.cont_bgng_dt &gt;= to_date(#{periodStartDt}, 'yyyy-mm-dd')
+        </if>
+
+        <if test="periodEndDt != null and periodEndDt != ''">
+            and fc.cont_end_dt &lt; to_date(#{periodEndDt}, 'yyyy-mm-dd') + 1
+        </if>
+
+        <if test="minContAmt != null">
+            and fc.cont_amt &gt;= #{minContAmt}
+        </if>
+
+        <if test="maxContAmt != null">
+            and fc.cont_amt &lt;= #{maxContAmt}
+        </if>
+
+        <if test="keyword != null and keyword != ''">
+            and (
+            lower(fc.cont_nm) like '%' || lower(#{keyword}) || '%'
+            or lower(fc.cont_no) like '%' || lower(#{keyword}) || '%'
+            or lower(p.partner_nm) like '%' || lower(#{keyword}) || '%'
+            or lower(p.partner_no) like '%' || lower(#{keyword}) || '%'
+            or exists (
+            select 1
+            from facility_contract_target fct2
+            inner join facility f2
+            on fct2.facility_no = f2.facility_no
+            where fct2.cont_no = fc.cont_no
+            and lower(f2.facility_nm) like '%' || lower(#{keyword}) || '%'
+            )
+            )
+        </if>
+    </select>
+
+    <!-- 계약 상세 조회 -->
+    <select id="selectContractDetail"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.contract.vo.FacilityContractDTO">
+        select fc.cont_no
+        , fc.facility_no
+        , fc.partner_no
+        , p.partner_nm
+        , p.biz_ty_nm
+        , p.pic_nm
+        , p.pic_telno
+        , fc.cont_nm
+        , fc.bid_ty_cd
+        , bid_ty.code_name as bid_ty_nm
+        , fc.cont_dt
+        , fc.cont_stts_cd
+        , cont_stts.code_name as cont_stts_nm
+        , fc.cont_amt
+        , fc.pymt_dt
+        , fc.cont_bgng_dt
+        , fc.cont_end_dt
+        , fc.cont_ty_cd
+        , cont_ty.code_name as cont_ty_nm
+        , fc.cont_target_cd
+        , fc.cont_cn
+        , fc.rmrk_cn
+        , fc.reg_dt
+        , fc.mdf_dt
+        , fc.file_group_no
+        from facility_contract fc
+        inner join partner p
+        on fc.partner_no = p.partner_no
+        inner join mgmt_office mo
+        on p.apt_cmplex_no = mo.apt_cmplex_no
+        left join common_code cont_ty
+        on cont_ty.group_code_no = 'CONT_TY'
+        and cont_ty.code_no_cd = fc.cont_ty_cd
+        left join common_code bid_ty
+        on bid_ty.group_code_no = 'BID_TY'
+        and bid_ty.code_no_cd = fc.bid_ty_cd
+        left join common_code cont_stts
+        on cont_stts.group_code_no = 'CONTRACT_STTS'
+        and cont_stts.code_no_cd = fc.cont_stts_cd
+        where mo.mgmt_ofc_no = #{mgmtOfcNo}
+        and fc.cont_no = #{contNo}
+    </select>
+
+    <!-- 계약 대상 시설 목록 -->
+    <select id="selectContractTargetList"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.contract.vo.FacilityContractTargetVO">
+        select fct.cont_no
+        , fct.facility_no
+        , fct.reg_dt
+        , f.facility_nm
+        , f.facility_ty_cd
+        , cc.code_name as facility_ty_nm
+        , f.loc_cn
+        from facility_contract_target fct
+        inner join facility f
+        on fct.facility_no = f.facility_no
+        left join common_code cc
+        on cc.group_code_no = 'FACILITY_TY'
+        and cc.code_no_cd = f.facility_ty_cd
+        where fct.cont_no = #{contNo}
+        order by f.facility_nm
+    </select>
+
+    <!-- 계약 대상 시설번호 목록 -->
+    <select id="selectContractTargetNoList"
+            parameterType="string"
+            resultType="string">
+        select facility_no
+        from facility_contract_target
+        where cont_no = #{contNo}
+        order by facility_no
+    </select>
+
+    <!-- 계약 첨부파일 목록 -->
+    <select id="selectContractFileList"
+            parameterType="long"
+            resultType="map">
+        select file_group_no  as "fileGroupNo"
+        , file_save_uuid as "fileSaveUuid"
+        , file_og_name   as "fileOgName"
+        , file_path      as "filePath"
+        , file_ext       as "fileExt"
+        , file_size      as "fileSize"
+        , mime_type      as "mimeType"
+        , google_id      as "googleId"
+        , reg_dt         as "regDt"
+        from attach_file
+        where file_group_no = #{fileGroupNo}
+        order by nvl(file_sort_order, 999), reg_dt
+    </select>
+
+    <!-- 계약유형 공통코드 목록 -->
+    <select id="selectContractTypeList" resultType="map">
+        select cc.code_no_cd as "code"
+        , cc.code_name as "codeNm"
+        , cc.code_content as "codeContent"
+        from common_code cc
+        where trim(cc.group_code_no) = 'CONT_TY'
+        and nvl(cc.use_yn, 'Y') = 'Y'
+        order by cc.sort_order, cc.code_no_cd
+    </select>
+
+    <!-- 시설 등록 화면용 연결 가능한 설치계약 목록 -->
+    <select id="selectAvailableInstallContractList" parameterType="string" resultType="map">
+        select fc.cont_no as "contNo"
+        , fc.cont_nm as "contNm"
+        , p.partner_nm as "partnerNm"
+        , to_char(fc.cont_bgng_dt, 'YYYY-MM-DD') as "contBgngDt"
+        , to_char(fc.cont_end_dt, 'YYYY-MM-DD') as "contEndDt"
+        from facility_contract fc
+        inner join partner p
+        on p.partner_no = fc.partner_no
+        inner join mgmt_office mo
+        on mo.apt_cmplex_no = p.apt_cmplex_no
+        where mo.mgmt_ofc_no = #{mgmtOfcNo}
+        and fc.cont_ty_cd = 'INSTALL'
+        and fc.cont_stts_cd = 'ACTIVE'
+        and not exists (
+        select 1
+        from facility_contract_target fct
+        where fct.cont_no = fc.cont_no
+        )
+        and fc.facility_no is null
+        order by to_number(regexp_substr(fc.cont_no, '[0-9]+')) desc, fc.cont_no desc
+    </select>
+
+    <!-- 계약 등록/수정 폼용 협력업체 목록 -->
+    <select id="selectContractPartnerList"
+            parameterType="string"
+            resultType="map">
+        select p.partner_no as "partnerNo"
+        , p.partner_nm as "partnerNm"
+        , p.biz_ty_nm as "bizTyNm"
+        , p.pic_nm as "picNm"
+        , p.pic_telno as "picTelno"
+        from partner p
+        inner join mgmt_office mo
+        on p.apt_cmplex_no = mo.apt_cmplex_no
+        where mo.mgmt_ofc_no = #{mgmtOfcNo}
+        and p.use_yn = 'Y'
+        order by p.partner_nm
+    </select>
+
+    <!-- 계약 등록/수정 폼용 시설 목록 -->
+    <select id="selectContractFacilityList"
+            parameterType="string"
+            resultType="map">
+        select f.facility_no as "facilityNo"
+        , f.facility_nm as "facilityNm"
+        , f.facility_ty_cd as "facilityTyCd"
+        , cc.code_name as "facilityTyNm"
+        , f.dong_no as "dongNo"
+        , f.loc_cn as "locCn"
+        , case
+        when f.dong_no is null then '공용'
+        when instr(f.dong_no, '_') > 0 then substr(f.dong_no, instr(f.dong_no, '_') + 1) || '동'
+        else f.dong_no || '동'
+        end as "dongDisplay"
+        , case
+        when f.dong_no is null then '공용 · ' || nvl(f.loc_cn, '상세 위치 미등록')
+        when instr(f.dong_no, '_') > 0 then substr(f.dong_no, instr(f.dong_no, '_') + 1) || '동 · ' || nvl(f.loc_cn, '상세 위치 미등록')
+        else f.dong_no || '동 · ' || nvl(f.loc_cn, '상세 위치 미등록')
+        end as "facilityLocationText"
+        from facility f
+        inner join mgmt_office mo
+        on f.apt_cmplex_no = mo.apt_cmplex_no
+        left join common_code cc
+        on cc.group_code_no = 'FACILITY_TY'
+        and cc.code_no_cd = f.facility_ty_cd
+        where mo.mgmt_ofc_no = #{mgmtOfcNo}
+        and f.use_yn = 'Y'
+        and f.facility_no not like 'MTR%'
+        order by
+        case when f.dong_no is null then 0 else 1 end
+        , case
+        when f.dong_no is null then 0
+        when instr(f.dong_no, '_') > 0 then to_number(substr(f.dong_no, instr(f.dong_no, '_') + 1))
+        else 9999
+        end
+        , f.facility_nm
+    </select>
+
+    <!-- 계약 등록 -->
+    <insert id="insertContract"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.contract.vo.FacilityContractDTO">
+        insert into facility_contract (
+        cont_no
+        , facility_no
+        , partner_no
+        , cont_nm
+        , bid_ty_cd
+        , cont_dt
+        , cont_stts_cd
+        , cont_amt
+        , pymt_dt
+        , cont_bgng_dt
+        , cont_end_dt
+        , cont_ty_cd
+        , cont_target_cd
+        , cont_cn
+        , rmrk_cn
+        , file_group_no
+        , reg_dt
+        ) values (
+        #{contNo}
+        , #{facilityNo}
+        , #{partnerNo}
+        , #{contNm}
+        , #{bidTyCd}
+        , #{contDt}
+        , #{contSttsCd}
+        , #{contAmt}
+        , #{pymtDt}
+        , #{contBgngDt}
+        , #{contEndDt}
+        , #{contTyCd}
+        , #{contTargetCd}
+        , #{contCn}
+        , #{rmrkCn}
+        , #{fileGroupNo}
+        , sysdate
+        )
+    </insert>
+
+    <!-- 계약 수정 -->
+    <update id="updateContract"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.contract.vo.FacilityContractDTO">
+        update facility_contract
+        set facility_no = #{facilityNo}
+        , partner_no = #{partnerNo}
+        , cont_nm = #{contNm}
+        , bid_ty_cd = #{bidTyCd}
+        , cont_dt = #{contDt}
+        , cont_stts_cd = #{contSttsCd}
+        , cont_amt = #{contAmt}
+        , pymt_dt = #{pymtDt}
+        , cont_bgng_dt = #{contBgngDt}
+        , cont_end_dt = #{contEndDt}
+        , cont_ty_cd = #{contTyCd}
+        , cont_target_cd = #{contTargetCd}
+        , cont_cn = #{contCn}
+        , rmrk_cn = #{rmrkCn}
+        , file_group_no = #{fileGroupNo}
+        , mdf_dt = sysdate
+        where cont_no = #{contNo}
+    </update>
+
+    <!-- 계약 대상 시설 등록 -->
+    <insert id="insertContractTarget"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.contract.vo.FacilityContractTargetVO">
+        insert into facility_contract_target (
+        cont_no
+        , facility_no
+        , reg_dt
+        ) values (
+        #{contNo}
+        , #{facilityNo}
+        , sysdate
+        )
+    </insert>
+
+    <!-- 계약 대상 시설 중복 건수 조회 -->
+    <select id="countContractTarget" resultType="int">
+        select count(*)
+        from facility_contract_target
+        where cont_no = #{contNo}
+        and facility_no = #{facilityNo}
+    </select>
+
+    <!-- 계약 대표 시설번호 수정 -->
+    <update id="updateContractMainFacilityNo">
+        update facility_contract
+        set facility_no = #{facilityNo}
+        , mdf_dt = sysdate
+        where cont_no = #{contNo}
+    </update>
+
+    <!-- 계약 대상 시설 전체 삭제 -->
+    <delete id="deleteContractTargets" parameterType="string">
+        delete from facility_contract_target
+        where cont_no = #{contNo}
+    </delete>
+
+    <!-- 계약번호 기준 검침 설정 조회 : 기존 단건 화면 호환용 대표 1건 -->
+    <select id="selectUtilityProviderByContNo"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.contract.vo.FacilityContractDTO">
+        select utility_provider_no as utility_provider_no
+        , csv_idntf_key as csv_idntf_key
+        , ext_cust_no as ext_cust_no
+        , rmrk_cn as utility_rmrk_cn
+        , meter_ty_cd as meter_ty_cd
+        , case meter_ty_cd
+        when 'ELEC' then '전기'
+        when 'GAS' then '가스'
+        when 'WATER' then '수도'
+        when 'HEAT' then '난방'
+        else meter_ty_cd
+        end as meter_ty_nm
+        from (
+        select utility_provider_no
+        , csv_idntf_key
+        , ext_cust_no
+        , rmrk_cn
+        , meter_ty_cd
+        from utility_provider
+        where cont_no = #{contNo}
+        and meter_ty_cd is not null
+        order by case meter_ty_cd
+        when 'ELEC' then 1
+        when 'GAS' then 2
+        when 'WATER' then 3
+        when 'HEAT' then 4
+        else 9
+        end
+        )
+        where rownum = 1
+    </select>
+
+    <!-- 계약번호 기준 검침 설정 목록 조회 -->
+    <select id="selectUtilityProviderListByContNo"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.contract.vo.FacilityContractDTO">
+        select utility_provider_no as utility_provider_no
+        , csv_idntf_key as csv_idntf_key
+        , ext_cust_no as ext_cust_no
+        , rmrk_cn as utility_rmrk_cn
+        , meter_ty_cd as meter_ty_cd
+        , case meter_ty_cd
+        when 'ELEC' then '전기'
+        when 'GAS' then '가스'
+        when 'WATER' then '수도'
+        when 'HEAT' then '난방'
+        else meter_ty_cd
+        end as meter_ty_nm
+        from utility_provider
+        where cont_no = #{contNo}
+        order by case when meter_ty_cd is null then 2 else 1 end
+        , case meter_ty_cd
+        when 'ELEC' then 1
+        when 'GAS' then 2
+        when 'WATER' then 3
+        when 'HEAT' then 4
+        else 9
+        end
+        , utility_provider_no
+    </select>
+
+    <!-- 계약번호 기준 검침 설정 개수 -->
+    <select id="countUtilityProviderByContNo"
+            parameterType="string"
+            resultType="int">
+        select count(*)
+        from utility_provider
+        where cont_no = #{contNo}
+    </select>
+
+    <!-- 계약번호 + 검침종류 기준 검침 설정 개수 -->
+    <select id="countUtilityProviderByContNoAndMeterTyCd" resultType="int">
+        select count(*)
+        from utility_provider
+        where cont_no = #{contNo}
+        and meter_ty_cd = #{meterTyCd}
+    </select>
+
+    <!-- 검침 설정 등록 -->
+    <insert id="insertUtilityProvider"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.contract.vo.FacilityContractDTO">
+        insert into utility_provider (
+        utility_provider_no
+        , apt_cmplex_no
+        , csv_idntf_key
+        , ext_cust_no
+        , rmrk_cn
+        , partner_no
+        , cont_no
+        , meter_ty_cd
+        ) values (
+        #{utilityProviderNo}
+        , #{aptCmplexNo}
+        , #{csvIdntfKey}
+        , #{extCustNo}
+        , nvl(#{utilityRmrkCn}, '-')
+        , #{partnerNo}
+        , #{contNo}
+        , #{meterTyCd}
+        )
+    </insert>
+
+    <!-- 검침 설정 수정 -->
+    <update id="updateUtilityProvider"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.contract.vo.FacilityContractDTO">
+        update utility_provider
+        set apt_cmplex_no = #{aptCmplexNo}
+        , csv_idntf_key = #{csvIdntfKey}
+        , ext_cust_no = #{extCustNo}
+        , rmrk_cn = nvl(#{utilityRmrkCn}, '-')
+        , partner_no = #{partnerNo}
+        , meter_ty_cd = #{meterTyCd}
+        where cont_no = #{contNo}
+    </update>
+
+    <!-- 첨부파일 DB 삭제 -->
+    <delete id="deleteAttachFileByUuid" parameterType="string">
+        delete from attach_file
+        where file_save_uuid = #{fileSaveUuid}
+    </delete>
+
+</mapper>

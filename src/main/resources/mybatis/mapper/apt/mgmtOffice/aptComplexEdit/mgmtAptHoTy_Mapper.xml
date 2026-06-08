@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.main.mapper.IMgmtAptHoTyMapper">
+    <insert id="insertHoType">
+        INSERT INTO APT_HO_TY (
+            HO_TY_NO
+            , APT_CMPLEX_NO
+            , TY_NM
+            , EXCLUSIVE_SIZE
+            , ROOM_CNT
+            , BATHROOM_CNT
+            , IMAGE_FILE_NO
+        ) VALUES (
+            #{hoTyNo}
+            ,#{aptCmplexNo}
+            ,#{tyNm}
+            ,#{exclusiveSize}
+            ,#{roomCnt}
+            ,#{bathroomCnt}
+            ,#{imageFileNo}
+        )
+
+    </insert>
+    <update id="updateHoType">
+        UPDATE APT_HO_TY
+        SET
+            TY_NM = #{tyNm}
+          ,EXCLUSIVE_SIZE = #{exclusiveSize}
+          ,ROOM_CNT = #{roomCnt}
+          ,BATHROOM_CNT = #{bathroomCnt}
+          ,IMAGE_FILE_NO = #{imageFileNo}
+
+        WHERE HO_TY_NO = #{hoTyNo}
+    </update>
+
+    <select id="selectHoTypeList"
+            resultType="kr.or.ddit.domain.apt.apiApartment.vo.AptHoTyDTO">
+        SELECT
+            A.HO_TY_NO
+            , A.APT_CMPLEX_NO
+            , A.TY_NM
+            , A.EXCLUSIVE_SIZE
+            , A.ROOM_CNT
+            , A.BATHROOM_CNT
+            , A.IMAGE_FILE_NO
+            , F.GOOGLE_ID
+        FROM APT_HO_TY A
+                 LEFT JOIN ATTACH_FILE F
+                           ON A.IMAGE_FILE_NO = F.FILE_GROUP_NO
+                               AND F.FILE_SORT_ORDER = 0
+        WHERE A.APT_CMPLEX_NO = #{aptCmplexNo}
+        ORDER BY A.TY_NM
+    </select>
+
+    <select id="getSeqHoty" resultType="java.lang.String">
+        SELECT
+            SEQ_APT_HO_TY.nextval
+        FROM
+            dual
+    </select>
+
+
+    <!--현재 호 타입 넘버 마지막 자리 잘라서 +1 한다음 가져오기-->
+    <select id="selectNextHoTySeq" resultType="java.lang.String">
+        SELECT NVL(
+                   MAX(
+                       TO_NUMBER(
+                           REGEXP_SUBSTR(HO_TY_NO, '[^_]+$')
+                       )
+                   ),
+                   0
+               ) + 1
+        FROM APT_HO_TY
+        WHERE APT_CMPLEX_NO = #{aptCmplexNo}
+    </select>
+
+    <select id="selectHoTypeDetail"
+            resultType="kr.or.ddit.domain.apt.apiApartment.vo.AptHoTyDTO">
+
+        SELECT
+            H.HO_TY_NO
+             , H.APT_CMPLEX_NO
+             , H.TY_NM
+             , H.EXCLUSIVE_SIZE
+             , H.ROOM_CNT
+             , H.BATHROOM_CNT
+             , H.IMAGE_FILE_NO
+             , F.GOOGLE_ID
+
+        FROM APT_HO_TY H
+
+                 LEFT JOIN ATTACH_FILE F
+                           ON H.IMAGE_FILE_NO = F.FILE_GROUP_NO
+                               AND F.FILE_SORT_ORDER = 0
+
+        WHERE H.HO_TY_NO = #{hoTyNo}
+
+    </select>
+
+    <select id="selectUsingHoList"
+            resultType="string">
+
+        SELECT
+            DONG_NO || '동 ' || HO || '호'
+
+        FROM APT_DETAIL
+
+        WHERE HO_TY_NO = #{hoTyNo}
+
+        ORDER BY DONG_NO, HO
+
+    </select>
+
+    <delete id="deleteHoType">
+
+        DELETE
+        FROM APT_HO_TY
+        WHERE HO_TY_NO = #{hoTyNo}
+
+    </delete>
+
+
+</mapper>

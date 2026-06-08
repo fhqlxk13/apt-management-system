@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.common.webSocket.chat.mapper.IChatMapper">
+    <update id="updateLastRead">
+        UPDATE chat_room_read   /*kr.or.ddit.common.webSocket.chat.mapper.IChatMapper.updateLastRead*/
+        SET last_read_msg_no = #{chatMsgNo}
+        WHERE chat_room_no = #{chatRoomNo}
+          AND chat_member_id = #{chatMemberId}
+    </update>
+
+    <update id="leaveRoom">
+
+        UPDATE CHAT_ROOM_MEMBER /*kr.or.ddit.common.webSocket.chat.mapper.IChatMapper.leaveRoom*/
+        SET LEFT_DTTM = SYSDATE
+        WHERE CHAT_ROOM_NO = #{chatRoomNo}
+          AND USER_NO = #{userNo}
+          AND LEFT_DTTM IS NULL
+
+    </update>
+
+    <update id="readAllMessages">
+
+        UPDATE CHAT_ROOM_READ   /*kr.or.ddit.common.webSocket.chat.mapper.IChatMapper.readAllMessages*/
+        SET LAST_READ_MSG_NO = (
+            SELECT MAX(CHAT_MSG_NO)
+            FROM CHAT_MESSAGE
+            WHERE CHAT_ROOM_NO = #{chatRoomNo}
+        )
+        WHERE CHAT_ROOM_NO = #{chatRoomNo}
+          AND CHAT_MEMBER_ID = #{chatMemberId}
+
+    </update>
+
+    <select id="selectMyRoomList" resultType="kr.or.ddit.common.webSocket.chat.vo.ChatRoomVO">
+        SELECT CR.CHAT_ROOM_NO  /*kr.or.ddit.common.webSocket.chat.mapper.IChatMapper.selectMyRoomList*/
+             ,CR.CHAT_ROOM_NM
+             ,CR.CHAT_ROOM_DESC
+             ,CR.CHAT_JOIN_KEY
+             ,CM.MSG_CN   AS LAST_MSG
+             ,CM.REG_DTTM AS LAST_TIME
+             ,NVL(MC.MEMBER_CNT, 0) AS MEMBER_CNT
+
+             ,NVL((
+                      SELECT COUNT(*)
+                      FROM CHAT_MESSAGE M
+                      WHERE M.CHAT_ROOM_NO = CR.CHAT_ROOM_NO
+                        AND NVL(M.SENDER_TY, 'USER') != 'SYSTEM'
+                        AND M.CHAT_MEMBER_ID != CRM.CHAT_MEMBER_ID
+                        AND M.CHAT_MSG_NO > NVL((
+                                                    SELECT MR.LAST_READ_MSG_NO
+                                                    FROM CHAT_ROOM_READ MR
+                                                    WHERE MR.CHAT_ROOM_NO = CR.CHAT_ROOM_NO
+                                                      AND MR.CHAT_MEMBER_ID = CRM.CHAT_MEMBER_ID
+                                                ), 0)
+                  ), 0) AS UNREAD_CNT
+
+
+        FROM CHAT_ROOM CR
+                 INNER JOIN CHAT_ROOM_MEMBER CRM
+                            ON CR.CHAT_ROOM_NO = CRM.CHAT_ROOM_NO
+                 LEFT JOIN (
+            SELECT CHAT_ROOM_NO, COUNT(*) AS MEMBER_CNT
+            FROM CHAT_ROOM_MEMBER
+            WHERE LEFT_DTTM IS NULL
+            GROUP BY CHAT_ROOM_NO
+        ) MC ON CR.CHAT_ROOM_NO = MC.CHAT_ROOM_NO
+                 LEFT JOIN (
+            SELECT CHAT_ROOM_NO, MSG_CN, REG_DTTM
+            FROM (
+                     SELECT CHAT_ROOM_NO,
+                            MSG_CN,
+                            REG_DTTM,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY CHAT_ROOM_NO
+                                ORDER BY REG_DTTM DESC
+                                ) AS RN
+                     FROM CHAT_MESSAGE
+                 )
+            WHERE RN = 1
+        ) CM ON CR.CHAT_ROOM_NO = CM.CHAT_ROOM_NO
+
+        WHERE CRM.USER_NO = #{userNo}
+          AND CR.APT_CMPLEX_NO = #{aptCmplexNo}
+          AND CRM.LEFT_DTTM IS NULL
+          AND CR.USE_YN = 'Y'
+
+        ORDER BY CM.REG_DTTM DESC
+    </select>
+
+    <select id="selectMessages"
+            resultType="kr.or.ddit.common.webSocket.chat.vo.ChatMessageVO">
+
+        SELECT
+            m.CHAT_MSG_NO
+             , m.CHAT_ROOM_NO
+             , m.MSG_TY_CD
+             , m.MSG_CN
+             , m.ATCH_FILE_ID
+             , m.REG_DTTM
+             , m.SENDER_TY
+             , m.CHAT_MEMBER_ID
+
+             , rm.USER_NO AS SENDER_USER_NO
+             , mem.USER_NM AS SENDER_USER_NM
+
+        FROM CHAT_MESSAGE m
+
+                 LEFT JOIN CHAT_ROOM_MEMBER rm
+                           ON m.CHAT_MEMBER_ID = rm.CHAT_MEMBER_ID
+
+                 LEFT JOIN MEMBER mem
+                           ON rm.USER_NO = mem.USER_NO
+
+                 JOIN CHAT_ROOM_MEMBER rm2
+                      ON rm2.CHAT_ROOM_NO = m.CHAT_ROOM_NO
+                          AND rm2.USER_NO = #{userNo}
+                          AND rm2.LEFT_DTTM IS NULL
+
+        WHERE m.CHAT_ROOM_NO = #{chatRoomNo}
+          AND m.REG_DTTM >= rm2.JOIN_DTTM
+
+        ORDER BY m.REG_DTTM ASC
+
+    </select>
+
+    <insert id="insertMessage" parameterType="kr.or.ddit.common.webSocket.chat.vo.ChatMessageVO">
+
+        <selectKey keyProperty="chatMsgNo" resultType="string" order="BEFORE">
+            SELECT SEQ_CHAT_MESSAGE.NEXTVAL FROM DUAL
+        </selectKey>
+
+        INSERT INTO CHAT_MESSAGE (  /*kr.or.ddit.common.webSocket.chat.vo.ChatMessageVO.insertMessage*/
+        CHAT_MSG_NO
+        ,CHAT_ROOM_NO
+        ,MSG_TY_CD
+        ,MSG_CN
+        ,CHAT_MEMBER_ID
+        ,REG_DTTM
+        )
+        VALUES (
+        #{chatMsgNo}
+        ,#{chatRoomNo}
+        ,#{msgTyCd}
+        ,#{msgCn}
+        ,#{chatMemberId}
+        ,SYSDATE
+        )
+    </insert>
+
+    <select id="selectMemberId" resultType="string">
+        SELECT  CHAT_MEMBER_ID  /*kr.or.ddit.common.webSocket.chat.vo.ChatMessageVO.selectMemberId*/
+        FROM    CHAT_ROOM_MEMBER
+        WHERE   CHAT_ROOM_NO = #{chatRoomNo}
+          AND   USER_NO = #{userNo}
+          AND   LEFT_DTTM IS NULL
+    </select>
+
+    <select id="getRoomNoSeq" resultType="java.lang.String">
+        SELECT  SEQ_CHAT_ROOM.nextval /*kr.or.ddit.common.webSocket.chat.mapper.IChatMapper.getRoomNoSeq*/
+        FROM    dual
+    </select>
+
+    <select id="getRoomMemberSeq" resultType="java.lang.String">
+        SELECT  SEQ_CHAT_ROOM_MEMBER.nextval /*kr.or.ddit.common.webSocket.chat.mapper.IChatMapper.getRoomNoSeq*/
+        FROM    dual
+    </select>
+
+    <select id="selectRoom"
+            resultType="kr.or.ddit.common.webSocket.chat.vo.ChatRoomVO">
+
+        SELECT  /*kr.or.ddit.common.webSocket.chat.mapper.IChatMapper.selectMyRoom*/
+            cr.chat_room_no
+             , cr.chat_room_nm
+             , cr.chat_room_desc
+             , cr.chat_room_ty_cd
+             , cr.reg_dt
+             , cr.use_yn
+             , cr.rgtr_id
+             , cr.chat_join_key
+             , cr.apt_cmplex_no
+
+             , nvl(mc.member_cnt, 0) AS member_cnt
+
+        FROM chat_room cr
+
+                 LEFT JOIN (
+            SELECT chat_room_no,
+                   count(*) AS member_cnt
+            FROM chat_room_member
+            WHERE left_dttm IS NULL
+            GROUP BY chat_room_no
+        ) mc
+                           ON cr.chat_room_no = mc.chat_room_no
+
+        WHERE cr.chat_room_no = #{chatRoomNo}
+
+    </select>
+
+    <select id="selectOpenRooms"
+            resultType="kr.or.ddit.common.webSocket.chat.vo.ChatRoomVO">
+
+        SELECT  /*kr.or.ddit.common.webSocket.chat.mapper.IChatMapper.selectOpenRooms*/
+            CR.CHAT_ROOM_NO
+             , CR.CHAT_ROOM_NM
+             , cr.chat_room_desc
+             , CR.CHAT_ROOM_TY_CD
+             , CR.REG_DT
+             , CR.RGTR_ID
+             , CR.CHAT_JOIN_KEY
+             , CR.APT_CMPLEX_NO
+
+             , NVL(MC.MEMBER_CNT, 0) AS MEMBER_CNT
+
+        FROM CHAT_ROOM CR
+
+                 LEFT JOIN (
+            SELECT CHAT_ROOM_NO,
+                   COUNT(*) AS MEMBER_CNT
+            FROM CHAT_ROOM_MEMBER
+            WHERE LEFT_DTTM IS NULL
+            GROUP BY CHAT_ROOM_NO
+        ) MC
+                           ON CR.CHAT_ROOM_NO = MC.CHAT_ROOM_NO
+
+        WHERE CR.CHAT_ROOM_TY_CD = 'OPEN'
+          AND CR.APT_CMPLEX_NO = #{aptCmplexNo}
+          AND CR.USE_YN = 'Y'
+
+          AND NOT EXISTS (
+            SELECT 1
+            FROM CHAT_ROOM_MEMBER CRM
+            WHERE CRM.CHAT_ROOM_NO = CR.CHAT_ROOM_NO
+              AND CRM.USER_NO = #{userNo}
+              AND CRM.LEFT_DTTM IS NULL
+        )
+
+        ORDER BY CR.REG_DT DESC
+    </select>
+
+    <select id="isRoomMember" resultType="int">
+
+        SELECT COUNT(*) /*kr.or.ddit.common.webSocket.chat.mapper.IChatMapper.isRoomMember*/
+        FROM CHAT_ROOM_MEMBER
+        WHERE CHAT_ROOM_NO = #{chatRoomNo}
+          AND USER_NO = #{userNo}
+          AND LEFT_DTTM IS NULL
+
+    </select>
+
+    <select id="selectRoomByJoinKey"
+            resultType="kr.or.ddit.common.webSocket.chat.vo.ChatRoomVO">
+
+        SELECT *
+        FROM CHAT_ROOM
+        WHERE CHAT_JOIN_KEY = #{joinKey}
+          AND APT_CMPLEX_NO = #{aptCmplexNo}
+          AND USE_YN = 'Y'
+
+    </select>
+
+    <insert id="insertRoomMember">
+
+        INSERT INTO CHAT_ROOM_MEMBER ( /*kr.or.ddit.common.webSocket.chat.mapper.IChatMapper.insertRoomMember*/
+            CHAT_MEMBER_ID
+            ,CHAT_ROOM_NO
+            ,USER_NO
+            ,CHATROLE_CD
+            ,JOIN_DTTM
+        )
+        VALUES (
+            #{chatMemberId}
+           ,#{chatRoomNo}
+           ,#{userNo}
+           ,#{chatroleCd}
+           ,SYSDATE
+       )
+
+    </insert>
+
+    <insert id="insertChatRoom">
+        INSERT INTO CHAT_ROOM ( /*kr.or.ddit.common.webSocket.chat.mapper.IChatMapper.insertChatRoom*/
+            chat_room_no
+          , chat_room_nm
+          , chat_room_ty_cd
+          , reg_dt
+          , use_yn
+          , rgtr_id
+          , chat_join_key
+          , apt_cmplex_no
+          , chat_room_desc
+        )VALUES (
+            #{chatRoomNo}
+            , #{chatRoomNm}
+            , #{chatRoomTyCd}
+            , SYSDATE
+            , 'Y'
+            , #{rgtrId}
+            , #{chatJoinKey}
+            , #{aptCmplexNo}
+            , #{chatRoomDesc}
+        )
+    </insert>
+
+    <insert id="insertChatRoomRead">
+        INSERT INTO chat_room_read (  /*kr.or.ddit.common.webSocket.chat.mapper.IChatMapper.insertChatRoomRead*/
+             chat_room_no
+           , chat_member_id
+        ) VALUES (
+           #{chatRoomNo}
+           , #{chatMemberId}
+         )
+    </insert>
+    <insert id="insertSystemMessage">
+
+        INSERT INTO CHAT_MESSAGE (  /**/
+           chat_msg_no
+         , chat_room_no
+         , msg_ty_cd
+         , msg_cn
+         , reg_dttm
+         , sender_ty
+        ) VALUES (
+         SEQ_CHAT_MESSAGE.NEXTVAL
+         , #{chatRoomNo}
+         , #{msgTyCd}
+         , #{msgCn}
+         , SYSDATE
+         , 'SYSTEM'
+         )
+
+    </insert>
+
+
+    <select id="countActiveMembers" resultType="int">
+        SELECT COUNT(*) /**/
+        FROM CHAT_ROOM_MEMBER
+        WHERE CHAT_ROOM_NO = #{chatRoomNo}
+          AND LEFT_DTTM IS NULL
+    </select>
+
+    <update id="disableRoom">
+        UPDATE CHAT_ROOM    /**/
+        SET USE_YN = 'N'
+        WHERE CHAT_ROOM_NO = #{chatRoomNo}
+    </update>
+
+</mapper>

@@ -1,0 +1,342 @@
+.main-content.main-content--bc-receive {
+    padding: 1.25rem 1.5rem 2rem;
+}
+
+.bc-receive-page {
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.bc-receive-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.bc-receive-head h2 {
+    margin: 0 0 0.35rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.bc-receive-sub {
+    margin: 0;
+    color: #5c6570;
+    font-size: 0.95rem;
+}
+
+.bc-receive-badge {
+    flex-shrink: 0;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: #eef1f4;
+    color: #5c6570;
+}
+
+.bc-receive-badge.is-ok {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.bc-receive-badge.is-busy {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.bc-receive-badge.is-error {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.bc-receive-alert {
+    margin-bottom: 1rem;
+    padding: 0.85rem 1rem;
+    border-radius: 8px;
+    background: #fff8e1;
+    color: #6d4c00;
+    font-size: 0.9rem;
+}
+
+.bc-receive-card {
+    margin-bottom: 1.25rem;
+}
+
+.bc-receive-status {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 0 1rem;
+}
+
+.bc-receive-icon {
+    font-size: 2.5rem;
+    color: #5c6bc0;
+}
+
+.bc-receive-status.is-playing .bc-receive-icon {
+    color: #e65100;
+    animation: bc-receive-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes bc-receive-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.65; transform: scale(1.05); }
+}
+
+.bc-receive-status-title {
+    margin: 0 0 0.25rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.bc-receive-status-msg {
+    margin: 0;
+    color: #5c6570;
+    font-size: 0.9rem;
+}
+
+.bc-receive-meta {
+    display: grid;
+    gap: 0.5rem;
+    padding: 1rem 0 0;
+    border-top: 1px solid #e8ecf0;
+    font-size: 0.88rem;
+}
+
+.bc-receive-meta .label {
+    display: inline-block;
+    min-width: 5.5rem;
+    color: #8a939e;
+}
+
+.bc-receive-last {
+    margin: 0.75rem 0 0;
+    padding: 0.75rem;
+    background: #f5f7fa;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: #374151;
+    white-space: pre-wrap;
+    max-height: 120px;
+    overflow: auto;
+}
+
+.bc-receive-links h3 {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+}
+
+.bc-receive-dong-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.bc-receive-dong-list a {
+    display: inline-block;
+    padding: 0.35rem 0.7rem;
+    border-radius: 6px;
+    background: #f0f2f5;
+    color: #374151;
+    text-decoration: none;
+    font-size: 0.85rem;
+}
+
+.bc-receive-dong-list a.active,
+.bc-receive-dong-list a:hover {
+    background: #5c6bc0;
+    color: #fff;
+}
+
+.bc-receive-hint {
+    margin: 1rem 0 0;
+    font-size: 0.85rem;
+    color: #8a939e;
+}
+
+.bc-receive-hint a {
+    color: #5c6bc0;
+}
+
+.bc-receive-dong-list--pick {
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.bc-receive-pick-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1.1rem;
+    border-radius: 10px;
+    background: #5c6bc0;
+    color: #fff !important;
+    text-decoration: none;
+    font-size: 1rem;
+    font-weight: 600;
+    width: 100%;
+    max-width: 320px;
+    box-sizing: border-box;
+}
+
+.bc-receive-pick-btn:hover {
+    background: #4a56a8;
+}
+
+/* 수신기 전용 토스트 (헤더 레이아웃에 가리지 않도록 body 직하위) */
+#bcReceiveToastContainer {
+    position: fixed;
+    top: 20px;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 1000000;
+    pointer-events: none;
+}
+
+#bcReceiveToastContainer .toast {
+    min-width: 340px;
+    max-width: 480px;
+    pointer-events: auto;
+    animation: toast-in .3s ease;
+}
+
+#bcReceiveToastContainer .toast.bc-toast-hero {
+    min-width: 380px;
+    padding: 20px 22px;
+    border-left-width: 6px;
+    box-shadow: 0 16px 40px rgba(230, 81, 0, 0.22);
+}
+
+#bcReceiveToastContainer .toast.bc-toast-hero .toast-title {
+    font-size: 18px;
+}
+
+#bcReceiveToastContainer .toast.bc-toast-hero .toast-message {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+}
+
+.bc-receive-flash {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+    padding: 1rem 1.15rem;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #ff6f00 0%, #e65100 100%);
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    box-shadow: 0 8px 24px rgba(230, 81, 0, 0.35);
+    animation: bc-receive-flash-in 0.35s ease;
+}
+
+.bc-receive-flash[hidden] {
+    display: none !important;
+}
+
+.bc-receive-flash .material-symbols-rounded {
+    font-size: 2rem;
+    animation: bc-receive-pulse 1s ease-in-out infinite;
+}
+
+.bc-receive-flash #bcReceiveFlashText {
+    font-weight: 500;
+    opacity: 0.95;
+}
+
+@keyframes bc-receive-flash-in {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.bc-receive-audio-hint {
+    margin: 0 0 0.75rem;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: #5c6570;
+}
+
+.bc-receive-subdest {
+    font-size: 0.78rem;
+    word-break: break-all;
+}
+
+.bc-receive-unlock-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+    padding: 0.65rem 1rem;
+    border: none;
+    border-radius: 10px;
+    background: #5c6bc0;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.bc-receive-unlock-btn:hover {
+    background: #4a5ab5;
+}
+
+.bc-receive-unlock-btn.is-done {
+    background: #e8f5e9;
+    color: #2e7d32;
+    cursor: default;
+}
+
+.bc-receive-verify-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0 0 0.5rem 0.5rem;
+    padding: 0.65rem 1rem;
+    border: 1px solid #5c6bc0;
+    border-radius: 10px;
+    background: #fff;
+    color: #5c6bc0;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.bc-receive-verify-btn:hover {
+    background: #eef2ff;
+}
+
+.bc-receive-verify-result {
+    margin: 0 0 1rem;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: #5c6570;
+}
+
+.bc-receive-verify-result.is-ok {
+    color: #2e7d32;
+    font-weight: 600;
+}
+
+.bc-receive-verify-result.is-warn {
+    color: #e65100;
+    font-weight: 600;
+}

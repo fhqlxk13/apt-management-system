@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.bill.mapper.IMgmtExpenseMapper">
+
+    <resultMap id="expenseMap"
+               type="kr.or.ddit.domain.apt.mgmtOffice.bill.vo.ExpenseVO">
+
+        <id property="expenseNo" column="EXPENSE_NO"/>
+
+        <result property="aptCmplexNo" column="APT_CMPLEX_NO"/>
+        <result property="expenseYr" column="EXPENSE_YR"/>
+        <result property="expenseMm" column="EXPENSE_MM"/>
+        <result property="expenseAmt" column="EXPENSE_AMT"/>
+        <result property="expenseCd" column="EXPENSE_CD"/>
+        <result property="expenseCn" column="EXPENSE_CN"/>
+        <result property="regDt" column="REG_DT"/>
+        <result property="mdfDt" column="MDF_DT"/>
+        <result property="rmrkCn" column="RMRK_CN"/>
+        <result property="atchFileId" column="ATCH_FILE_ID"/>
+
+        <!-- COMMON_CODE 조인 결과: 화면 표시용 -->
+        <result property="expenseCdNm" column="EXPENSE_CD_NM"/>
+        <result property="expenseCdContent" column="EXPENSE_CD_CONTENT"/>
+
+    </resultMap>
+
+    <!-- 지출 목록 조회 -->
+    <select id="selectExpenseList"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.bill.vo.ExpenseVO"
+            resultMap="expenseMap">
+
+        SELECT
+        E.EXPENSE_NO,
+        E.APT_CMPLEX_NO,
+        E.EXPENSE_YR,
+        E.EXPENSE_MM,
+        E.EXPENSE_AMT,
+        E.EXPENSE_CD,
+        C.CODE_NAME AS EXPENSE_CD_NM,
+        C.CODE_CONTENT AS EXPENSE_CD_CONTENT,
+        E.EXPENSE_CN,
+        E.REG_DT,
+        E.MDF_DT,
+        E.RMRK_CN,
+        E.ATCH_FILE_ID
+        FROM EXPENSE E
+        LEFT JOIN COMMON_CODE C
+        ON C.GROUP_CODE_NO = 'EXPN_CD'
+        AND C.CODE_NO_CD = E.EXPENSE_CD
+        AND C.USE_YN = 'Y'
+        WHERE E.APT_CMPLEX_NO = #{aptCmplexNo}
+        AND E.EXPENSE_YR = #{expenseYr}
+        AND E.EXPENSE_MM = #{expenseMm}
+
+        <if test="expenseCd != null and expenseCd != ''">
+            AND E.EXPENSE_CD = #{expenseCd}
+        </if>
+
+        ORDER BY C.SORT_ORDER ASC, E.REG_DT DESC
+
+    </select>
+
+    <!-- 월별 지출 합계 -->
+    <select id="selectExpenseTotalAmount"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.bill.vo.ExpenseVO"
+            resultType="int">
+
+        SELECT NVL(SUM(E.EXPENSE_AMT), 0)
+        FROM EXPENSE E
+        WHERE E.APT_CMPLEX_NO = #{aptCmplexNo}
+        AND E.EXPENSE_YR = #{expenseYr}
+        AND E.EXPENSE_MM = #{expenseMm}
+
+        <if test="expenseCd != null and expenseCd != ''">
+            AND E.EXPENSE_CD = #{expenseCd}
+        </if>
+
+    </select>
+
+    <!-- 같은 단지, 같은 연월, 같은 지출항목 중복 여부 확인 -->
+    <select id="selectExpenseDuplicateCount"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.bill.vo.ExpenseVO"
+            resultType="int">
+
+        SELECT COUNT(*)
+        FROM EXPENSE E
+        WHERE E.APT_CMPLEX_NO = #{aptCmplexNo}
+        AND E.EXPENSE_YR = #{expenseYr}
+        AND E.EXPENSE_MM = #{expenseMm}
+        AND E.EXPENSE_CD = #{expenseCd}
+
+        <!-- 수정 시에는 현재 수정 중인 자기 자신은 중복 대상에서 제외 -->
+        <if test="expenseNo != null and expenseNo != ''">
+            AND E.EXPENSE_NO != #{expenseNo}
+        </if>
+
+    </select>
+
+    <!-- 지출 등록 -->
+    <insert id="insertExpense"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.bill.vo.ExpenseVO">
+
+        <selectKey keyProperty="expenseNo"
+                   resultType="string"
+                   order="BEFORE">
+            SELECT 'EX' || TO_CHAR(SYSDATE, 'YYMMDD') || LPAD(SEQ_EXPENSE.NEXTVAL, 7, '0')
+            FROM DUAL
+        </selectKey>
+
+        INSERT INTO EXPENSE (
+        EXPENSE_NO,
+        APT_CMPLEX_NO,
+        EXPENSE_YR,
+        EXPENSE_MM,
+        EXPENSE_AMT,
+        EXPENSE_CD,
+        EXPENSE_CN,
+        REG_DT,
+        MDF_DT,
+        RMRK_CN,
+        ATCH_FILE_ID
+        ) VALUES (
+        #{expenseNo},
+        #{aptCmplexNo},
+        #{expenseYr},
+        #{expenseMm},
+        #{expenseAmt},
+        #{expenseCd},
+        #{expenseCn},
+        SYSDATE,
+        NULL,
+        #{rmrkCn},
+        #{atchFileId}
+        )
+
+    </insert>
+
+    <!-- 지출 수정 -->
+    <update id="updateExpense"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.bill.vo.ExpenseVO">
+
+        UPDATE EXPENSE
+        SET EXPENSE_YR = #{expenseYr},
+            EXPENSE_MM = #{expenseMm},
+            EXPENSE_AMT = #{expenseAmt},
+            EXPENSE_CD = #{expenseCd},
+            EXPENSE_CN = #{expenseCn},
+            MDF_DT = SYSDATE,
+            RMRK_CN = #{rmrkCn},
+            ATCH_FILE_ID = #{atchFileId}
+        WHERE EXPENSE_NO = #{expenseNo}
+          AND APT_CMPLEX_NO = #{aptCmplexNo}
+
+    </update>
+
+    <!-- 지출 삭제 -->
+    <delete id="deleteExpense"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.bill.vo.ExpenseVO">
+
+        DELETE FROM EXPENSE
+        WHERE EXPENSE_NO = #{expenseNo}
+          AND APT_CMPLEX_NO = #{aptCmplexNo}
+
+    </delete>
+</mapper>

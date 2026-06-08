@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.or.ddit.common.sms.mapper.ISmsMapper">
+
+    <!-- SMS 발송번호 채번 -->
+    <select id="selectNextSmsNo" resultType="string">
+
+        /* kr.or.ddit.common.sms.mapper.ISmsMapper.selectNextSmsNo */
+        /* SMS 발송번호 생성 */
+
+        SELECT 'SMS' || LPAD(SEQ_SMS_SND.NEXTVAL, 6, '0')
+        FROM DUAL
+    </select>
+
+    <!-- SMS 발송상세번호 채번 -->
+    <select id="selectNextSmsDtlNo" resultType="string">
+
+        /* kr.or.ddit.common.sms.mapper.ISmsMapper.selectNextSmsDtlNo */
+        /* SMS 발송상세번호 생성 */
+
+        SELECT 'SMD' || LPAD(SEQ_SMS_SND_DTL.NEXTVAL, 6, '0')
+        FROM DUAL
+    </select>
+
+    <!-- SMS 발송이력 등록 -->
+    <insert id="insertSmsSnd"
+            parameterType="kr.or.ddit.common.sms.dto.SmsSendRequest">
+
+        /* kr.or.ddit.common.sms.mapper.ISmsMapper.insertSmsSnd */
+        /* SMS 발송 마스터 이력 등록 */
+
+        INSERT INTO SMS_SND (
+            SMS_NO,             /* SMS 발송번호 */
+            SND_TY_CD,          /* 발송유형코드 */
+            SMS_TTL,            /* 문자제목 */
+            SMS_CN,             /* 문자내용 */
+            RCPT_TRGT_GRP_CD,   /* 수신대상그룹코드 */
+            RCPT_TRGT_CD,       /* 수신대상코드 */
+            RCPT_USER_NO,       /* 수신회원번호 */
+            SND_STTS_CD,        /* 발송상태코드 */
+            SND_DTTM,           /* 발송일시 */
+            RGTR_ID,            /* 등록자 */
+            SND_CNT             /* 발송건수 */
+        ) VALUES (
+                     #{smsNo},
+                     #{sndTyCd},
+                     #{smsTtl},
+                     #{smsCn},
+                     #{rcptTrgtGrpCd},
+                     #{rcptTrgtCd},
+                     #{rcptUserNo},
+                     'SUCCESS',
+                     SYSDATE,
+                     #{rgtrId},
+                     #{sndCnt}
+                 )
+    </insert>
+
+    <!-- SMS 발송상세이력 등록 -->
+    <insert id="insertSmsSndDtl">
+
+        /* kr.or.ddit.common.sms.mapper.ISmsMapper.insertSmsSndDtl */
+        /* SMS 발송 상세 이력 등록 */
+
+        INSERT INTO SMS_SND_DTL (
+            SMS_DTL_NO,     /* SMS 발송상세번호 */
+            SMS_NO,         /* SMS 발송번호 */
+            USER_TEL,       /* 수신자 전화번호 */
+            SND_STTS_CD,    /* 발송상태코드 */
+            FAIL_RSN_CN,    /* 실패사유 */
+            SND_DT,         /* 발송일시 */
+            USER_NO         /* 회원번호 */
+        ) VALUES (
+                     #{smsDtlNo},
+                     #{smsNo},
+                     #{receiver.userTel},
+                     #{sndSttsCd},
+                     #{failRsnCn},
+                     SYSDATE,
+                     #{receiver.userNo}
+                 )
+    </insert>
+
+    <!-- 회원번호로 SMS 수신자 조회 -->
+    <select id="selectReceiverByUserNo"
+            parameterType="string"
+            resultType="kr.or.ddit.common.sms.dto.SmsReceiver">
+
+        /* kr.or.ddit.common.sms.mapper.ISmsMapper.selectReceiverByUserNo */
+        /* 회원번호로 SMS 수신자 조회 */
+
+        SELECT
+            USER_NO AS userNo,
+            USER_TELNO AS userTel
+        FROM MEMBER
+        WHERE USER_NO = #{userNo}
+          AND USER_YN = 'Y'
+          AND SMS_RCV_YN = 'Y'
+    </select>
+
+    <!-- 공지 수신 대상자 조회 -->
+    <select id="selectNoticeReceiversByAptCmplexNo"
+            parameterType="string"
+            resultType="kr.or.ddit.common.sms.dto.SmsReceiver">
+
+        /* kr.or.ddit.common.sms.mapper.ISmsMapper.selectNoticeReceiversByAptCmplexNo */
+        /* 단지 공지 SMS 수신 대상자 조회 */
+
+        SELECT
+            M.USER_NO AS userNo,
+            M.USER_TELNO AS userTel
+        FROM MEMBER M
+                 INNER JOIN HSHLD_HEAD HH
+                            ON M.USER_NO = HH.USER_NO
+                 INNER JOIN APT_DETAIL AD
+                            ON HH.HO_NO = AD.HO_NO
+                 INNER JOIN APT_UNIT AU
+                            ON AD.DONG_NO = AU.DONG_NO
+        WHERE AU.APT_CMPLEX_NO = #{aptCmplexNo}
+          AND M.USER_YN = 'Y'
+          AND M.SMS_RCV_YN = 'Y'
+          AND M.SMS_NTC_RCV_YN = 'Y'
+    </select>
+
+    <!-- 계약 관련 수신 대상자 조회 -->
+    <select id="selectContractReceiversByAptCmplexNo"
+            parameterType="string"
+            resultType="kr.or.ddit.common.sms.dto.SmsReceiver">
+
+        /* kr.or.ddit.common.sms.mapper.ISmsMapper.selectContractReceiversByAptCmplexNo */
+        /* 계약 관련 SMS 수신 대상자 조회 */
+
+        SELECT
+            M.USER_NO AS userNo,
+            M.USER_TELNO AS userTel
+        FROM MEMBER M
+                 INNER JOIN HSHLD_HEAD HH
+                            ON M.USER_NO = HH.USER_NO
+                 INNER JOIN APT_DETAIL AD
+                            ON HH.HO_NO = AD.HO_NO
+                 INNER JOIN APT_UNIT AU
+                            ON AD.DONG_NO = AU.DONG_NO
+        WHERE AU.APT_CMPLEX_NO = #{aptCmplexNo}
+          AND M.USER_YN = 'Y'
+          AND M.SMS_RCV_YN = 'Y'
+          AND M.SMS_CTRT_RCV_YN = 'Y'
+    </select>
+
+</mapper>

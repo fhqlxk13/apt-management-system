@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.or.ddit.domain.central.mapper.IFacilityInfoMapper">
+
+    <select id="selectAptCardList"
+            parameterType="kr.or.ddit.domain.central.dto.FacilityInfoDTO"
+            resultType="kr.or.ddit.domain.central.dto.FacilityInfoDTO">
+
+        /* IFacilityInfoMapper.selectAptCardList */
+        SELECT *
+        FROM (
+        SELECT
+        ROW_NUMBER() OVER (ORDER BY ac.apt_cmplex_nm ASC) rn
+        , ac.apt_cmplex_no  aptCmplexNo
+        , ac.apt_cmplex_nm  aptCmplexNm
+        , ac.sido_nm        sidoNm
+        , ac.sigungu_nm     sigunguNm
+        , ac.dorojuso       dorojuso
+        , ac.unit_cnt       unitCnt
+        , ac.dong_cnt       dongCnt
+        , ac.bld_yr         bldYr
+        , (
+        SELECT MIN(af.google_id)
+        FROM attach_file af
+        WHERE af.file_group_no = NVL(ac.rprsnt_img_file_no, ac.img_file_no)
+        AND af.mime_type LIKE 'image/%'
+        AND LOWER(af.file_og_name) NOT LIKE '%map%'
+        AND LOWER(af.file_og_name) NOT LIKE '%지도%'
+        AND LOWER(af.file_og_name) NOT LIKE '%road%'
+        AND LOWER(af.file_og_name) NOT LIKE '%location%'
+        ) AS rprsnt_img_file_no
+        FROM apt_complex ac
+        WHERE 1 = 1
+
+        <if test="sidoNm != null and sidoNm != ''">
+            AND ac.sido_nm = #{sidoNm}
+        </if>
+
+        <if test="sigunguNm != null and sigunguNm != ''">
+            AND ac.sigungu_nm = #{sigunguNm}
+        </if>
+
+        <if test="keyword != null and keyword != ''">
+            AND ac.apt_cmplex_nm LIKE '%' || #{keyword} || '%'
+        </if>
+
+        <if test="unitRange != null and unitRange != ''">
+            <choose>
+                <when test="unitRange == 'UNDER_300'">
+                    AND NVL(ac.unit_cnt, 0) <![CDATA[<]]> 300
+                </when>
+                <when test="unitRange == '300_500'">
+                    AND NVL(ac.unit_cnt, 0) <![CDATA[>=]]> 300
+                    AND NVL(ac.unit_cnt, 0) <![CDATA[<]]> 500
+                </when>
+                <when test="unitRange == '500_1000'">
+                    AND NVL(ac.unit_cnt, 0) <![CDATA[>=]]> 500
+                    AND NVL(ac.unit_cnt, 0) <![CDATA[<]]> 1000
+                </when>
+                <when test="unitRange == 'OVER_1000'">
+                    AND NVL(ac.unit_cnt, 0) <![CDATA[>=]]> 1000
+                </when>
+            </choose>
+        </if>
+        )
+        WHERE rn BETWEEN #{startRow} AND #{endRow}
+
+    </select>
+
+    <select id="selectFacilityInfoList"
+            parameterType="kr.or.ddit.domain.central.dto.FacilityInfoDTO"
+            resultType="kr.or.ddit.domain.central.dto.FacilityInfoDTO">
+
+        /* IFacilityInfoMapper.selectFacilityInfoList */
+        SELECT
+            ac.apt_cmplex_no        aptCmplexNo        /* 단지번호 */
+             , ac.apt_cmplex_nm        aptCmplexNm        /* 단지명 */
+             , ac.sido_nm              sidoNm             /* 시도명 */
+             , ac.sigungu_nm           sigunguNm          /* 시군구명 */
+             , ac.emd_nm               emdNm              /* 읍면동명 */
+             , ac.dorojuso             dorojuso           /* 도로명주소 */
+             , ac.heat_ty              heatTy             /* 난방방식 */
+             , ac.cnsco_nm             cnscoNm            /* 시공사명 */
+             , ac.unit_cnt             unitCnt            /* 세대수 */
+             , ac.dong_cnt             dongCnt            /* 동수 */
+             , ac.pkg_cnt              pkgCnt             /* 주차가능대수 */
+             , ac.free_pkg_cnt         freePkgCnt         /* 세대당 무료주차 */
+             , ac.max_floor            maxFloor           /* 최대층수 */
+             , ac.cc_cnt               ccCnt              /* CCTV 수 */
+             , ac.bld_yr               bldYr              /* 준공년도 */
+
+             , f.facility_no           facilityNo         /* 시설번호 */
+             , f.facility_nm           facilityNm         /* 시설명 */
+
+             , f.dong_no               dongNo             /* 시설 위치 동번호 */
+             , f.loc_cn                locCn              /* 시설위치 */
+             , f.use_yn                useYn              /* 사용여부 */
+             , CASE f.facility_ty_cd
+                   WHEN 'ELV'     THEN '승강기'
+                   WHEN 'WTR'     THEN '급수시설'
+                   WHEN 'ELC'     THEN '전기시설'
+                   WHEN 'GAS'     THEN '가스시설'
+                   WHEN 'FIRE'    THEN '소방시설'
+                   WHEN 'SEC'     THEN '보안시설'
+                   WHEN 'ETC'     THEN '기타시설'
+                   WHEN 'PARK'    THEN '입주민주차장'
+                   WHEN 'PLAY'    THEN '놀이시설'
+                   WHEN 'COMM'    THEN '커뮤니티룸'
+                   WHEN 'GYM'     THEN '피트니스센터'
+                   WHEN 'STUDY'   THEN '작은도서관'
+                   WHEN 'PARKING' THEN '방문차량 주차구역'
+                   WHEN 'MEET'    THEN '회의실'
+                   ELSE f.facility_ty_cd
+            END facilityTyCd        /* 시설유형명 */
+             , pf.cmn_facility_no      cmnFacilityNo      /* 공용시설번호 */
+             , pf.cmn_facility_nm      cmnFacilityNm      /* 공용시설명 */
+             , pf.cmn_facility_cn      cmnFacilityCn      /* 공용시설설명 */
+             , pf.cmn_facility_amt     cmnFacilityAmt     /* 이용금액 */
+             , pf.cmn_facility_rsv_yn  cmnFacilityRsvYn   /* 예약가능여부 */
+             , pf.cmn_facility_opr_hr  cmnFacilityOprHr   /* 운영시간 */
+
+             , (
+            SELECT LISTAGG(pp.biz_ty_nm || '(' || pp.partner_nm || ')', ', ')
+                           WITHIN GROUP (ORDER BY pp.biz_ty_nm, pp.partner_nm)
+            FROM partner pp
+            WHERE pp.apt_cmplex_no = ac.apt_cmplex_no
+              AND NVL(pp.use_yn, 'Y') = 'Y'
+        ) partnerList                              /* 협력업체 목록 */
+
+             , (
+            SELECT LISTAGG(aa.infra_nm, ', ')
+                           WITHIN GROUP (ORDER BY aa.infra_nm)
+            FROM apt_infra aa
+            WHERE aa.apt_cmplex_no = ac.apt_cmplex_no
+              AND aa.category_cd = 'EDUCATION'
+        ) educationInfra                         /* 교육시설 */
+
+             , (
+            SELECT LISTAGG(
+                           CASE
+                               WHEN aa.category_cd = 'TRANSIT_LINES'
+                                   THEN '지하철 ' || aa.infra_nm
+                               WHEN aa.category_cd = 'TRANSIT_ACCESS'
+                                   THEN '도보 ' || aa.infra_nm
+                               END
+                       , ', '
+                   ) WITHIN GROUP (
+                               ORDER BY
+                                   CASE
+                                       WHEN aa.category_cd = 'TRANSIT_LINES' THEN 1
+                                       WHEN aa.category_cd = 'TRANSIT_ACCESS' THEN 2
+                                       END
+                                   , aa.infra_nm
+                               )
+            FROM apt_infra aa
+            WHERE aa.apt_cmplex_no = ac.apt_cmplex_no
+              AND aa.category_cd IN ('TRANSIT_LINES', 'TRANSIT_ACCESS')
+        ) transitInfo                            /* 교통정보 */
+
+                 , (
+                SELECT LISTAGG(aa.infra_nm, ', ')
+                               WITHIN GROUP (ORDER BY aa.infra_nm)
+                FROM apt_infra aa
+                WHERE aa.apt_cmplex_no = ac.apt_cmplex_no
+                  AND aa.category_cd = 'WELFARE'
+            ) welfareInfra                           /* 복지시설 */
+
+                 , (
+                SELECT LISTAGG(aa.infra_nm, ', ')
+                               WITHIN GROUP (ORDER BY aa.infra_nm)
+                FROM apt_infra aa
+                WHERE aa.apt_cmplex_no = ac.apt_cmplex_no
+                  AND aa.category_cd = 'CONVENIENCE'
+            ) convenienceInfra                       /* 생활편의시설 */                             /* 주변 인프라 목록 */                           /* 주변 인프라 목록 */
+
+             , pi.cmn_facility_item_no cmnFacilityItemNo  /* 공용시설 물품번호 */
+             , pi.item_nm              itemNm             /* 물품명 */
+             , pi.cmn_facility_stts_cd cmnFacilitySttsCd  /* 물품상태코드 */                                 /* 공용시설 물품 목록 */
+
+        FROM apt_complex ac
+
+                 LEFT JOIN facility f
+                           ON ac.apt_cmplex_no = f.apt_cmplex_no
+                               AND NVL(f.use_yn, 'Y') = 'Y'
+
+                 LEFT JOIN public_facility pf
+                           ON f.facility_no = pf.facility_no
+                               AND ac.apt_cmplex_no = pf.apt_cmplex_no
+
+                 LEFT JOIN public_item pi
+                           ON pf.cmn_facility_no = pi.cmn_facility_no
+
+        WHERE ac.apt_cmplex_no = #{aptCmplexNo}
+
+        ORDER BY
+            f.facility_nm ASC
+               , f.facility_no DESC
+
+    </select>
+
+    <!-- 시/도 목록 조회 -->
+    <select id="selectSidoList"
+            resultType="string">
+
+        /* IFacilityInfoMapper.selectSidoList */
+        SELECT DISTINCT
+            ac.sido_nm
+        FROM apt_complex ac
+        WHERE ac.sido_nm IS NOT NULL
+        ORDER BY ac.sido_nm ASC
+
+    </select>
+
+
+    <!-- 시/군/구 목록 조회 -->
+    <select id="selectSigunguList"
+            parameterType="string"
+            resultType="string">
+
+        /* IFacilityInfoMapper.selectSigunguList */
+        SELECT DISTINCT
+            ac.sigungu_nm
+        FROM apt_complex ac
+        WHERE ac.sido_nm = #{sidoNm}
+          AND ac.sigungu_nm IS NOT NULL
+        ORDER BY ac.sigungu_nm ASC
+
+    </select>
+
+    <!-- 단지카드 페이징 처리 -->
+    <select id="selectAptCardTotalCount"
+            parameterType="kr.or.ddit.domain.central.dto.FacilityInfoDTO"
+            resultType="int">
+
+        /* IFacilityInfoMapper.selectAptCardTotalCount */
+        SELECT COUNT(*)
+        FROM apt_complex ac
+        WHERE 1 = 1
+
+        <if test="sidoNm != null and sidoNm != ''">
+            AND ac.sido_nm = #{sidoNm}
+        </if>
+
+        <if test="sigunguNm != null and sigunguNm != ''">
+            AND ac.sigungu_nm = #{sigunguNm}
+        </if>
+
+        <if test="keyword != null and keyword != ''">
+            AND ac.apt_cmplex_nm LIKE '%' || #{keyword} || '%'
+        </if>
+
+        <if test="unitRange != null and unitRange != ''">
+            <choose>
+                <when test="unitRange == 'UNDER_300'">
+                    AND NVL(ac.unit_cnt, 0) <![CDATA[<]]> 300
+                </when>
+                <when test="unitRange == '300_500'">
+                    AND NVL(ac.unit_cnt, 0) <![CDATA[>=]]> 300
+                    AND NVL(ac.unit_cnt, 0) <![CDATA[<]]> 500
+                </when>
+                <when test="unitRange == '500_1000'">
+                    AND NVL(ac.unit_cnt, 0) <![CDATA[>=]]> 500
+                    AND NVL(ac.unit_cnt, 0) <![CDATA[<]]> 1000
+                </when>
+                <when test="unitRange == 'OVER_1000'">
+                    AND NVL(ac.unit_cnt, 0) <![CDATA[>=]]> 1000
+                </when>
+            </choose>
+        </if>
+
+    </select>
+
+    <!-- 시설유형 목록 조회 -->
+    <!-- 시설유형 목록 조회 -->
+    <select id="selectFacilityTypeList"
+            resultType="string">
+
+        /*
+         * 시설사항의 시설유형 조회
+         * → 코드값을 한글명으로 변환
+         */
+        SELECT DISTINCT
+            CASE facility_ty_cd
+                WHEN 'ELV'     THEN '승강기'
+                WHEN 'WTR'     THEN '급수시설'
+                WHEN 'ELC'     THEN '전기시설'
+                WHEN 'GAS'     THEN '가스시설'
+                WHEN 'FIRE'    THEN '소방시설'
+                WHEN 'SEC'     THEN '보안시설'
+                WHEN 'ETC'     THEN '기타시설'
+                WHEN 'PARK'    THEN '입주민주차장'
+                WHEN 'PLAY'    THEN '놀이시설'
+                WHEN 'COMM'    THEN '커뮤니티룸'
+                WHEN 'GYM'     THEN '피트니스센터'
+                WHEN 'STUDY'   THEN '작은도서관'
+                WHEN 'PARKING' THEN '방문차량 주차구역'
+                WHEN 'MEET'    THEN '회의실'
+                ELSE facility_ty_cd
+                END AS facilityTyNm
+
+        FROM facility
+
+        WHERE facility_ty_cd IS NOT NULL
+
+        ORDER BY facilityTyNm ASC
+
+    </select>
+
+
+</mapper>

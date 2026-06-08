@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.member.resident.statsApartment.mapper.IResidentApartmentStatsMapper">
+
+    <!-- 단지 세대 현황 -->
+    <select id="selectHouseStats"
+            resultType="kr.or.ddit.domain.member.resident.statsApartment.dto.ResidentApartmentStatsHouseDTO">
+        SELECT
+               ac.apt_cmplex_no AS aptCmplexNo,
+               ac.apt_cmplex_nm AS aptCmplexNm,
+               (
+                   SELECT COUNT(*)
+                   FROM apt_detail ad
+                        INNER JOIN apt_unit au ON au.dong_no = ad.dong_no
+                   WHERE au.apt_cmplex_no = ac.apt_cmplex_no
+               ) AS totalUnitCnt,
+               (
+                   SELECT COUNT(DISTINCT hh.ho_no)
+                   FROM hshld_head hh
+                        INNER JOIN apt_detail ad ON ad.ho_no = hh.ho_no
+                        INNER JOIN apt_unit au ON au.dong_no = ad.dong_no
+                   WHERE au.apt_cmplex_no = ac.apt_cmplex_no
+                     <!-- LIVE 상태만 실제 입주로 카운트(WAIT/OUT/MID 제외) -->
+                     AND hh.inout_cd = 'LIVE'
+               ) AS occupiedCnt,
+               (
+                   SELECT COUNT(*)
+                   FROM apt_detail ad
+                        INNER JOIN apt_unit au ON au.dong_no = ad.dong_no
+                   WHERE au.apt_cmplex_no = ac.apt_cmplex_no
+                     <!-- LIVE 상태 세대주가 없는 호를 공실로 카운트 -->
+                     AND NOT EXISTS (
+                         SELECT 1 FROM hshld_head hh
+                         WHERE hh.ho_no = ad.ho_no
+                           AND hh.inout_cd = 'LIVE'
+                     )
+               ) AS emptyCnt,
+               (
+                   SELECT CASE
+                              WHEN COUNT(*) = 0 THEN 0
+                              ELSE ROUND(
+                                      <!-- 입주율 분자: LIVE 상태 세대주가 있는 호만 카운트 -->
+                                      SUM(CASE WHEN EXISTS (
+                                              SELECT 1 FROM hshld_head hh
+                                              WHERE hh.ho_no = ad.ho_no
+                                                AND hh.inout_cd = 'LIVE'
+                                          ) THEN 1 ELSE 0 END) * 100 / COUNT(*), 1)
+                          END
+                   FROM apt_detail ad
+                        INNER JOIN apt_unit au ON au.dong_no = ad.dong_no
+                   WHERE au.apt_cmplex_no = ac.apt_cmplex_no
+               ) AS occupancyRate,
+               (
+                   SELECT COUNT(DISTINCT au.dong_no)
+                   FROM apt_unit au
+                   WHERE au.apt_cmplex_no = ac.apt_cmplex_no
+               ) AS dongCnt
+        FROM apt_complex ac
+        WHERE ac.apt_cmplex_no = #{aptCmplexNo}
+    </select>
+
+    <!-- 검침 유형별 통계 -->
+    <select id="selectMeterStatsList"
+            resultType="kr.or.ddit.domain.member.resident.statsApartment.dto.ResidentApartmentStatsMeterDTO">
+        WITH meter_code AS (
+            SELECT 'ELC' AS meter_ty_cd, '전기' AS meter_ty_nm, 'kWh' AS unit_nm, 1 AS sort_no FROM dual
+            UNION ALL SELECT 'WTR', '수도', '㎥', 2 FROM dual
+            UNION ALL SELECT 'GAS', '가스', '㎥', 3 FROM dual
+        ),
+        latest_meter AS (
+            SELECT *
+            FROM (
+                SELECT
+                       ad.ho_no,
+                       f.facility_ty_cd,
+                       NVL(m.curr_val, 0) - NVL(m.pre_val, 0) AS usage_val,
+                       m.meter_rslt_cd,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY ad.ho_no, f.facility_ty_cd
+                           ORDER BY m.meter_dt DESC, m.meter_hstry_no DESC
+                       ) AS rn
+                FROM meter_hstry m
+                     INNER JOIN facility f ON f.facility_no = m.facility_no
+                     INNER JOIN apt_detail ad ON ad.ho_no = m.ho_no
+                     INNER JOIN apt_unit au ON au.dong_no = ad.dong_no
+                WHERE au.apt_cmplex_no = #{aptCmplexNo}
+                  AND f.facility_ty_cd IN ('ELC', 'WTR', 'GAS')
+            )
+            WHERE rn = 1
+        )
+        SELECT
+               mc.meter_ty_cd AS meterTyCd,
+               mc.meter_ty_nm AS meterTyNm,
+               mc.unit_nm AS unitNm,
+               NVL(COUNT(lm.ho_no), 0) AS hshldCnt,
+               NVL(ROUND(AVG(lm.usage_val), 0), 0) AS avgUsage,
+               NVL(MIN(lm.usage_val), 0) AS minUsage,
+               NVL(MAX(lm.usage_val), 0) AS maxUsage,
+               NVL(SUM(CASE WHEN lm.meter_rslt_cd = 'NORMAL' THEN 1 ELSE 0 END), 0) AS normalCnt,
+               NVL(SUM(CASE WHEN lm.meter_rslt_cd = 'ERROR' THEN 1 ELSE 0 END), 0) AS errorCnt,
+               NVL(SUM(CASE WHEN lm.meter_rslt_cd = 'MISS' THEN 1 ELSE 0 END), 0) AS missCnt,
+               NVL(SUM(CASE WHEN lm.meter_rslt_cd = 'CHECK' THEN 1 ELSE 0 END), 0) AS checkCnt
+        FROM meter_code mc
+             LEFT JOIN latest_meter lm ON lm.facility_ty_cd = mc.meter_ty_cd
+        GROUP BY mc.meter_ty_cd, mc.meter_ty_nm, mc.unit_nm, mc.sort_no
+        ORDER BY mc.sort_no
+    </select>
+
+    <!-- 민원 요약 -->
+    <select id="selectComplaintSummary"
+            resultType="kr.or.ddit.domain.member.resident.statsApartment.dto.ResidentApartmentStatsComplaintDTO">
+        SELECT
+               COUNT(*) AS totalCnt,
+               NVL(SUM(CASE WHEN cvpl_stts_cd = 'APLY' THEN 1 ELSE 0 END), 0) AS appliedCnt,
+               NVL(SUM(CASE WHEN cvpl_stts_cd IN ('RCPT', 'POCS') THEN 1 ELSE 0 END), 0) AS processingCnt,
+               NVL(SUM(CASE WHEN cvpl_stts_cd = 'END' THEN 1 ELSE 0 END), 0) AS doneCnt,
+               NVL(SUM(CASE WHEN cvpl_stts_cd = 'CNCL' THEN 1 ELSE 0 END), 0) AS cancelCnt,
+               NVL(ROUND(
+                   AVG(CASE
+                           WHEN cvpl_stts_cd = 'END' AND cvpl_end_dt IS NOT NULL AND cvpl_reg_dt IS NOT NULL
+                               THEN cvpl_end_dt - cvpl_reg_dt
+                       END
+                   ), 1
+               ), 0) AS avgProcessDays
+        FROM cvpl
+        WHERE apt_cmplex_no = #{aptCmplexNo}
+    </select>
+
+    <!-- 민원 카테고리별 분포 -->
+    <select id="selectComplaintCategoryList"
+            resultType="kr.or.ddit.domain.member.resident.statsApartment.dto.ResidentApartmentStatsItemDTO">
+        SELECT
+               c.cvpl_ty_cd AS itemCd,
+               NVL(cc.code_name, c.cvpl_ty_cd) AS itemNm,
+               COUNT(*) AS cnt
+        FROM cvpl c
+             LEFT JOIN common_code cc ON cc.group_code_no = 'CVPL_TY'
+                  AND cc.code_no_cd = c.cvpl_ty_cd
+                  AND cc.use_yn = 'Y'
+        WHERE c.apt_cmplex_no = #{aptCmplexNo}
+          AND c.cvpl_ty_cd IS NOT NULL
+        GROUP BY c.cvpl_ty_cd, cc.code_name
+        ORDER BY COUNT(*) DESC
+    </select>
+
+    <!-- 시설 이용 랭킹 -->
+    <select id="selectFacilityRankList"
+            resultType="kr.or.ddit.domain.member.resident.statsApartment.dto.ResidentApartmentStatsFacilityDTO">
+        SELECT
+               facilityNm,
+               reservationCnt,
+               ROWNUM AS rank
+        FROM (
+            SELECT
+                   pf.cmn_facility_nm AS facilityNm,
+                   COUNT(*) AS reservationCnt
+            FROM facility_hstry fh
+                 INNER JOIN public_item pi ON pi.cmn_facility_item_no = fh.cmn_facility_item_no
+                 INNER JOIN public_facility pf ON pf.cmn_facility_no = pi.cmn_facility_no
+            WHERE pf.apt_cmplex_no = #{aptCmplexNo}
+              AND fh.rsvt_stts_cd IN ('PENDING', 'APPROVED')
+              AND fh.rsvt_dt >= TRUNC(SYSDATE, 'MM')
+              AND fh.rsvt_dt <![CDATA[<]]> ADD_MONTHS(TRUNC(SYSDATE, 'MM'), 1)
+            GROUP BY pf.cmn_facility_nm
+            ORDER BY COUNT(*) DESC, pf.cmn_facility_nm
+        )
+        WHERE ROWNUM <![CDATA[<=]]> 5
+    </select>
+
+    <!-- 시설 점검 현황 -->
+    <select id="selectCheckSummary"
+            resultType="kr.or.ddit.domain.member.resident.statsApartment.dto.ResidentApartmentStatsCheckDTO">
+        SELECT
+               COUNT(*) AS totalCnt,
+               NVL(SUM(CASE WHEN fch.chk_stts_cd = 'WAIT' THEN 1 ELSE 0 END), 0) AS pendingCnt,
+               NVL(SUM(CASE WHEN fch.chk_stts_cd = 'ING' THEN 1 ELSE 0 END), 0) AS inProgressCnt,
+               NVL(SUM(CASE WHEN fch.chk_stts_cd IN ('DONE', 'FAULT') THEN 1 ELSE 0 END), 0) AS doneCnt,
+               NVL(SUM(CASE WHEN NVL(fch.use_restrict_yn, 'N') = 'Y' THEN 1 ELSE 0 END), 0) AS restrictedCnt
+        FROM facility_check_hstry fch
+             INNER JOIN facility f ON f.facility_no = fch.facility_no
+        WHERE f.apt_cmplex_no = #{aptCmplexNo}
+    </select>
+
+    <!-- 협력업체 요약 -->
+    <select id="selectPartnerSummary"
+            resultType="kr.or.ddit.domain.member.resident.statsApartment.dto.ResidentApartmentStatsPartnerDTO">
+        SELECT
+               COUNT(*) AS totalCnt,
+               NVL(SUM(CASE WHEN NVL(use_yn, 'Y') = 'Y' THEN 1 ELSE 0 END), 0) AS activeCnt,
+               NVL(SUM(CASE WHEN NVL(use_yn, 'Y') = 'N' THEN 1 ELSE 0 END), 0) AS inactiveCnt
+        FROM partner
+        WHERE apt_cmplex_no = #{aptCmplexNo}
+    </select>
+
+    <!-- 협력업체 업종별 분포 -->
+    <select id="selectPartnerBizTypeList"
+            resultType="kr.or.ddit.domain.member.resident.statsApartment.dto.ResidentApartmentStatsItemDTO">
+        SELECT
+               biz_ty_nm AS itemCd,
+               biz_ty_nm AS itemNm,
+               COUNT(*) AS cnt
+        FROM partner
+        WHERE apt_cmplex_no = #{aptCmplexNo}
+          AND biz_ty_nm IS NOT NULL
+        GROUP BY biz_ty_nm
+        ORDER BY COUNT(*) DESC
+    </select>
+
+</mapper>

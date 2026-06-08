@@ -1,0 +1,498 @@
+@charset "UTF-8";
+
+/* ============================================================
+   manager-agGrid.css
+   관리사무소 AG Grid 공통 스타일
+============================================================ */
+
+/* ============================================================
+   Grid Wrapper
+============================================================ */
+.manager-grid-wrap {
+    width: 100%;
+    background: var(--card);
+}
+
+.manager-ag-grid {
+    width: 100%;
+    min-height: 462px;
+}
+
+.manager-ag-grid .ag-body-viewport,
+.manager-ag-grid .ag-center-cols-viewport {
+    overflow-y: hidden !important;
+}
+
+.manager-ag-grid .ag-body-horizontal-scroll {
+    min-height: 12px;
+}
+
+/* ============================================================
+   Theme Base
+============================================================ */
+.manager-ag-grid.ag-theme-alpine {
+    --ag-font-family: "Noto Sans KR", sans-serif;
+    --ag-font-size: 13px;
+    --ag-background-color: var(--card);
+    --ag-header-background-color: #f3f5f7;
+    --ag-odd-row-background-color: #ffffff;
+    --ag-row-hover-color: #f8fafc;
+    --ag-border-color: var(--border);
+    --ag-secondary-border-color: var(--border);
+    --ag-header-foreground-color: var(--text-tertiary);
+    --ag-foreground-color: var(--text-secondary);
+    --ag-selected-row-background-color: #f0f4f8;
+    --ag-range-selection-border-color: var(--btn-primary);
+    --ag-wrapper-border-radius: var(--r-md);
+}
+
+.manager-ag-grid .ag-root-wrapper {
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    box-shadow: none;
+}
+
+.manager-ag-grid .ag-header {
+    border-bottom: 1px solid var(--border);
+    background: #f3f5f7;
+}
+
+.manager-ag-grid .ag-header-cell {
+    padding-left: 16px;
+    padding-right: 16px;
+}
+
+.manager-ag-grid .ag-header-cell-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: #687385;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.manager-ag-grid .ag-header-cell.align-center .ag-header-cell-label,
+.manager-ag-grid .ag-header-cell.align-right .ag-header-cell-label {
+    justify-content: center;
+}
+
+.manager-ag-grid .ag-header-cell.align-right .ag-header-cell-label {
+    justify-content: flex-end;
+}
+
+.manager-ag-grid .ag-cell {
+    padding-left: 16px;
+    padding-right: 16px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+}
+
+.manager-ag-grid .ag-cell.align-center {
+    justify-content: center;
+    text-align: center;
+}
+
+.manager-ag-grid .ag-cell.align-right {
+    justify-content: flex-end;
+    text-align: right;
+}
+
+.manager-ag-grid .ag-cell.ag-cell-focus {
+    border-color: transparent !important;
+}
+
+.manager-ag-grid .ag-row {
+    border-bottom: 1px solid var(--border);
+}
+
+.manager-ag-grid .ag-row:last-child {
+    border-bottom: none;
+}
+
+.manager-ag-grid .ag-paging-panel {
+    height: 44px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-tertiary);
+    background: var(--card);
+}
+
+.manager-ag-grid .ag-paging-page-size {
+    display: none;
+}
+
+.manager-ag-grid .ag-paging-button {
+    color: var(--text-secondary);
+}
+
+.manager-ag-grid .ag-paging-button:hover {
+    color: var(--text-primary);
+}
+
+/* ============================================================
+   Grid 상단 보조 영역
+============================================================ */
+.grid-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    padding: 11px 20px;
+    border-bottom: 1px solid var(--border);
+    background: #f8fafc;
+}
+
+.grid-summary-left strong {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.grid-summary-left span {
+    display: block;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-top: 1px;
+}
+
+.grid-summary-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+/* ============================================================
+   아바타 (그리드 전용 — 텍스트 이니셜 없음, 단색 아이콘형)
+============================================================ */
+.avatar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* 그리드 내 아바타: 원형 제거, 사각 모서리, 중립 회색 */
+.manager-ag-grid .avatar.avatar-sm {
+    width: 28px;
+    height: 28px;
+    border-radius: 5px;
+    background: #edf0f3;
+    color: #52585f;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background-image: none;
+}
+
+.avatar-info {
+    line-height: 1.35;
+}
+
+.avatar-info .name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.avatar-info .sub {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-top: 1px;
+}
+
+/* ============================================================
+   Grid 내부 버튼
+============================================================ */
+.grid-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+}
+
+.grid-actions .btn {
+    min-height: 26px;
+    height: 26px;
+    padding: 0 10px;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 4px;
+    letter-spacing: 0;
+}
+
+.grid-actions .btn-detail {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    font-weight: 700;
+}
+
+.grid-actions .btn-detail:hover {
+    background: #f0f2f5;
+    color: var(--text-primary);
+    border-color: #d1d5db;
+}
+.grid-actions .btn-edit {
+    background: var(--btn-primary);
+    color: #fff;
+    border: 1px solid var(--btn-primary);
+}
+
+.grid-actions .btn-edit:hover {
+    background: var(--btn-hover);
+}
+
+/* 삭제/비활성 버튼 — 채도 낮춤, 텍스트 위주 */
+.grid-actions .btn-delete {
+    background: #ffffff;
+    color: #8a2c2c;
+    border: 1px solid #d8b4b4;
+}
+
+.grid-actions .btn-delete:hover {
+    background: #f8eeee;
+    color: #7a1e1e;
+}
+
+.grid-actions .btn.is-disabled {
+    position: relative;
+    opacity: 1;
+    color: #9ca3af;
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+/* ============================================================
+   Grid 내부 배지 — 채도 낮추고 pill → tag 형태로
+============================================================ */
+/* AgRenderer 공통 렌더러는 .badge를 출력하므로, 그리드 안에서는 높이를 고정해 과한 pill 형태를 막는다. */
+.manager-ag-grid .badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 22px;
+    min-width: auto;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0;
+    white-space: nowrap;
+    box-shadow: none;
+    background: #f8fafc;
+    cursor: default;
+    pointer-events: none;
+}
+
+.manager-ag-grid .badge.badge-green {
+    color: #1f5a35;
+    background: #f4f9f6;
+}
+
+.manager-ag-grid .badge.badge-blue {
+    color: #1f4f73;
+    background: #f5f8fb;
+}
+
+.manager-ag-grid .badge.badge-yellow {
+    color: #70591a;
+    background: #fbf8ee;
+}
+
+.manager-ag-grid .badge.badge-red {
+    color: #873232;
+    background: #fbf4f4;
+}
+
+.manager-ag-grid .badge.badge-orange {
+    color: #7a4a18;
+    background: #fbf6f0;
+}
+
+.manager-ag-grid .badge.badge-purple {
+    color: #58407f;
+    background: #f7f5fb;
+}
+
+.manager-ag-grid .badge.badge-gray {
+    color: #4b5563;
+    background: #f8fafc;
+}
+
+.grid-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 4px;          /* pill → 살짝 각진 태그 */
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+/* 직무 배지 — 초록 테마에 맞춰 채도 낮은 단색 계열 */
+.grid-badge.duty-head {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.grid-badge.duty-adm {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.grid-badge.duty-fac {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.grid-badge.duty-acnt {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+/* 상태 배지 */
+.grid-badge.status-wait {
+    background: #fffbf0;
+    color: #8a6400;
+    border: 1px solid #e8d080;
+}
+
+.grid-badge.status-aprv {
+    background: #f0f7f2;
+    color: #2d5a3a;
+    border: 1px solid #a8ccb0;
+}
+
+.grid-badge.status-rjct {
+    background: #fff0f0;
+    color: #8a2020;
+    border: 1px solid #e0a8a8;
+}
+
+.grid-badge.status-hold {
+    background: #f0f4ff;
+    color: #3a4e8a;
+    border: 1px solid #b0bce8;
+}
+
+/* 사용여부 배지 */
+.grid-badge.status-active {
+    background: #f0f7f2;
+    color: #2d5a3a;
+    border: 1px solid #a8ccb0;
+}
+
+.grid-badge.status-inactive {
+    background: #f4f4f5;
+    color: #6b7280;
+    border: 1px solid #d1d5db;
+}
+
+/* 기존 범용 컬러 (다른 화면 호환용) */
+.grid-badge.green  { background: #e8f1eb; color: #1f5a35; border: 1px solid #bdd7c5; }
+.grid-badge.blue   { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+.grid-badge.orange { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+.grid-badge.yellow { background: #f7f1df; color: #735c18; border: 1px solid #ded19f; }
+.grid-badge.red    { background: #f8e8e8; color: #8a2c2c; border: 1px solid #e1b8b8; }
+.grid-badge.gray   { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+.grid-badge.purple { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+
+/* ============================================================
+   Grid 내부 텍스트
+============================================================ */
+.grid-main-text {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.grid-sub-text {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-top: 1px;
+}
+
+.grid-mono {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+/* ============================================================
+   Empty / Loading
+============================================================ */
+.manager-ag-empty,
+.manager-ag-loading {
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-tertiary);
+    font-size: 13px;
+    background: var(--card);
+}
+
+/* ============================================================
+   Size Variants
+============================================================ */
+.manager-ag-grid.grid-size-5  { height: 316px; }
+.manager-ag-grid.grid-size-8  { height: 454px; }
+.manager-ag-grid.grid-size-10 { height: 546px; }
+.manager-ag-grid.grid-size-12 { height: 638px; }
+
+.manager-ag-grid:not(.grid-size-5):not(.grid-size-8):not(.grid-size-10):not(.grid-size-12):not(.grid-size-auto) {
+    height: 546px;
+}
+
+/* ============================================================
+   Responsive
+============================================================ */
+@media (max-width: 920px) {
+    .grid-summary {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .grid-summary-right {
+        justify-content: flex-start;
+    }
+
+    .manager-ag-grid {
+        min-width: 760px;
+    }
+
+    .manager-grid-wrap {
+        overflow-x: auto;
+    }
+
+    .manager-ag-grid.grid-size-auto {
+        height: auto;
+        min-height: 220px;
+    }
+
+    .manager-ag-grid.grid-size-auto .ag-root-wrapper {
+        min-height: 220px;
+    }
+
+    .manager-ag-grid.grid-size-auto .ag-center-cols-viewport,
+    .manager-ag-grid.grid-size-auto .ag-layout-auto-height .ag-center-cols-viewport,
+    .manager-ag-grid.grid-size-auto .ag-layout-auto-height .ag-center-cols-container {
+        min-height: 0 !important;
+    }
+}

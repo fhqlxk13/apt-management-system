@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.bill.mapper.IBillStatisticsMapper">
+
+    <resultMap id="billStatisticsMap"
+               type="kr.or.ddit.domain.apt.mgmtOffice.bill.vo.BillStatisticsVO">
+
+        <result property="mgmtOfcNo" column="MGMT_OFC_NO"/>
+        <result property="aptCmplexNo" column="APT_CMPLEX_NO"/>
+
+        <result property="billCnt" column="BILL_CNT"/>
+        <result property="paidCnt" column="PAID_CNT"/>
+        <result property="unpaidCnt" column="UNPAID_CNT"/>
+        <result property="overdueCnt" column="OVERDUE_CNT"/>
+
+        <result property="totalBillAmt" column="TOTAL_BILL_AMT"/>
+        <result property="totalPaidAmt" column="TOTAL_PAID_AMT"/>
+        <result property="totalUnpaidAmt" column="TOTAL_UNPAID_AMT"/>
+        <result property="paidRate" column="PAID_RATE"/>
+
+        <result property="avgBillAmt" column="AVG_BILL_AMT"/>
+        <result property="minBillAmt" column="MIN_BILL_AMT"/>
+        <result property="maxBillAmt" column="MAX_BILL_AMT"/>
+
+        <result property="billYm" column="BILL_YM"/>
+        <result property="monthBillAmt" column="MONTH_BILL_AMT"/>
+        <result property="monthPaidAmt" column="MONTH_PAID_AMT"/>
+        <result property="monthBillCnt" column="MONTH_BILL_CNT"/>
+        <result property="monthPaidCnt" column="MONTH_PAID_CNT"/>
+
+        <result property="billItemCd" column="BILL_ITEM_CD"/>
+        <result property="billItemNm" column="BILL_ITEM_NM"/>
+        <result property="itemTotalAmt" column="ITEM_TOTAL_AMT"/>
+        <result property="itemRate" column="ITEM_RATE"/>
+
+        <result property="pymtSttsCd" column="PYMT_STTS_CD"/>
+        <result property="pymtSttsNm" column="PYMT_STTS_NM"/>
+        <result property="statusCnt" column="STATUS_CNT"/>
+        <result property="statusAmt" column="STATUS_AMT"/>
+
+        <result property="hoNo" column="HO_NO"/>
+        <result property="dongNm" column="DONG_NM"/>
+        <result property="ho" column="HO"/>
+        <result property="displayDongHo" column="DISPLAY_DONG_HO"/>
+        <result property="houseTotalAmt" column="HOUSE_TOTAL_AMT"/>
+    </resultMap>
+
+    <!-- 관리사무소 번호로 단지번호 조회 -->
+    <select id="selectAptCmplexNoByMgmtOfcNo" resultType="string">
+        SELECT APT_CMPLEX_NO
+        FROM MGMT_OFFICE
+        WHERE MGMT_OFC_NO = #{mgmtOfcNo}
+    </select>
+
+    <!-- 전체 요약 통계 -->
+    <select id="selectBillSummary" parameterType="kr.or.ddit.domain.apt.mgmtOffice.bill.vo.BillStatisticsVO"
+            resultMap="billStatisticsMap">
+        SELECT
+            COUNT(*) AS BILL_CNT,
+
+            SUM(CASE WHEN B.PYMT_STTS_CD = 'PAID' THEN 1 ELSE 0 END) AS PAID_CNT,
+
+            SUM(CASE WHEN B.PYMT_STTS_CD IN ('READY', 'UNPAID') THEN 1 ELSE 0 END) AS UNPAID_CNT,
+
+            SUM(CASE WHEN B.PYMT_STTS_CD = 'OVERDUE' THEN 1 ELSE 0 END) AS OVERDUE_CNT,
+
+            NVL(SUM(B.BILL_TOT_AMT), 0) AS TOTAL_BILL_AMT,
+
+            NVL(SUM(CASE
+                        WHEN B.PYMT_STTS_CD = 'PAID'
+                            THEN NVL(B.PYMT_AMT, B.BILL_TOT_AMT)
+                        ELSE 0
+                END), 0) AS TOTAL_PAID_AMT,
+
+            NVL(SUM(CASE
+                        WHEN B.PYMT_STTS_CD != 'PAID'
+                    THEN B.BILL_TOT_AMT
+                        ELSE 0
+                END), 0) AS TOTAL_UNPAID_AMT,
+
+            CASE
+                WHEN COUNT(*) = 0 THEN 0
+                ELSE ROUND(
+                        SUM(CASE WHEN B.PYMT_STTS_CD = 'PAID' THEN 1 ELSE 0 END)
+                            / COUNT(*) * 100,
+                        1
+                     )
+                END AS PAID_RATE,
+
+            NVL(ROUND(AVG(B.BILL_TOT_AMT)), 0) AS AVG_BILL_AMT,
+            NVL(MIN(B.BILL_TOT_AMT), 0) AS MIN_BILL_AMT,
+            NVL(MAX(B.BILL_TOT_AMT), 0) AS MAX_BILL_AMT
+
+        FROM BILL B
+                 JOIN APT_DETAIL H
+                      ON B.HO_NO = H.HO_NO
+                 JOIN APT_UNIT U
+                      ON H.DONG_NO = U.DONG_NO
+        WHERE U.APT_CMPLEX_NO = #{aptCmplexNo}
+          AND B.BILL_YM BETWEEN #{fromYm} AND #{toYm}
+    </select>
+
+    <!-- 월별 관리비 추이 -->
+    <select id="selectMonthlyBillStats" parameterType="kr.or.ddit.domain.apt.mgmtOffice.bill.vo.BillStatisticsVO"
+            resultMap="billStatisticsMap">
+        SELECT
+            B.BILL_YM,
+            COUNT(*) AS MONTH_BILL_CNT,
+
+            SUM(CASE WHEN B.PYMT_STTS_CD = 'PAID' THEN 1 ELSE 0 END) AS MONTH_PAID_CNT,
+
+            NVL(SUM(B.BILL_TOT_AMT), 0) AS MONTH_BILL_AMT,
+
+            NVL(SUM(CASE
+                        WHEN B.PYMT_STTS_CD = 'PAID'
+                            THEN NVL(B.PYMT_AMT, B.BILL_TOT_AMT)
+                        ELSE 0
+                END), 0) AS MONTH_PAID_AMT
+
+        FROM BILL B
+                 JOIN APT_DETAIL H
+                      ON B.HO_NO = H.HO_NO
+                 JOIN APT_UNIT U
+                      ON H.DONG_NO = U.DONG_NO
+        WHERE U.APT_CMPLEX_NO = #{aptCmplexNo}
+          AND B.BILL_YM BETWEEN #{fromYm} AND #{toYm}
+        GROUP BY B.BILL_YM
+        ORDER BY B.BILL_YM
+    </select>
+
+    <!-- 항목별 관리비 비중 -->
+    <select id="selectBillItemStats" parameterType="kr.or.ddit.domain.apt.mgmtOffice.bill.vo.BillStatisticsVO"
+            resultMap="billStatisticsMap">
+        WITH ITEM_SUM AS (
+            SELECT
+                BD.BILL_ITEM_CD,
+                NVL(C.CODE_NAME, BD.BILL_ITEM_CD) AS BILL_ITEM_NM,
+                SUM(BD.BILL_ITEM_AMT) AS ITEM_TOTAL_AMT
+            FROM BILL_DETAIL BD
+                     JOIN BILL B
+                          ON BD.BILL_NO = B.BILL_NO
+                     JOIN APT_DETAIL H
+                          ON B.HO_NO = H.HO_NO
+                     JOIN APT_UNIT U
+                          ON H.DONG_NO = U.DONG_NO
+                     LEFT JOIN COMMON_CODE C
+                               ON C.GROUP_CODE_NO = 'EXPN_CD'
+                                   AND C.CODE_NO_CD = BD.BILL_ITEM_CD
+                                   AND C.USE_YN = 'Y'
+            WHERE U.APT_CMPLEX_NO = #{aptCmplexNo}
+              AND B.BILL_YM BETWEEN #{fromYm} AND #{toYm}
+            GROUP BY
+                BD.BILL_ITEM_CD,
+                NVL(C.CODE_NAME, BD.BILL_ITEM_CD)
+        ),
+             TOTAL_SUM AS (
+                 SELECT NVL(SUM(ITEM_TOTAL_AMT), 0) AS TOTAL_AMT
+                 FROM ITEM_SUM
+             )
+        SELECT
+            I.BILL_ITEM_CD,
+            I.BILL_ITEM_NM,
+            I.ITEM_TOTAL_AMT,
+            CASE
+                WHEN T.TOTAL_AMT = 0 THEN 0
+                ELSE ROUND(I.ITEM_TOTAL_AMT / T.TOTAL_AMT * 100, 1)
+                END AS ITEM_RATE
+        FROM ITEM_SUM I
+                 CROSS JOIN TOTAL_SUM T
+        ORDER BY I.ITEM_TOTAL_AMT DESC
+    </select>
+
+    <!-- 납부상태별 통계 -->
+    <select id="selectPaymentStatusStats" parameterType="kr.or.ddit.domain.apt.mgmtOffice.bill.vo.BillStatisticsVO"
+            resultMap="billStatisticsMap">
+        SELECT
+            B.PYMT_STTS_CD,
+            NVL(C.CODE_NAME, B.PYMT_STTS_CD) AS PYMT_STTS_NM,
+            COUNT(*) AS STATUS_CNT,
+            NVL(SUM(B.BILL_TOT_AMT), 0) AS STATUS_AMT
+        FROM BILL B
+                 JOIN APT_DETAIL H
+                      ON B.HO_NO = H.HO_NO
+                 JOIN APT_UNIT U
+                      ON H.DONG_NO = U.DONG_NO
+                 LEFT JOIN COMMON_CODE C
+                           ON C.GROUP_CODE_NO = 'PAY_ST'
+                               AND C.CODE_NO_CD = B.PYMT_STTS_CD
+                               AND C.USE_YN = 'Y'
+        WHERE U.APT_CMPLEX_NO = #{aptCmplexNo}
+          AND B.BILL_YM BETWEEN #{fromYm} AND #{toYm}
+        GROUP BY
+            B.PYMT_STTS_CD,
+            NVL(C.CODE_NAME, B.PYMT_STTS_CD)
+        ORDER BY STATUS_AMT DESC
+    </select>
+
+    <!-- 세대별 관리비 TOP 10 -->
+    <select id="selectHouseTopStats" parameterType="kr.or.ddit.domain.apt.mgmtOffice.bill.vo.BillStatisticsVO"
+            resultMap="billStatisticsMap">
+        SELECT *
+        FROM (
+                 SELECT
+                     H.HO_NO,
+                     U.DONG_NM,
+                     H.HO,
+                     U.DONG_NM || '동 ' || H.HO || '호' AS DISPLAY_DONG_HO,
+                     SUM(B.BILL_TOT_AMT) AS HOUSE_TOTAL_AMT
+                 FROM BILL B
+                          JOIN APT_DETAIL H
+                               ON B.HO_NO = H.HO_NO
+                          JOIN APT_UNIT U
+                               ON H.DONG_NO = U.DONG_NO
+                 WHERE U.APT_CMPLEX_NO = #{aptCmplexNo}
+                   AND B.BILL_YM BETWEEN #{fromYm} AND #{toYm}
+                 GROUP BY
+                     H.HO_NO,
+                     U.DONG_NM,
+                     H.HO
+                 ORDER BY SUM(B.BILL_TOT_AMT) DESC
+             )
+        WHERE ROWNUM <![CDATA[<=]]> 10
+    </select>
+
+</mapper>

@@ -1,0 +1,931 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.facility.mapper.IFacilityMapper">
+
+    <!-- [공통] 일반 시설자산 시설유형코드 목록 -->
+    <sql id="assetfacilitytypecodes">
+        'ELV',
+        'WTR',
+        'ELC',
+        'GAS',
+        'FIRE',
+        'SEC',
+        'ETC'
+    </sql>
+
+    <!-- [공통] 편의시설 시설유형코드 목록: FACILITY_TY 공통코드 중 일반 시설자산 코드 제외 -->
+    <sql id="publicfacilitytypecodes">
+        SELECT
+        cc.code_no_cd
+        FROM
+        common_code cc
+        WHERE
+        cc.group_code_no = 'FACILITY_TY'
+        AND NVL(cc.use_yn, 'Y') = 'Y'
+        AND cc.code_no_cd NOT IN (<include refid="assetfacilitytypecodes"/>)
+    </sql>
+
+    <!-- [공통] 관리사무소 번호로 단지번호를 찾는 서브쿼리 -->
+    <sql id="subqueryaptcmplexno">
+        (
+            SELECT
+                mo.apt_cmplex_no
+            FROM
+                mgmt_office mo
+            WHERE
+                mo.mgmt_ofc_no = #{mgmtOfcNo}
+        )
+    </sql>
+
+    <!-- [공통] 시설 기본 컬럼 목록 -->
+    <sql id="facilitybasecolumns">
+        f.facility_no,
+        f.facility_ty_cd,
+        f.instl_dt,
+        f.facility_nm,
+        f.apt_cmplex_no,
+        f.dong_no,
+        f.loc_cn,
+        f.use_yn,
+        f.file_group_no
+    </sql>
+
+    <!-- [공통] 화면 조회용 기본 컬럼 목록 -->
+    <sql id="facilityviewbasecolumns">
+        f.facility_no,
+        f.facility_ty_cd,
+        TO_CHAR(f.instl_dt, 'YYYY-MM-DD') AS instl_dt,
+        f.apt_cmplex_no,
+        f.dong_no,
+        f.loc_cn,
+        f.use_yn,
+        f.file_group_no
+    </sql>
+
+    <!-- [공통] 화면 표시용 확장 컬럼 (가공 로직 포함) -->
+    <sql id="facilityviewcolumns">
+        CASE
+        WHEN f.facility_ty_cd IN (<include refid="publicfacilitytypecodes"/>)
+        THEN 'PUBLIC'
+        ELSE 'FACILITY'
+        END AS facility_kind,
+        CASE
+        WHEN f.facility_ty_cd IN (<include refid="publicfacilitytypecodes"/>)
+        THEN '편의시설'
+        ELSE '일반시설'
+        END AS facility_kind_nm,
+        f.facility_nm AS facility_nm,
+        cc.code_name AS facility_ty_nm,
+        CASE
+        WHEN INSTR(f.dong_no, '_') > 0
+        THEN SUBSTR(f.dong_no, INSTR(f.dong_no, '_') + 1)
+        ELSE f.dong_no
+        END AS display_dong_no,
+        CASE
+        WHEN f.use_yn = 'Y' THEN '사용 가능'
+        WHEN f.use_yn = 'N' THEN '사용 불가'
+        ELSE '-'
+        END AS use_yn_nm,
+        CASE
+        WHEN EXISTS (
+        SELECT
+        1
+        FROM
+        facility_check_hstry fch_restrict
+        WHERE
+        fch_restrict.facility_no = f.facility_no
+        AND fch_restrict.use_restrict_yn = 'Y'
+        AND SYSDATE &gt;= fch_restrict.use_restrict_bgng_dt
+        AND SYSDATE &lt; fch_restrict.use_restrict_end_dt
+        ) THEN 'Y'
+        ELSE 'N'
+        END AS current_restrict_yn,
+        CASE
+        WHEN EXISTS (
+        SELECT 1
+        FROM facility_check_hstry fch_restrict
+        WHERE fch_restrict.facility_no = f.facility_no
+        AND fch_restrict.use_restrict_yn = 'Y'
+        AND SYSDATE &gt;= fch_restrict.use_restrict_bgng_dt
+        AND SYSDATE &lt; fch_restrict.use_restrict_end_dt
+        ) THEN 'ONGOING'
+        WHEN EXISTS (
+        SELECT 1
+        FROM facility_check_hstry fch_restrict
+        WHERE fch_restrict.facility_no = f.facility_no
+        AND fch_restrict.use_restrict_yn = 'Y'
+        AND fch_restrict.use_restrict_bgng_dt &gt; SYSDATE
+        ) THEN 'UPCOMING'
+        WHEN EXISTS (
+        SELECT 1
+        FROM facility_check_hstry fch_restrict
+        WHERE fch_restrict.facility_no = f.facility_no
+        AND fch_restrict.use_restrict_yn = 'Y'
+        AND fch_restrict.use_restrict_end_dt &lt;= SYSDATE
+        ) THEN 'ENDED'
+        ELSE 'NONE'
+        END AS current_restrict_status_cd,
+        CASE
+        WHEN EXISTS (
+        SELECT 1
+        FROM facility_check_hstry fch_restrict
+        WHERE fch_restrict.facility_no = f.facility_no
+        AND fch_restrict.use_restrict_yn = 'Y'
+        AND SYSDATE &gt;= fch_restrict.use_restrict_bgng_dt
+        AND SYSDATE &lt; fch_restrict.use_restrict_end_dt
+        ) THEN '제한중'
+        WHEN EXISTS (
+        SELECT 1
+        FROM facility_check_hstry fch_restrict
+        WHERE fch_restrict.facility_no = f.facility_no
+        AND fch_restrict.use_restrict_yn = 'Y'
+        AND fch_restrict.use_restrict_bgng_dt &gt; SYSDATE
+        ) THEN '제한예정'
+        WHEN EXISTS (
+        SELECT 1
+        FROM facility_check_hstry fch_restrict
+        WHERE fch_restrict.facility_no = f.facility_no
+        AND fch_restrict.use_restrict_yn = 'Y'
+        AND fch_restrict.use_restrict_end_dt &lt;= SYSDATE
+        ) THEN '제한종료'
+        ELSE '제한없음'
+        END AS current_restrict_status_nm,
+        CASE
+        WHEN f.use_yn = 'N' THEN '비활성'
+        WHEN EXISTS (
+        SELECT
+        1
+        FROM
+        facility_check_hstry fch_restrict
+        WHERE
+        fch_restrict.facility_no = f.facility_no
+        AND fch_restrict.use_restrict_yn = 'Y'
+        AND SYSDATE &gt;= fch_restrict.use_restrict_bgng_dt
+        AND SYSDATE &lt; fch_restrict.use_restrict_end_dt
+        ) THEN '이용제한중'
+        ELSE '활성'
+        END AS facility_display_status,
+        (
+        SELECT
+        TO_CHAR(current_restrict.use_restrict_bgng_dt, 'YYYY-MM-DD HH24:MI')
+        FROM (
+        SELECT
+        fch_restrict.use_restrict_bgng_dt
+        FROM
+        facility_check_hstry fch_restrict
+        WHERE
+        fch_restrict.facility_no = f.facility_no
+        AND fch_restrict.use_restrict_yn = 'Y'
+        AND SYSDATE &gt;= fch_restrict.use_restrict_bgng_dt
+        AND SYSDATE &lt; fch_restrict.use_restrict_end_dt
+        ORDER BY
+        fch_restrict.use_restrict_bgng_dt
+        ) current_restrict
+        WHERE ROWNUM = 1
+        ) AS current_restrict_bgng_dt,
+        (
+        SELECT
+        TO_CHAR(current_restrict.use_restrict_end_dt, 'YYYY-MM-DD HH24:MI')
+        FROM (
+        SELECT
+        fch_restrict.use_restrict_end_dt
+        FROM
+        facility_check_hstry fch_restrict
+        WHERE
+        fch_restrict.facility_no = f.facility_no
+        AND fch_restrict.use_restrict_yn = 'Y'
+        AND SYSDATE &gt;= fch_restrict.use_restrict_bgng_dt
+        AND SYSDATE &lt; fch_restrict.use_restrict_end_dt
+        ORDER BY
+        fch_restrict.use_restrict_bgng_dt
+        ) current_restrict
+        WHERE ROWNUM = 1
+        ) AS current_restrict_end_dt,
+        (
+        SELECT
+        current_restrict.chk_cn
+        FROM (
+        SELECT
+        fch_restrict.chk_cn
+        FROM
+        facility_check_hstry fch_restrict
+        WHERE
+        fch_restrict.facility_no = f.facility_no
+        AND fch_restrict.use_restrict_yn = 'Y'
+        AND SYSDATE &gt;= fch_restrict.use_restrict_bgng_dt
+        AND SYSDATE &lt; fch_restrict.use_restrict_end_dt
+        ORDER BY
+        fch_restrict.use_restrict_bgng_dt
+        ) current_restrict
+        WHERE ROWNUM = 1
+        ) AS current_restrict_reason,
+        pf.cmn_facility_no,
+        pf.cmn_facility_nm,
+        pf.cmn_facility_rsv_yn,
+        pf.cmn_facility_opr_hr,
+        CASE
+        WHEN pf.cmn_facility_no IS NOT NULL
+        THEN 'Y'
+        ELSE 'N'
+        END AS public_oper_registered_yn
+    </sql>
+
+    <!-- [공통] 시설 조회용 필수 JOIN 문 -->
+    <sql id="facilityjoins">
+        LEFT OUTER JOIN public_facility pf
+            ON pf.facility_no = f.facility_no
+        LEFT OUTER JOIN common_code cc
+            ON cc.group_code_no = 'FACILITY_TY'
+            AND cc.code_no_cd = f.facility_ty_cd
+    </sql>
+
+    <!-- [공통] 통합 검색 조건 (목록/건수 조회 공용) -->
+    <sql id="searchconditions">
+        WHERE
+        f.apt_cmplex_no = <include refid="subqueryaptcmplexno"/>
+        <if test="facilityKind != null and facilityKind != '' and facilityKind != 'ALL'">
+            <choose>
+                <when test="facilityKind == 'PUBLIC'">
+                    AND f.facility_ty_cd IN (<include refid="publicfacilitytypecodes"/>)
+                </when>
+                <when test="facilityKind == 'FACILITY'">
+                    AND f.facility_ty_cd NOT IN (<include refid="publicfacilitytypecodes"/>)
+                </when>
+            </choose>
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+            LOWER(f.facility_no) LIKE '%' || LOWER(#{keyword}) || '%' OR
+            LOWER(f.facility_nm) LIKE '%' || LOWER(#{keyword}) || '%' OR
+            LOWER(pf.cmn_facility_nm) LIKE '%' || LOWER(#{keyword}) || '%' OR
+            LOWER(f.loc_cn) LIKE '%' || LOWER(#{keyword}) || '%'
+            )
+        </if>
+        <if test="facilityTyCd != null and facilityTyCd != ''">
+            AND f.facility_ty_cd = #{facilityTyCd}
+        </if>
+        <if test="instlStartDt != null and instlStartDt != ''">
+            AND f.instl_dt &gt;= TO_DATE(#{instlStartDt}, 'YYYY-MM-DD')
+        </if>
+        <if test="instlEndDt != null and instlEndDt != ''">
+            AND f.instl_dt &lt; TO_DATE(#{instlEndDt}, 'YYYY-MM-DD') + 1
+        </if>
+        <if test="useYn != null and useYn != ''">
+            AND f.use_yn = #{useYn}
+        </if>
+
+        <!-- 현재 점검 이용제한 여부 조건 -->
+        <!-- Y: 현재 시간이 이용제한 시작~종료 사이인 시설만 조회 -->
+        <!-- N: 현재 시간이 이용제한 시작~종료 사이가 아닌 시설만 조회 -->
+        <if test="restrictYn != null and restrictYn != ''">
+            <choose>
+                <when test='"Y".equals(restrictYn) or "ONGOING".equals(restrictYn)'>
+                    AND EXISTS (
+                    SELECT
+                    1
+                    FROM
+                    facility_check_hstry fch_restrict_filter
+                    WHERE
+                    fch_restrict_filter.facility_no = f.facility_no
+                    AND fch_restrict_filter.use_restrict_yn = 'Y'
+                    AND SYSDATE &gt;= fch_restrict_filter.use_restrict_bgng_dt
+                    AND SYSDATE &lt; fch_restrict_filter.use_restrict_end_dt
+                    )
+                </when>
+                <when test='"UPCOMING".equals(restrictYn)'>
+                    AND NOT EXISTS (
+                    SELECT 1
+                    FROM facility_check_hstry fch_restrict_filter
+                    WHERE fch_restrict_filter.facility_no = f.facility_no
+                    AND fch_restrict_filter.use_restrict_yn = 'Y'
+                    AND SYSDATE &gt;= fch_restrict_filter.use_restrict_bgng_dt
+                    AND SYSDATE &lt; fch_restrict_filter.use_restrict_end_dt
+                    )
+                    AND EXISTS (
+                    SELECT 1
+                    FROM facility_check_hstry fch_restrict_filter
+                    WHERE fch_restrict_filter.facility_no = f.facility_no
+                    AND fch_restrict_filter.use_restrict_yn = 'Y'
+                    AND fch_restrict_filter.use_restrict_bgng_dt &gt; SYSDATE
+                    )
+                </when>
+                <when test='"ENDED".equals(restrictYn)'>
+                    AND NOT EXISTS (
+                    SELECT 1
+                    FROM facility_check_hstry fch_restrict_filter
+                    WHERE fch_restrict_filter.facility_no = f.facility_no
+                    AND fch_restrict_filter.use_restrict_yn = 'Y'
+                    AND SYSDATE &gt;= fch_restrict_filter.use_restrict_bgng_dt
+                    AND SYSDATE &lt; fch_restrict_filter.use_restrict_end_dt
+                    )
+                    AND NOT EXISTS (
+                    SELECT 1
+                    FROM facility_check_hstry fch_restrict_filter
+                    WHERE fch_restrict_filter.facility_no = f.facility_no
+                    AND fch_restrict_filter.use_restrict_yn = 'Y'
+                    AND fch_restrict_filter.use_restrict_bgng_dt &gt; SYSDATE
+                    )
+                    AND EXISTS (
+                    SELECT 1
+                    FROM facility_check_hstry fch_restrict_filter
+                    WHERE fch_restrict_filter.facility_no = f.facility_no
+                    AND fch_restrict_filter.use_restrict_yn = 'Y'
+                    AND fch_restrict_filter.use_restrict_end_dt &lt;= SYSDATE
+                    )
+                </when>
+                <when test='"N".equals(restrictYn) or "NONE".equals(restrictYn)'>
+                    AND NOT EXISTS (
+                    SELECT
+                    1
+                    FROM
+                    facility_check_hstry fch_restrict_filter
+                    WHERE
+                    fch_restrict_filter.facility_no = f.facility_no
+                    AND fch_restrict_filter.use_restrict_yn = 'Y'
+                    )
+                </when>
+            </choose>
+        </if>
+        <if test="dongNo != null and dongNo != ''">
+            <choose>
+                <when test="dongNo == '_COMMON_'">
+                    AND (f.dong_no IS NULL OR f.dong_no = '')
+                </when>
+                <otherwise>
+                    AND f.dong_no = #{dongNo}
+                </otherwise>
+            </choose>
+        </if>
+    </sql>
+
+    <!-- 첨부파일 공통 resultMap -->
+    <resultMap id="attachFileResultMap" type="kr.or.ddit.common.file.vo.AttachFileVO">
+        <result property="fileGroupNo"   column="file_group_no"/>
+        <result property="cat"           column="cat"/>
+        <result property="fileSaveUuid"  column="file_save_uuid"/>
+        <result property="fileOgName"    column="file_og_name"/>
+        <result property="filePath"      column="file_path"/>
+        <result property="fileExt"       column="file_ext"/>
+        <result property="fileSize"      column="file_size"/>
+        <result property="mimeType"      column="mime_type"/>
+        <result property="regDt"         column="reg_dt"/>
+        <result property="mdfDt"         column="mdf_dt"/>
+        <result property="fileSortOrder" column="file_sort_order"/>
+        <result property="downCnt"       column="down_cnt"/>
+        <result property="googleId"      column="google_id"/>
+    </resultMap>
+
+    <!-- 시설 목록 조회 (기본 VO형태) -->
+    <select id="selectFacilityList" resultType="kr.or.ddit.domain.apt.mgmtOffice.facility.vo.FacilityVO">
+        SELECT
+        <include refid="facilitybasecolumns"/>,
+        cc.code_name AS facility_ty_nm,
+        lf.chk_dt AS latest_fault_dt,
+        lf.chk_ty_cd AS latest_fault_ty_cd,
+        CASE
+        WHEN mh.facility_no IS NOT NULL
+        THEN 'Y'
+        ELSE 'N'
+        END AS meter_linked_yn
+        FROM
+        facility f
+        LEFT OUTER JOIN public_facility pf
+        ON pf.facility_no = f.facility_no
+        LEFT OUTER JOIN common_code cc
+        ON cc.group_code_no = 'FACILITY_TY'
+        AND cc.code_no_cd = f.facility_ty_cd
+        LEFT OUTER JOIN (
+        SELECT
+        fch.facility_no,
+        fch.chk_dt,
+        fch.chk_ty_cd
+        FROM
+        facility_check_hstry fch
+        WHERE
+        fch.chk_stts_cd = 'FAULT'
+        AND fch.chk_dt = (
+        SELECT
+        MAX(chk_dt)
+        FROM
+        facility_check_hstry
+        WHERE
+        facility_no = fch.facility_no
+        AND chk_stts_cd = 'FAULT'
+        )
+        ) lf
+        ON lf.facility_no = f.facility_no
+        LEFT OUTER JOIN (
+        SELECT DISTINCT
+        facility_no
+        FROM
+        meter_hstry
+        ) mh
+        ON mh.facility_no = f.facility_no
+        <include refid="searchconditions"/>
+        ORDER BY
+        /* DEMO ONLY: keep Garak Miryung representative meters off the first facility page. */
+        CASE WHEN f.facility_no IN ('MTRWTR511', 'MTRGAS511', 'MTRELC511') THEN 1 ELSE 0 END,
+        f.facility_no DESC
+    </select>
+
+    <!-- 시설 화면 목록 조회 (DTO 확장형태) -->
+    <select id="selectFacilityViewList" resultType="kr.or.ddit.domain.apt.mgmtOffice.facility.dto.FacilityDTO">
+        SELECT
+        <include refid="facilityviewbasecolumns"/>,
+        <include refid="facilityviewcolumns"/>
+        FROM
+        facility f
+        <include refid="facilityjoins"/>
+        <include refid="searchconditions"/>
+
+        <!-- 운영관리 등록 여부 필터 -->
+        <if test="publicFacilityYn != null and publicFacilityYn != ''">
+            <choose>
+                <!-- 운영등록 -->
+                <when test='"Y".equals(publicFacilityYn)'>
+                    AND pf.cmn_facility_no IS NOT NULL
+                </when>
+
+                <!-- 운영미등록 -->
+                <when test='"N".equals(publicFacilityYn)'>
+                    AND f.facility_ty_cd IN (<include refid="publicfacilitytypecodes"/>)
+                    AND pf.cmn_facility_no IS NULL
+                </when>
+            </choose>
+        </if>
+
+        ORDER BY
+        /* DEMO ONLY: keep Garak Miryung representative meters off the first facility page. */
+        CASE WHEN f.facility_no IN ('MTRWTR511', 'MTRGAS511', 'MTRELC511') THEN 1 ELSE 0 END,
+        f.facility_no DESC
+    </select>
+
+    <!-- 시설 건수 조회 -->
+    <select id="selectFacilityViewCount" parameterType="map" resultType="int">
+        SELECT
+        COUNT(*)
+        FROM
+        facility f
+        LEFT OUTER JOIN public_facility pf
+        ON pf.facility_no = f.facility_no
+        <include refid="searchconditions"/>
+
+        <!-- 운영관리 등록 여부 필터 -->
+        <!--
+            Y : PUBLIC_FACILITY 운영정보가 등록된 시설
+            N : 편의시설 유형이지만 PUBLIC_FACILITY 운영정보가 아직 없는 시설
+        -->
+        <if test="publicFacilityYn != null and publicFacilityYn != ''">
+            <choose>
+                <when test='"Y".equals(publicFacilityYn)'>
+                    AND pf.cmn_facility_no IS NOT NULL
+                </when>
+                <when test='"N".equals(publicFacilityYn)'>
+                    AND f.facility_ty_cd IN (<include refid="publicfacilitytypecodes"/>)
+                    AND pf.cmn_facility_no IS NULL
+                </when>
+            </choose>
+        </if>
+    </select>
+
+    <!-- 시설유형 필터 목록 조회 -->
+    <select id="selectFacilityTypeList" parameterType="map" resultType="map">
+        SELECT DISTINCT
+        f.facility_ty_cd AS code,
+        cc.code_name AS code_nm,
+        CASE
+        WHEN f.facility_ty_cd IN (<include refid="publicfacilitytypecodes"/>)
+        THEN 'PUBLIC'
+        ELSE 'FACILITY'
+        END AS facility_kind
+        FROM
+        facility f
+        LEFT OUTER JOIN public_facility pf
+        ON pf.facility_no = f.facility_no
+        LEFT OUTER JOIN common_code cc
+        ON cc.group_code_no = 'FACILITY_TY'
+        AND cc.code_no_cd = f.facility_ty_cd
+        WHERE
+        f.apt_cmplex_no = <include refid="subqueryaptcmplexno"/>
+        <if test="facilityKind != null and facilityKind != '' and facilityKind != 'ALL'">
+            <choose>
+                <when test="facilityKind == 'PUBLIC'">
+                    AND f.facility_ty_cd IN (<include refid="publicfacilitytypecodes"/>)
+                </when>
+                <when test="facilityKind == 'FACILITY'">
+                    AND f.facility_ty_cd NOT IN (<include refid="publicfacilitytypecodes"/>)
+                </when>
+            </choose>
+        </if>
+        ORDER BY
+        facility_kind,
+        code_nm,
+        code
+    </select>
+
+    <!-- 등록 화면 편의시설 유형 목록 조회 -->
+    <select id="selectPublicFacilityTypeList" resultType="map">
+        SELECT
+        cc.code_no_cd AS "code",
+        cc.code_name AS "codeNm"
+        FROM
+        common_code cc
+        WHERE
+        cc.group_code_no = 'FACILITY_TY'
+        AND NVL(cc.use_yn, 'Y') = 'Y'
+        AND cc.code_no_cd NOT IN (<include refid="assetfacilitytypecodes"/>)
+        ORDER BY
+        cc.code_name,
+        cc.code_no_cd
+    </select>
+
+    <select id="selectFacilityViewDetail" resultType="kr.or.ddit.domain.apt.mgmtOffice.facility.dto.FacilityDTO">
+        SELECT
+        <include refid="facilityviewbasecolumns"/>,
+        <include refid="facilityviewcolumns"/>
+        FROM
+        facility f
+        <include refid="facilityjoins"/>
+        WHERE
+        f.facility_no = #{facilityNo}
+        AND f.apt_cmplex_no = <include refid="subqueryaptcmplexno"/>
+    </select>
+    <!--
+    시설 상세 화면 최근 점검·보수 이력 조회
+    - 시설 상세 왼쪽 하단에 최근 3건만 표시
+    - FACILITY_CHECK_HSTRY 기준 조회
+    - 관리사무소 번호 + 시설번호 기준으로 조회 범위 제한
+-->
+    <select id="selectRecentCheckHistoryList"
+            parameterType="map"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.facility.check.vo.FacilityCheckHstryVO">
+        select *
+        from (
+                 select
+                     fch.fac_chk_hstry_no
+                      , fch.facility_no
+                      , fch.partner_no
+                      , fch.chk_flow_no
+                      , fch.chk_dt
+                      , fch.chk_stts_cd
+                      , fch.chk_cn
+                      , fch.rmk
+                      , fch.reg_dt
+                      , fch.mdf_dt
+                      , fch.chk_ty_cd
+                      , nvl(fch.use_restrict_yn, 'N') as use_restrict_yn
+                      , to_char(fch.use_restrict_bgng_dt, 'YYYY-MM-DD HH24:MI') as use_restrict_bgng_dt
+                      , to_char(fch.use_restrict_end_dt, 'YYYY-MM-DD HH24:MI') as use_restrict_end_dt
+
+                      , f.facility_nm
+                      , f.facility_ty_cd
+                      , f.loc_cn
+                      , f.instl_dt
+                      , f.use_yn
+                      , f.dong_no
+
+                      , p.partner_nm
+                      , p.biz_ty_nm
+                      , p.bizrno
+                      , p.pic_nm
+                      , p.pic_telno
+                      , p.pic_email
+
+                      , chk_ty.code_name as chk_ty_nm
+                      , chk_stts.code_name as chk_stts_nm
+                 from facility_check_hstry fch
+                          inner join facility f
+                                     on fch.facility_no = f.facility_no
+                          left join partner p
+                                    on fch.partner_no = p.partner_no
+                          left join common_code chk_ty
+                                    on chk_ty.group_code_no = 'CHECK_TY'
+                                        and chk_ty.code_no_cd = fch.chk_ty_cd
+                          left join common_code chk_stts
+                                    on chk_stts.group_code_no = 'CHECK_STTS'
+                                        and chk_stts.code_no_cd = fch.chk_stts_cd
+                 where fch.facility_no = #{facilityNo}
+                   and f.apt_cmplex_no = (
+                     select mo.apt_cmplex_no
+                     from mgmt_office mo
+                     where mo.mgmt_ofc_no = #{mgmtOfcNo}
+                 )
+                 order by fch.chk_dt desc, fch.reg_dt desc
+             )
+        where rownum &lt;= 3
+    </select>
+
+
+    <!-- //** 수정: 시설 수정 Service에서 기존 시설 확인용으로 호출하는 상세 조회 SQL 추가 -->
+    <select id="selectFacilityDetail" resultType="kr.or.ddit.domain.apt.mgmtOffice.facility.vo.FacilityVO">
+        SELECT
+        <include refid="facilitybasecolumns"/>
+        FROM
+        facility f
+        WHERE
+        f.facility_no = #{facilityNo}
+        AND f.apt_cmplex_no = <include refid="subqueryaptcmplexno"/>
+    </select>
+
+    <!-- 시설 설치계약 요약 조회 -->
+    <select id="selectFacilityInstallContract" parameterType="map" resultType="map">
+        select
+            fc.cont_no                              as "contNo"
+             , fct.facility_no                      as "facilityNo"
+             , fc.partner_no                        as "partnerNo"
+             , p.partner_nm                         as "partnerNm"
+             , fc.cont_nm                           as "contNm"
+             , fc.cont_ty_cd                        as "contTyCd"
+             , cont_ty.code_name                    as "contTyNm"
+             , fc.bid_ty_cd                         as "bidTyCd"
+             , bid_ty.code_name                     as "bidTyNm"
+             , to_char(fc.cont_dt, 'YYYY-MM-DD')    as "contDt"
+             , fc.cont_stts_cd                      as "contSttsCd"
+             , cont_stts.code_name                  as "contSttsNm"
+             , fc.cont_amt                          as "contAmt"
+             , to_char(fc.pymt_dt, 'YYYY-MM-DD')    as "pymtDt"
+             , to_char(fc.cont_bgng_dt, 'YYYY-MM-DD') as "contBgngDt"
+             , to_char(fc.cont_end_dt, 'YYYY-MM-DD')  as "contEndDt"
+        from facility_contract fc
+                 inner join facility_contract_target fct
+                            on fct.cont_no = fc.cont_no
+                 inner join facility f
+                            on f.facility_no = fct.facility_no
+                 left outer join partner p
+                                 on p.partner_no = fc.partner_no
+                 left outer join common_code cont_ty
+                                 on cont_ty.group_code_no = 'CONT_TY'
+                                     and cont_ty.code_no_cd = fc.cont_ty_cd
+                 left outer join common_code bid_ty
+                                 on bid_ty.group_code_no = 'BID_TY'
+                                     and bid_ty.code_no_cd = fc.bid_ty_cd
+                 left outer join common_code cont_stts
+                                 on cont_stts.group_code_no = 'CONTRACT_STTS'
+                                     and cont_stts.code_no_cd = fc.cont_stts_cd
+        where fct.facility_no = #{facilityNo}
+          and fc.cont_ty_cd = 'INSTALL'
+          and fc.cont_stts_cd in ('ACTIVE', 'END')
+          and f.apt_cmplex_no = (
+            select mo.apt_cmplex_no
+            from mgmt_office mo
+            where mo.mgmt_ofc_no = #{mgmtOfcNo}
+        )
+        order by to_number(regexp_substr(fc.cont_no, '[0-9]+')) desc, fc.cont_no desc
+            fetch first 1 row only
+    </select>
+
+
+
+    <!-- 시설 신규 번호 생성 -->
+    <select id="getFacilityNo" resultType="string">
+        SELECT
+            'FAC' || LPAD(seq_facility.NEXTVAL, 4, '0')
+        FROM
+            dual
+    </select>
+
+    <!-- //** 수정: 시설 등록 시 관리사무소번호로 단지번호 조회 -->
+    <select id="selectAptCmplexNoByMgmtOfcNo" parameterType="string" resultType="string">
+        SELECT
+            mo.apt_cmplex_no
+        FROM
+            mgmt_office mo
+        WHERE
+            mo.mgmt_ofc_no = #{mgmtOfcNo}
+    </select>
+
+    <!-- 시설 등록 -->
+    <insert id="insertFacility" parameterType="kr.or.ddit.domain.apt.mgmtOffice.facility.vo.FacilityVO">
+        INSERT INTO facility (
+            facility_no,
+            facility_ty_cd,
+            instl_dt,
+            facility_nm,
+            apt_cmplex_no,
+            dong_no,
+            loc_cn,
+            use_yn,
+            file_group_no
+        ) VALUES (
+                     #{facilityNo},
+                     #{facilityTyCd},
+                     #{instlDt},
+                     #{facilityNm},
+                     #{aptCmplexNo},
+                     #{dongNo},
+                     #{locCn},
+                     NVL(#{useYn}, 'Y'),
+                     #{fileGroupNo}
+                 )
+    </insert>
+    <!-- 새 시설유형 코드 생성 -->
+    <select id="getNewFacilityTypeCode" resultType="string">
+        SELECT
+            'CUS' || LPAD(
+                    NVL(
+                            MAX(
+                                    TO_NUMBER(
+                                            CASE
+                                                WHEN REGEXP_LIKE(code_no_cd, '^CUS[0-9]{3}$')
+                                                    THEN SUBSTR(code_no_cd, 4)
+                                                END
+                                    )
+                            ),
+                            0
+                    ) + 1,
+                    3,
+                    '0'
+                     )
+        FROM
+            common_code
+        WHERE
+            group_code_no = 'FACILITY_TY'
+    </select>
+
+    <!-- 시설유형명 중복 건수 조회 -->
+    <select id="selectFacilityTypeNameCount" parameterType="string" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM
+            common_code
+        WHERE
+            group_code_no = 'FACILITY_TY'
+          AND NVL(use_yn, 'Y') = 'Y'
+          AND TRIM(code_name) = TRIM(#{codeName})
+    </select>
+
+    <!-- 새 시설유형 공통코드 등록 -->
+    <insert id="insertFacilityTypeCode" parameterType="map">
+        INSERT INTO common_code (
+            group_code_no,
+            code_no_cd,
+            code_name,
+            code_content,
+            sort_order,
+            use_yn
+        ) VALUES (
+                     'FACILITY_TY',
+                     #{codeNoCd},
+                     #{codeName},
+                     #{codeContent},
+                     (
+                         SELECT
+                             NVL(MAX(sort_order), 0) + 1
+                         FROM
+                             common_code
+                         WHERE
+                             group_code_no = 'FACILITY_TY'
+                     ),
+                     'Y'
+                 )
+    </insert>
+    <!-- 시설 정보 동적 수정 -->
+    <update id="updateFacility" parameterType="kr.or.ddit.domain.apt.mgmtOffice.facility.vo.FacilityVO">
+        UPDATE
+        facility
+        <set>
+            <if test="facilityNm != null"> facility_nm = #{facilityNm}, </if>
+            <if test="instlDt != null"> instl_dt = #{instlDt}, </if>
+            <if test="locCn != null"> loc_cn = #{locCn}, </if>
+            <if test="useYn != null"> use_yn = #{useYn}, </if>
+            <if test="fileGroupNo != null"> file_group_no = #{fileGroupNo}, </if>
+            <if test="facilityTyCd != null"> facility_ty_cd = #{facilityTyCd}, </if>
+        </set>
+        WHERE
+        facility_no = #{facilityNo}
+    </update>
+
+    <!-- 시설 유형 정정 가능 여부 확인 -->
+    <select id="selectFacilityLinkedCount" resultType="int">
+        SELECT (
+                   SELECT COUNT(*) FROM facility_contract WHERE facility_no = #{facilityNo}
+               ) + (
+                   SELECT COUNT(*) FROM facility_check_hstry WHERE facility_no = #{facilityNo}
+               ) + (
+                   SELECT COUNT(*) FROM meter_hstry WHERE facility_no = #{facilityNo}
+               ) AS linked_cnt
+        FROM
+            dual
+    </select>
+
+    <!-- 시설 유형 정정 -->
+    <update id="correctFacilityType" parameterType="kr.or.ddit.domain.apt.mgmtOffice.facility.vo.FacilityVO">
+        UPDATE
+            facility
+        SET
+            facility_ty_cd = #{facilityTyCd}
+        WHERE
+            facility_no = #{facilityNo}
+    </update>
+
+    <!-- 이용불가 시설 통계 -->
+    <select id="selectDisabledStats" resultType="map">
+        SELECT
+        COUNT(DISTINCT f.facility_no) AS disabled_total,
+        COUNT(DISTINCT CASE WHEN TRUNC(fch.mdf_dt) = TRUNC(SYSDATE) THEN fch.facility_no END) AS disabled_today
+        FROM
+        facility f
+        LEFT OUTER JOIN facility_check_hstry fch
+        ON fch.facility_no = f.facility_no
+        AND fch.chk_stts_cd = 'FAULT'
+        WHERE
+        f.use_yn = 'N'
+        AND f.apt_cmplex_no = <include refid="subqueryaptcmplexno"/>
+    </select>
+
+    <!-- 동 목록 조회 (위치 선택용) -->
+    <select id="selectDongList" resultType="kr.or.ddit.domain.apt.mgmtOffice.facility.vo.FacilityVO">
+        SELECT DISTINCT
+        dong_no,
+        dong_nm
+        FROM
+        apt_unit
+        WHERE
+        apt_cmplex_no = <include refid="subqueryaptcmplexno"/>
+        AND dong_no IS NOT NULL
+        ORDER BY
+        dong_no
+    </select>
+
+    <!-- 시설 위치 하위 목록 조회 (동/층/호) -->
+    <select id="selectFacilityUnitList" resultType="kr.or.ddit.domain.apt.mgmtOffice.facility.dto.FacilityLocationDTO">
+        SELECT
+            dong_no,
+            dong_nm
+        FROM
+            apt_unit
+        WHERE
+            apt_cmplex_no = #{aptCmplexNo}
+        ORDER BY
+            dong_nm
+    </select>
+
+    <select id="selectFacilityFloorList" resultType="kr.or.ddit.domain.apt.mgmtOffice.facility.dto.FacilityLocationDTO">
+        SELECT DISTINCT
+            floor
+        FROM
+            apt_detail
+        WHERE
+            dong_no = #{dongNo}
+        ORDER BY
+            floor
+    </select>
+
+    <select id="selectFacilityRoomList" resultType="kr.or.ddit.domain.apt.mgmtOffice.facility.dto.FacilityLocationDTO">
+        SELECT
+            ho_no,
+            ho
+        FROM
+            apt_detail
+        WHERE
+            dong_no = #{dongNo}
+          AND floor = #{floor}
+        ORDER BY
+            ho
+    </select>
+
+    <!-- //** 수정: 시설 사진 삭제 전 Google Drive ID 확인용 단건 조회 SQL 추가 -->
+    <select id="selectFacilityFile" resultMap="attachFileResultMap">
+        SELECT
+            *
+        FROM
+            attach_file
+        WHERE
+            file_group_no = #{fileGroupNo}
+          AND file_save_uuid = #{fileSaveUuid}
+    </select>
+
+    <!-- 첨부파일 상세/목록 조회 -->
+    <select id="selectFacilityFileList" resultMap="attachFileResultMap">
+        SELECT
+            *
+        FROM
+            attach_file
+        WHERE
+            file_group_no = #{fileGroupNo}
+        ORDER BY
+            file_sort_order,
+            reg_dt
+    </select>
+
+    <!-- //** 수정: 시설 사진 삭제 후 ATTACH_FILE 레코드 삭제 SQL 추가 -->
+    <delete id="deleteFacilityFile">
+        DELETE FROM
+            attach_file
+        WHERE
+            file_group_no = #{fileGroupNo}
+          AND file_save_uuid = #{fileSaveUuid}
+    </delete>
+
+    <!-- 시설 활성여부 단독 변경 -->
+    <update id="updateFacilityUseYn" parameterType="kr.or.ddit.domain.apt.mgmtOffice.facility.vo.FacilityVO">
+        UPDATE
+            facility
+        SET
+            use_yn = #{useYn}
+        WHERE
+            facility_no = #{facilityNo}
+    </update>
+
+</mapper>

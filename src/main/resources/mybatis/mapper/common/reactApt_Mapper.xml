@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.common.api.react.mapper.IReactAptMapper">
+    <insert id="insertSbmsnDoc">
+        INSERT INTO SBMSN_DOC( SBMSN_DOC_NO
+                             , SBMSN_DOC_TY_CD
+                             , REG_DT
+                             , ATCH_FILE_ID)
+        VALUES ( #{sbmsnDocNo}
+               , #{sbmsnDocTyCd}
+               , SYSDATE
+               , #{atchFileId})
+    </insert>
+
+    <insert id="insertRentCtrt">
+
+        <selectKey
+                keyProperty="rentCtrtNo"
+                resultType="string"
+                order="BEFORE">
+
+            SELECT
+            TO_CHAR(SYSDATE, 'YYYYMMDD')
+            || '_OFFLINE_'
+            || LPAD(SEQ_RENT_CTRT.NEXTVAL, 5, '0')
+            FROM DUAL
+
+        </selectKey>
+
+        INSERT INTO RENT_CTRT (
+
+        RENT_CTRT_NO
+        ,RENT_LSTG_NO
+        ,MVIN_DT
+        ,MVOUT_DT
+        ,REG_DT
+        ,CTRT_STTS_CD
+        ,CTRT_APRV_DT
+        ,CTRT_AMT
+        ,MID_PAY_AMT
+        ,BAL_AMT
+        ,DPST_AMT
+        ,MTHLY_RENT_AMT
+        ,RENTOR_NM
+        ,RENTOR_TELNO
+        ,AGNT_NM
+        ,AGNT_TELNO
+        ,SPCL_STPLTN_CN
+        ,SBMSN_DOC_NO
+
+        ) VALUES (
+        #{rentCtrtNo}
+        ,#{rentLstgNo}
+        ,TO_DATE(#{mvinDt}, 'YYYY-MM-DD')
+        ,TO_DATE(#{mvoutDt}, 'YYYY-MM-DD')
+        ,SYSDATE
+        ,'APPROVED'
+        ,SYSDATE
+        ,#{ctrtAmt}
+        ,#{midPayAmt}
+        ,#{balAmt}
+        ,#{dpstAmt}
+        ,#{mthlyRentAmt}
+        ,#{rentorNm}
+        ,#{rentorTelno}
+        ,#{agntNm}
+        ,#{agntTelno}
+        ,#{spclStpltnCn}
+        ,#{sbmsnDocNo}
+        )
+    </insert>
+
+    <insert id="insertCtrtMgr">
+        INSERT INTO CTRT_MGR (
+            CTRT_MGR_NO
+            , USER_NO
+            , MGR_ASGN_DT
+            , CHG_YN
+            , RENT_CTRT_NO
+        )VALUES (
+            SEQ_CTRT_MGR.nextval
+            ,#{userNo}
+            ,SYSDATE
+            ,'N'
+            , #{rentCtrtNo}
+            )
+    </insert>
+
+    <update id="updateRentListingStatus">
+        UPDATE RENT_LISTING
+        SET DEAL_STTS_CD = 'CMP'
+        WHERE RENT_LSTG_NO = #{rentLstgNo}
+    </update>
+
+    <!-- 아파트 검색 -->
+    <select id="searchApartment" resultType="kr.or.ddit.domain.apt.main.vo.AptComplexVO"
+    >
+        SELECT DISTINCT
+
+        AC.APT_CMPLEX_NO
+        , AC.APT_CMPLEX_NM
+        , AC.DOROJUSO
+
+        FROM RENT_LISTING RL
+
+        INNER JOIN APT_DETAIL AD
+        ON AD.HO_NO = RL.HO_NO
+
+        INNER JOIN APT_UNIT AU
+        ON AU.DONG_NO = AD.DONG_NO
+
+        INNER JOIN APT_COMPLEX AC
+        ON AC.APT_CMPLEX_NO = AU.APT_CMPLEX_NO
+
+        WHERE RL.RCRT_LSTG_STTS_CD = 'GENERAL'
+        <if test="keyword != null and keyword != ''">
+            AND UPPER(AC.APT_CMPLEX_NM)
+            LIKE '%' || UPPER(#{keyword}) || '%'
+        </if>
+        ORDER BY AC.APT_CMPLEX_NM
+        OFFSET #{startRow} ROWS
+        FETCH NEXT #{size} ROWS ONLY
+
+    </select>
+
+    <!-- 전체 개수 -->
+    <select id="countApartment" resultType="int">
+
+        SELECT COUNT(DISTINCT AC.APT_CMPLEX_NO)
+
+        FROM RENT_LISTING RL
+
+        INNER JOIN APT_DETAIL AD
+        ON AD.HO_NO = RL.HO_NO
+
+        INNER JOIN APT_UNIT AU
+        ON AU.DONG_NO = AD.DONG_NO
+
+        INNER JOIN APT_COMPLEX AC
+        ON AC.APT_CMPLEX_NO = AU.APT_CMPLEX_NO
+
+        WHERE RL.RCRT_LSTG_STTS_CD = 'GENERAL'
+
+        <if test="keyword != null and keyword != ''">
+            AND UPPER(AC.APT_CMPLEX_NM)
+            LIKE '%' || UPPER(#{keyword}) || '%'
+        </if>
+
+    </select>
+
+    <select id="getDongList" resultType="map">
+
+        SELECT DISTINCT AU.DONG_NO
+                      , AU.DONG_NM
+
+        FROM RENT_LISTING RL
+                 INNER JOIN APT_DETAIL AD
+                            ON AD.HO_NO = RL.HO_NO
+                 INNER JOIN APT_UNIT AU
+                            ON AU.DONG_NO = AD.DONG_NO
+        WHERE RL.RCRT_LSTG_STTS_CD = 'GENERAL'
+          AND RL.DEAL_STTS_CD = 'AVL'
+          AND AU.APT_CMPLEX_NO = #{aptCmplexNo}
+        ORDER BY AU.DONG_NO
+
+    </select>
+
+    <select
+            id="getHoList"
+            resultType="map"
+    >
+
+        SELECT DISTINCT AD.HO_NO
+                      , AD.HO
+
+        FROM RENT_LISTING RL
+
+                 INNER JOIN APT_DETAIL AD
+                            ON AD.HO_NO = RL.HO_NO
+
+                 INNER JOIN APT_UNIT AU
+                            ON AU.DONG_NO = AD.DONG_NO
+
+        WHERE RL.RCRT_LSTG_STTS_CD = 'GENERAL'
+          AND AU.APT_CMPLEX_NO = #{aptCmplexNo}
+          AND AU.DONG_NO = #{dongNo}
+          AND RL.DEAL_STTS_CD = 'AVL'
+        ORDER BY AD.HO_NO
+
+    </select>
+
+    <select id="getRentListingDetail" resultType="map">
+
+        SELECT RL.RENT_LSTG_NO
+             , RL.RENT_TYPE_CD
+             , RL.DPST_AMT
+             , RL.MTHLY_RENT_AMT
+             , RL.RENT_TTL
+             , RL.RENT_LSTG_CN
+             , RL.MVIN_PSBL_DT
+
+        FROM RENT_LISTING RL
+
+        WHERE RL.HO_NO = #{hoNo}
+          AND RL.DEAL_STTS_CD = 'AVL'
+    </select>
+
+    <select id="getRequiredDocs" resultType="map">
+
+        SELECT RCD.SBMSN_DOC_TY_CD
+        FROM RENT_CTRT_DOC RCD
+        WHERE RCD.RENT_LSTG_NO = #{rentLstgNo}
+
+    </select>
+    <select id="getSeqSbmsnDoc" resultType="java.lang.String">
+        SELECT SEQ_SBMSN_DOC.nextval
+        FROM dual
+    </select>
+
+</mapper>

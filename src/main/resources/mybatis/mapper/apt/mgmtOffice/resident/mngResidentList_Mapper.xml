@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.resident.mapper.IMngResidentListMapper">
+
+    <resultMap id="residentListMap" type="kr.or.ddit.domain.apt.mgmtOffice.resident.vo.MngResidentListVO">
+        <result property="userNo" column="userNo"/>
+        <result property="userId" column="userId"/>
+        <result property="userNm" column="userNm"/>
+        <result property="telno" column="telno"/>
+        <result property="userEml" column="userEml"/>
+        <result property="mgmtOfcNo" column="mgmtOfcNo"/>
+        <result property="aptCmplexNo" column="aptCmplexNo"/>
+        <result property="complexName" column="complexName"/>
+        <result property="dong" column="dong"/>
+        <result property="ho" column="ho"/>
+        <result property="householdType" column="householdType"/>
+        <result property="moveStatus" column="moveStatus"/>
+        <result property="moveInDate" column="moveInDate"/>
+        <result property="moveOutDate" column="moveOutDate"/>
+        <result property="headYn" column="headYn"/>
+        <result property="inoutCd" column="inoutCd"/>
+    </resultMap>
+
+    <sql id="residentListWhere">
+        <where>
+            MO.MGMT_OFC_NO = #{mgmtOfcNo}
+
+            <if test="complexName != null and complexName != ''">
+                AND AC.APT_CMPLEX_NM = #{complexName}
+            </if>
+
+            <if test="dong != null and dong != ''">
+                AND AD.DONG_NO LIKE '%' || #{dong} || '%'
+            </if>
+
+            <if test="ho != null and ho != ''">
+                AND AD.HO LIKE '%' || #{ho} || '%'
+            </if>
+
+            <if test="householdType != null and householdType != ''">
+                <choose>
+                    <when test="householdType == 'HEAD'">
+                        AND HH.HEAD_YN = 'Y'
+                    </when>
+                    <when test="householdType == 'MEMBER'">
+                        AND HH.HEAD_YN = 'N'
+                    </when>
+                </choose>
+            </if>
+
+            <if test="moveStatus != null and moveStatus != ''">
+                AND HH.INOUT_CD = #{moveStatus}
+            </if>
+
+            <if test="keyword != null and keyword != ''">
+                AND (
+                    M.USER_NO LIKE '%' || #{keyword} || '%'
+                    OR M.USER_NM LIKE '%' || #{keyword} || '%'
+                    OR M.USER_TELNO LIKE '%' || #{keyword} || '%'
+                    OR M.USER_EML LIKE '%' || #{keyword} || '%'
+                    OR AD.HO LIKE '%' || #{keyword} || '%'
+                    OR AD.DONG_NO LIKE '%' || #{keyword} || '%'
+                )
+            </if>
+
+            <if test="moveInStart != null and moveInStart != ''">
+                AND HH.MOVE_IN_DT &gt;= TO_DATE(#{moveInStart}, 'YYYY-MM-DD')
+            </if>
+
+            <if test="moveInEnd != null and moveInEnd != ''">
+                AND HH.MOVE_IN_DT &lt; TO_DATE(#{moveInEnd}, 'YYYY-MM-DD') + 1
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectResidentList" parameterType="kr.or.ddit.domain.apt.mgmtOffice.resident.dto.MngResidentListSearchDTO"
+            resultMap="residentListMap">
+        SELECT
+            M.USER_NO AS userNo,
+            M.USER_ID AS userId,
+            M.USER_NM AS userNm,
+            M.USER_TELNO AS telno,
+            M.USER_EML AS userEml,
+            MO.MGMT_OFC_NO AS mgmtOfcNo,
+            AC.APT_CMPLEX_NO AS aptCmplexNo,
+            AC.APT_CMPLEX_NM AS complexName,
+            AD.DONG_NO AS dong,
+            AD.HO AS ho,
+            CASE WHEN HH.HEAD_YN = 'Y' THEN 'HEAD' ELSE 'MEMBER' END AS householdType,
+            HH.INOUT_CD AS moveStatus,
+            TO_CHAR(HH.MOVE_IN_DT, 'YYYY-MM-DD') AS moveInDate,
+            TO_CHAR(HH.MOVE_OUT_DT, 'YYYY-MM-DD') AS moveOutDate,
+            HH.HEAD_YN AS headYn,
+            HH.INOUT_CD AS inoutCd
+        FROM HSHLD_HEAD HH
+                 INNER JOIN MEMBER M ON M.USER_NO = HH.USER_NO
+                 INNER JOIN APT_DETAIL AD ON AD.HO_NO = HH.HO_NO
+                 INNER JOIN APT_UNIT AU ON AU.DONG_NO = AD.DONG_NO
+                 INNER JOIN APT_COMPLEX AC ON AC.APT_CMPLEX_NO = AU.APT_CMPLEX_NO
+                 INNER JOIN MGMT_OFFICE MO ON MO.APT_CMPLEX_NO = AC.APT_CMPLEX_NO
+        <include refid="residentListWhere"/>
+        ORDER BY AD.DONG_NO, AD.HO, HH.MOVE_IN_DT DESC, M.USER_NM
+    </select>
+
+    <select id="selectResidentDetail" resultMap="residentListMap">
+        SELECT
+            M.USER_NO AS userNo,
+            M.USER_ID AS userId,
+            M.USER_NM AS userNm,
+            M.USER_TELNO AS telno,
+            M.USER_EML AS userEml,
+            MO.MGMT_OFC_NO AS mgmtOfcNo,
+            AC.APT_CMPLEX_NO AS aptCmplexNo,
+            AC.APT_CMPLEX_NM AS complexName,
+            AD.DONG_NO AS dong,
+            AD.HO AS ho,
+            CASE WHEN HH.HEAD_YN = 'Y' THEN 'HEAD' ELSE 'MEMBER' END AS householdType,
+            HH.INOUT_CD AS moveStatus,
+            TO_CHAR(HH.MOVE_IN_DT, 'YYYY-MM-DD') AS moveInDate,
+            TO_CHAR(HH.MOVE_OUT_DT, 'YYYY-MM-DD') AS moveOutDate,
+            HH.HEAD_YN AS headYn,
+            HH.INOUT_CD AS inoutCd
+        FROM HSHLD_HEAD HH
+                 INNER JOIN MEMBER M ON M.USER_NO = HH.USER_NO
+                 INNER JOIN APT_DETAIL AD ON AD.HO_NO = HH.HO_NO
+                 INNER JOIN APT_UNIT AU ON AU.DONG_NO = AD.DONG_NO
+                 INNER JOIN APT_COMPLEX AC ON AC.APT_CMPLEX_NO = AU.APT_CMPLEX_NO
+                 INNER JOIN MGMT_OFFICE MO ON MO.APT_CMPLEX_NO = AC.APT_CMPLEX_NO
+        WHERE MO.MGMT_OFC_NO = #{mgmtOfcNo}
+          AND M.USER_NO = #{userNo}
+    </select>
+
+</mapper>

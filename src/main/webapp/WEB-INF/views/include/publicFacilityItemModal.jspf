@@ -1,0 +1,345 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%--
+    publicFacilityItemModal.jspf
+    편의시설 자원 모달 HTML (공용 include)
+
+    사용 페이지:
+      - publicFacilityList.jsp   : 아이템 탭 상세/수정/등록
+      - publicFacilityDetail.jsp : 자원 인라인 편집 대체 (선택)
+
+    연결 JS:
+      - publicFacilityItemModal.js (PublicFacilityItemModal 전역 객체)
+
+    include 위치:
+      </body> 바로 위
+      + publicFacilityItemModal.js script 태그도 함께
+--%>
+<%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags" %>
+
+<style>
+    /* ============================================================
+       편의시설 자원 모달
+    ============================================================ */
+    #pfItemModal {
+        display:none;
+        position:fixed; inset:0; z-index:1100;
+        background:rgba(0,0,0,.45);
+        align-items:center; justify-content:center;
+    }
+    #pfItemModal.is-open { display:flex; }
+
+    #pfItemModal .pf-modal-box {
+        background:#fff;
+        border-radius:8px;
+        width:520px; max-width:calc(100vw - 32px);
+        max-height:calc(100vh - 40px);
+        display:flex; flex-direction:column;
+        box-shadow:0 8px 32px rgba(0,0,0,.18);
+        overflow:hidden;
+    }
+
+    /* 헤더 */
+    #pfItemModal .pf-modal-header {
+        display:flex; align-items:center; justify-content:space-between;
+        padding:14px 18px 12px;
+        border-bottom:1px solid #d7dce2;
+        flex-shrink:0;
+    }
+    #pfItemModal .pf-modal-title {
+        margin:0; font-size:14px; font-weight:800; color:#1a1f1b;
+        display:flex; align-items:center; gap:6px;
+    }
+    #pfItemModal .pf-modal-title .material-symbols-rounded { font-size:17px; color:#2e5c38; }
+    #pfItemModal .pf-modal-close {
+        background:none; border:none; cursor:pointer;
+        color:#8a9a8e; font-size:22px; line-height:1; padding:2px 4px;
+    }
+    #pfItemModal .pf-modal-close:hover { color:#1a1f1b; }
+
+    /* 바디 */
+    #pfItemModal .pf-modal-body {
+        padding:16px 18px;
+        overflow-y:auto;
+        flex:1;
+        display:flex; flex-direction:column; gap:14px;
+    }
+
+    /* 섹션 */
+    #pfItemModal .pf-section-title {
+        font-size:11px; font-weight:800; color:#8a9a8e;
+        margin-bottom:8px; display:flex; align-items:center; gap:4px;
+    }
+    #pfItemModal .pf-section-title .material-symbols-rounded { font-size:14px; color:#2e5c38; }
+
+    /* 편의시설 검색 */
+    #pfItemModal .pf-facility-search-wrap { position:relative; }
+    #pfItemModal .pf-facility-search-input-wrap {
+        display:flex; align-items:center;
+        border:1px solid #d7dce2; border-radius:4px;
+        background:#fff; overflow:hidden;
+    }
+    #pfItemModal .pf-facility-search-input-wrap:focus-within {
+        border-color:#2e5c38;
+        box-shadow:0 0 0 2px rgba(46,92,56,.08);
+    }
+    #pfItemModal .pf-facility-prefix {
+        display:flex; align-items:center;
+        height:32px; padding:0 8px;
+        font-size:12px; font-weight:700; color:#2e5c38;
+        background:#e8f0ea; border-right:1px solid #d7dce2;
+        white-space:nowrap; flex-shrink:0;
+    }
+    #pfItemModal .pf-facility-search-input {
+        flex:1; min-width:0; height:32px;
+        border:none; outline:none; box-shadow:none;
+        font-size:12px; padding:0 8px;
+        background:transparent;
+    }
+    #pfItemModal .pf-suggest-box {
+        display:none; position:absolute; left:0; right:0; top:100%;
+        z-index:10; background:#fff;
+        border:1px solid #d7dce2; border-radius:4px;
+        box-shadow:0 4px 12px rgba(0,0,0,.1);
+        max-height:180px; overflow-y:auto;
+        margin-top:2px;
+    }
+    #pfItemModal .pf-suggest-box.is-open { display:block; }
+    #pfItemModal .pf-suggest-item {
+        padding:7px 12px; font-size:12px; cursor:pointer;
+        display:flex; align-items:center; justify-content:space-between;
+        border-bottom:1px solid #f0f2f4;
+    }
+    #pfItemModal .pf-suggest-item:last-child { border-bottom:none; }
+    #pfItemModal .pf-suggest-item:hover { background:#e8f0ea; }
+    #pfItemModal .pf-suggest-main { font-weight:700; color:#1a1f1b; }
+    #pfItemModal .pf-suggest-sub  { font-size:11px; color:#8a9a8e; }
+    #pfItemModal .pf-suggest-empty { padding:10px 12px; font-size:12px; color:#8a9a8e; text-align:center; }
+
+    /* 편의시설 정보 요약 */
+    #pfItemModal .pf-facility-info {
+        display:flex; align-items:center; justify-content:space-between; gap:14px;
+        min-height:32px; padding:7px 10px;
+        background:#fbfcfd; border:1px solid #d7dce2; border-radius:4px;
+        color:#6b7a6e; font-size:11px; line-height:1.4;
+        overflow:hidden;
+    }
+    #pfItemModal .pf-info-left { display:flex; align-items:center; gap:8px; min-width:0; flex:1; overflow:hidden; }
+    #pfItemModal .pf-info-right { display:flex; align-items:center; flex-shrink:0; }
+    #pfItemModal .pf-info-pair { display:inline-flex; align-items:center; gap:4px; min-width:0; white-space:nowrap; }
+    #pfItemModal .pf-info-label { color:#8a9a8e; font-weight:500; flex-shrink:0; }
+    #pfItemModal .pf-info-value { color:#4a5c4e; font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    #pfItemModal .pf-info-separator { width:1px; height:11px; background:#e1e5e9; flex-shrink:0; }
+    #pfItemModal .pf-info-pair.is-name { min-width:0; }
+
+    /* 자원 정보 박스 */
+    #pfItemModal .pf-item-box {
+        padding:12px;
+        border:1px solid #d7dce2;
+        border-radius:4px;
+        background:#fbfcfd;
+    }
+
+    /* 선택 자원 필드 (상세/수정) */
+    #pfItemModal .pf-field { display:flex; flex-direction:column; gap:5px; }
+    #pfItemModal .pf-field label { font-size:11px; font-weight:800; color:#8a9a8e; }
+    #pfItemModal .pf-field label .req { color:#ef4444; margin-left:2px; }
+    #pfItemModal .pf-input {
+        height:32px; font-size:12px;
+        border:1px solid #d7dce2; border-radius:4px;
+        padding:0 10px; box-sizing:border-box; width:100%;
+        background:#fff;
+    }
+    #pfItemModal .pf-input:focus { border-color:#2e5c38; outline:none; box-shadow:0 0 0 2px rgba(46,92,56,.08); }
+    #pfItemModal .pf-input[readonly] { background:#f3f5f6; cursor:default; }
+    #pfItemModal .pf-select {
+        height:32px; font-size:12px;
+        border:1px solid #d7dce2; border-radius:4px;
+        padding:0 8px; box-sizing:border-box; width:100%;
+        background:#fff;
+    }
+    #pfItemModal .pf-select:focus { border-color:#2e5c38; outline:none; }
+    #pfItemModal .pf-select:disabled { background:#f3f5f6; cursor:default; color:#1a1f1b; opacity:1; }
+
+    #pfItemModal .pf-field-row { display:grid; grid-template-columns:1fr 140px 32px; gap:8px; align-items:end; }
+    #pfItemModal .pf-field-row.no-delete { grid-template-columns:1fr 140px; }
+
+    /* 자원 행 추가/삭제 */
+    #pfItemModal .pf-item-rows { display:flex; flex-direction:column; gap:8px; }
+    #pfItemModal .pf-add-row-btn {
+        display:flex; align-items:center; justify-content:center; gap:4px;
+        height:32px; border:1px dashed #2e5c38; border-radius:4px;
+        background:none; color:#2e5c38; font-size:12px; cursor:pointer;
+        width:100%; margin-top:8px;
+    }
+    #pfItemModal .pf-add-row-btn:hover { background:#e8f0ea; }
+    #pfItemModal .pf-del-btn {
+        height:32px; width:32px; border:1px solid #fca5a5;
+        border-radius:4px; background:#fff; color:#b42318;
+        cursor:pointer; display:flex; align-items:center; justify-content:center;
+        flex-shrink:0;
+    }
+    #pfItemModal .pf-del-btn:hover { background:#fee2e2; }
+    #pfItemModal .pf-del-btn .material-symbols-rounded { font-size:16px; }
+
+    /* 형제 자원 목록 */
+    #pfItemModal .pf-sibling-list {
+        display:flex; flex-direction:column; gap:0;
+        border:1px solid #d7dce2; border-radius:4px;
+        overflow:hidden; max-height:160px; overflow-y:auto;
+    }
+    #pfItemModal .pf-sibling-row {
+        display:grid; grid-template-columns:130px 1fr 90px;
+        padding:7px 10px; font-size:12px;
+        border-bottom:1px solid #edf0f2;
+        align-items:center;
+    }
+    #pfItemModal .pf-sibling-row:last-child { border-bottom:none; }
+    #pfItemModal .pf-sibling-row.is-current { background:#e8f0ea; font-weight:700; }
+    #pfItemModal .pf-sibling-no { font-size:11px; color:#8a9a8e; font-family:monospace; }
+    #pfItemModal .pf-sibling-nm { color:#1a1f1b; }
+    #pfItemModal .pf-sibling-stts { text-align:right; }
+
+    /* 상태 배지 */
+    #pfItemModal .stts-badge { display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; }
+    #pfItemModal .stts-open   { background:#dceee0; color:#1f7a3f; }
+    #pfItemModal .stts-use    { background:#dbeafe; color:#1e3a5f; }
+    #pfItemModal .stts-repair { background:#fef9c3; color:#854d0e; }
+    #pfItemModal .stts-close  { background:#fee2e2; color:#b42318; }
+
+    /* 푸터 */
+    #pfItemModal .pf-modal-footer {
+        display:flex; justify-content:flex-end; gap:8px;
+        padding:12px 18px 14px;
+        border-top:1px solid #d7dce2;
+        flex-shrink:0;
+    }
+    #pfItemModal .pf-btn {
+        height:32px; padding:0 14px; font-size:12px;
+        border-radius:4px; cursor:pointer; font-weight:700;
+        border:1px solid #d7dce2; background:#fff; color:#4a5c4e;
+    }
+    #pfItemModal .pf-btn:hover { border-color:#2e5c38; color:#2e5c38; }
+    #pfItemModal .pf-btn-primary { background:#2e5c38; border-color:#2e5c38; color:#fff; }
+    #pfItemModal .pf-btn-primary:hover { background:#1f4027; }
+    #pfItemModal .pf-btn-danger  { background:#ef4444; border-color:#ef4444; color:#fff; }
+    #pfItemModal .pf-btn-danger:hover { background:#dc2626; }
+    #pfItemModal .pf-btn.pf-btn-save { background:#2563eb; border-color:#2563eb; color:#fff; }
+    #pfItemModal .pf-btn.pf-btn-save:hover { background:#1d4ed8; border-color:#1d4ed8; color:#fff; }
+</style>
+
+<%-- ============================================================
+     모달 HTML
+============================================================ --%>
+<div id="pfItemModal">
+    <div class="pf-modal-box">
+
+        <%-- 헤더 --%>
+        <div class="pf-modal-header">
+            <h3 class="pf-modal-title">
+                <span class="material-symbols-rounded">inventory_2</span>
+                <span id="pfModalTitle">편의시설 자원</span>
+            </h3>
+            <button type="button" class="pf-modal-close" id="pfModalCloseBtn">×</button>
+        </div>
+
+        <%-- 바디 --%>
+        <div class="pf-modal-body">
+
+            <%-- 편의시설 검색 (등록 + cmnFacilityNo 없을 때만 표시) --%>
+            <div id="pfFacilitySearchSection" style="display:none;">
+                <div class="pf-section-title">
+                    <span class="material-symbols-rounded">search</span>편의시설 검색
+                </div>
+                <div class="pf-facility-search-wrap">
+                    <div class="pf-facility-search-input-wrap">
+                        <span class="pf-facility-prefix">CMN</span>
+                        <input type="text" class="pf-facility-search-input"
+                               id="pfFacilitySearchInput" placeholder="편의시설번호 또는 편의시설명 입력" autocomplete="off">
+                    </div>
+                    <div class="pf-suggest-box" id="pfFacilitySuggestBox"></div>
+                </div>
+            </div>
+
+            <%-- 편의시설 정보 --%>
+            <div id="pfFacilityInfoSection" style="display:none;">
+                <div class="pf-section-title">
+                    <span class="material-symbols-rounded">meeting_room</span>편의시설 정보
+                </div>
+                <div class="pf-facility-info">
+                    <div class="pf-info-left">
+                        <span class="pf-info-pair">
+                            <span class="pf-info-label">편의시설번호</span>
+                            <span class="pf-info-value" id="pfInfoCmnFacilityNo">-</span>
+                        </span>
+                        <span class="pf-info-separator"></span>
+                        <span class="pf-info-pair is-name">
+                            <span class="pf-info-label">편의시설</span>
+                            <span class="pf-info-value" id="pfInfoCmnFacilityNm">-</span>
+                        </span>
+                    </div>
+                    <div class="pf-info-right">
+                        <span class="pf-info-pair">
+                            <span class="pf-info-label">시설번호</span>
+                            <span class="pf-info-value" id="pfInfoFacilityNo">-</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <%-- 자원 정보 (상세/수정) --%>
+            <div id="pfItemInfoSection" style="display:none;">
+                <div class="pf-section-title">
+                    <span class="material-symbols-rounded">inventory_2</span>자원 정보
+                </div>
+                <div class="pf-item-box">
+                    <input type="hidden" id="pfItemNo">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                        <div class="pf-field">
+                            <label>자원번호</label>
+                            <input type="text" class="pf-input" id="pfItemNoDisplay" readonly>
+                        </div>
+                        <div class="pf-field">
+                            <label>상태 <span class="req">*</span></label>
+                            <select class="pf-select" id="pfItemStts">
+                                <option value="OPEN">사용가능</option>
+                                <option value="USE">사용중</option>
+                                <option value="REPAIR">점검중</option>
+                                <option value="CLOSE">사용중지</option>
+                            </select>
+                        </div>
+                        <div class="pf-field" style="grid-column:1/-1;">
+                            <label>자원명 <span class="req">*</span></label>
+                            <input type="text" class="pf-input" id="pfItemNm" placeholder="예) 러닝머신 1번">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <%-- 자원 등록 행 목록 (등록 모드) --%>
+            <div id="pfItemInsertSection" style="display:none;">
+                <div class="pf-section-title">
+                    <span class="material-symbols-rounded">add_box</span>등록할 자원
+                </div>
+                <div class="pf-item-box">
+                    <div class="pf-item-rows" id="pfItemRows"></div>
+                    <button type="button" class="pf-add-row-btn" id="pfAddRowBtn">
+                        <span class="material-symbols-rounded" style="font-size:16px;">add</span>자원 추가
+                    </button>
+                </div>
+            </div>
+
+            <%-- 같은 시설 자원 목록 --%>
+            <div id="pfSiblingSection" style="display:none;">
+                <div class="pf-section-title">
+                    <span class="material-symbols-rounded">list</span>같은 시설 자원 목록
+                </div>
+                <div class="pf-sibling-list" id="pfSiblingList"></div>
+            </div>
+
+        </div>
+
+        <%-- 푸터 --%>
+        <div class="pf-modal-footer" id="pfModalFooter"></div>
+
+    </div>
+</div>

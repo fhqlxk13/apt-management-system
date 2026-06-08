@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.main.mapper.IMgmtOfficeMapper">
+
+    <select id="selectMgmtOfficeByManagerUserNo"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.main.vo.MgmtOfficeVO">
+
+        SELECT
+
+            MO.MGMT_OFC_NO,
+            MO.APT_CMPLEX_NO,
+            MO.MGMT_OFC_NM,
+            MO.MGMT_OFC_TELNO,
+            MO.USE_YN,
+
+            AC.APT_CMPLEX_NM,
+            AC.SIDO_NM,
+            AC.SIGUNGU_NM,
+            AC.EMD_NM,
+            AC.DOROJUSO,
+            AC.UNIT_CNT,
+            AC.DONG_CNT,
+            AC.BLD_YR
+
+        FROM MEMBER MB
+
+                 INNER JOIN MANAGER M
+                            ON MB.USER_NO = M.USER_NO
+
+                 INNER JOIN MGMT_OFFICE MO
+                            ON M.MGMT_OFC_NO = MO.MGMT_OFC_NO
+
+                 INNER JOIN APT_COMPLEX AC
+                            ON MO.APT_CMPLEX_NO = AC.APT_CMPLEX_NO
+
+        WHERE MB.USER_ID = #{userId}
+          AND MO.USE_YN = 'Y'
+
+    </select>
+
+
+
+    <select id="selectMgmtOfficeByMgmtOfcNo"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.main.vo.MgmtOfficeVO">
+
+        SELECT
+
+            MO.MGMT_OFC_NO,
+            MO.APT_CMPLEX_NO,
+            MO.MGMT_OFC_NM,
+            MO.MGMT_OFC_TELNO,
+            MO.USE_YN,
+
+            AC.APT_CMPLEX_NM,
+            AC.SIDO_NM,
+            AC.SIGUNGU_NM,
+            AC.EMD_NM,
+            AC.DOROJUSO,
+            AC.UNIT_CNT,
+            AC.DONG_CNT,
+            AC.BLD_YR
+
+        FROM MGMT_OFFICE MO
+
+                 INNER JOIN APT_COMPLEX AC
+                            ON MO.APT_CMPLEX_NO = AC.APT_CMPLEX_NO
+
+        WHERE MO.MGMT_OFC_NO = #{mgmtOfcNo}
+          AND MO.USE_YN = 'Y'
+
+    </select>
+
+    <select id="selectOneMgmtOffice" resultType="kr.or.ddit.domain.apt.mgmtOffice.main.vo.MgmtOfficeVO" parameterType="string">
+        select *
+        from mgmt_office
+        where apt_cmplex_no = #{aptCmplexNo}
+    </select>
+
+    <!--    <select id="selectAllMgmtOffice" resultType="kr.or.ddit.domain.apt.mgmtOffice.dto.MgmtOfficeVO">
+            SELECT
+                MO.MGMT_OFC_NO,
+                MO.MGMT_OFC_NM,
+                AC.APT_CMPLEX_NM
+            FROM MGMT_OFFICE MO
+                     INNER JOIN APT_COMPLEX AC
+                                ON MO.APT_CMPLEX_NO = AC.APT_CMPLEX_NO
+            WHERE MO.USE_YN = 'Y'
+            ORDER BY MO.MGMT_OFC_NM
+        </select>-->
+
+    <!-- ADMIN 관리사무소 모달 전체 건수 조회 -->
+    <select id="selectAdminMgmtOfficeCount"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.main.vo.ManagerPaginationVO"
+            resultType="int">
+        SELECT COUNT(*)
+        FROM mgmt_office mo
+        INNER JOIN apt_complex ac
+        ON mo.apt_cmplex_no = ac.apt_cmplex_no
+        WHERE mo.use_yn = 'Y'
+        <if test="sidoNm != null and sidoNm != ''">
+            AND ac.sido_nm = #{sidoNm}
+        </if>
+        <if test="sigunguNm != null and sigunguNm != ''">
+            AND ac.sigungu_nm = #{sigunguNm}
+        </if>
+        <!-- 화면에 노출되는 관리사무소명/단지명 기준 검색 -->
+        <if test="searchWord != null and searchWord != ''">
+            AND (
+            UPPER(mo.mgmt_ofc_nm) LIKE '%' || UPPER(TRIM(#{searchWord})) || '%'
+            OR UPPER(ac.apt_cmplex_nm) LIKE '%' || UPPER(TRIM(#{searchWord})) || '%'
+            )
+        </if>
+    </select>
+
+    <!-- ADMIN 관리사무소 모달 현재 페이지 목록 조회 -->
+    <select id="selectAdminMgmtOfficeList"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.main.vo.ManagerPaginationVO"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.main.vo.MgmtOfficeVO">
+        SELECT *
+        FROM (
+        SELECT ROWNUM rn
+        , a.*
+        FROM (
+        SELECT mo.mgmt_ofc_no
+        , mo.mgmt_ofc_nm
+        , ac.apt_cmplex_nm
+        , ac.sido_nm
+        , ac.sigungu_nm
+        , ac.dorojuso
+        FROM mgmt_office mo
+        INNER JOIN apt_complex ac
+        ON mo.apt_cmplex_no = ac.apt_cmplex_no
+        WHERE mo.use_yn = 'Y'
+        <if test="sidoNm != null and sidoNm != ''">
+            AND ac.sido_nm = #{sidoNm}
+        </if>
+        <if test="sigunguNm != null and sigunguNm != ''">
+            AND ac.sigungu_nm = #{sigunguNm}
+        </if>
+        <!-- 화면에 노출되는 관리사무소명/단지명 기준 검색 -->
+        <if test="searchWord != null and searchWord != ''">
+            AND (
+            UPPER(mo.mgmt_ofc_nm) LIKE '%' || UPPER(TRIM(#{searchWord})) || '%'
+            OR UPPER(ac.apt_cmplex_nm) LIKE '%' || UPPER(TRIM(#{searchWord})) || '%'
+            )
+        </if>
+        ORDER BY mo.mgmt_ofc_nm
+        ) a
+        WHERE ROWNUM &lt;= #{endRow}
+        )
+        WHERE rn &gt;= #{startRow}
+    </select>
+
+    <!-- ADMIN 관리사무소 모달 시도 목록 조회 -->
+    <select id="selectAdminMgmtOfficeSidoList" resultType="string">
+        SELECT DISTINCT ac.sido_nm
+        FROM mgmt_office mo
+                 INNER JOIN apt_complex ac
+                            ON mo.apt_cmplex_no = ac.apt_cmplex_no
+        WHERE mo.use_yn = 'Y'
+          AND ac.sido_nm IS NOT NULL
+        ORDER BY ac.sido_nm
+    </select>
+
+    <!-- ADMIN 관리사무소 모달 시군구 목록 조회 -->
+    <select id="selectAdminMgmtOfficeSigunguList"
+            parameterType="string"
+            resultType="string">
+        SELECT DISTINCT ac.sigungu_nm
+        FROM mgmt_office mo
+                 INNER JOIN apt_complex ac
+                            ON mo.apt_cmplex_no = ac.apt_cmplex_no
+        WHERE mo.use_yn = 'Y'
+          AND ac.sido_nm = #{sidoNm}
+          AND ac.sigungu_nm IS NOT NULL
+        ORDER BY ac.sigungu_nm
+    </select>
+
+    <select id="selectMgmtOfficeByAptCmplexNo"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.main.vo.MgmtOfficeVO">
+        SELECT MGMT_OFC_NO      AS mgmtOfcNo,
+               MGMT_OFC_NM      AS mgmtOfcNm,
+               MGMT_OFC_TELNO   AS mgmtOfcTelno,
+               APT_CMPLEX_NO    AS aptCmplexNo
+        FROM MGMT_OFFICE
+        WHERE APT_CMPLEX_NO = #{aptCmplexNo}
+    </select>
+
+    <select id="selectAptComplexNo"
+            parameterType="string"
+            resultType="string">
+
+        SELECT MO.APT_CMPLEX_NO
+        FROM MGMT_OFFICE MO
+        WHERE MO.MGMT_OFC_NO = #{mgmtOfcNo}
+
+    </select>
+
+
+
+
+
+</mapper>

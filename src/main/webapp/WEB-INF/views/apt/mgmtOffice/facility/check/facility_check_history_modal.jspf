@@ -1,0 +1,91 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%--
+    기존 점검 이력 상세 모달
+    - 왼쪽 이력 목록의 보기 버튼 클릭 시 해당 이력 1건만 표시함
+    - 협력업체/계약 정보와 점검 이력 상세를 표 단위로 분리함
+    - manager-common.js 기준 닫기 속성(data-modal-close)을 사용함
+--%>
+<div class="modal-overlay" id="historyDetailModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">점검 이력 상세</h3>
+            <button type="button" class="modal-close" data-modal-close>
+                <span class="material-symbols-rounded">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+
+            <%-- 협력업체/계약 정보: 이력이 어떤 주체와 계약 기준으로 등록되었는지 확인 --%>
+            <div class="modal-section">
+                <div class="modal-section-title">
+                    <span class="material-symbols-rounded">handshake</span>
+                    협력업체 · 계약 정보
+                </div>
+                <table class="info-compact">
+                    <tbody>
+                    <tr>
+                        <th>점검주체</th>
+                        <td><span id="modalOwnerType">-</span></td>
+                        <th>협력업체</th>
+                        <td><span id="modalPartnerNm">-</span></td>
+                    </tr>
+                    <tr>
+                        <th>계약번호</th>
+                        <td><span class="mono" id="modalContNo">-</span></td>
+                        <th>계약기간</th>
+                        <td><span id="modalContPeriod">-</span></td>
+                    </tr>
+                    <tr>
+                        <th>계약명</th>
+                        <td colspan="3"><span id="modalContNm">-</span></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <%-- 점검 이력 상세: 실제 이력 내용 확인 영역 --%>
+            <div class="modal-section">
+                <div class="modal-section-title">
+                    <span class="material-symbols-rounded">history</span>
+                    점검 이력 상세
+                </div>
+                <table class="info-compact">
+                    <tbody>
+                    <tr>
+                        <th>이력번호</th>
+                        <td><span class="mono" id="modalHistoryNo">-</span></td>
+                        <th>작업일자</th>
+                        <td><span id="modalHistoryDt">-</span></td>
+                    </tr>
+                    <tr>
+                        <th>처리과정번호</th>
+                        <td><span class="mono" id="modalCheckFlowNo">-</span></td>
+                        <th>점검상태</th>
+                        <td><span id="modalHistoryStts">-</span></td>
+                    </tr>
+                    <tr>
+                        <th>점검분류</th>
+                        <td><span id="modalHistoryCtgry">-</span></td>
+                        <th>작업유형</th>
+                        <td><span id="modalHistoryTy">-</span></td>
+                    </tr>
+                    <tr>
+                        <th>이용제한</th>
+                        <td><span id="modalUseRestrictYn">-</span></td>
+                        <th>제한일시</th>
+                        <td><span id="modalUseRestrictPeriod">-</span></td>
+                    </tr>
+                    <tr>
+                        <th>점검내용</th>
+                        <td colspan="3"><span id="modalHistoryCn">-</span></td>
+                    </tr>
+                    <tr>
+                        <th>비고</th>
+                        <td colspan="3"><span id="modalHistoryRmk">-</span></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

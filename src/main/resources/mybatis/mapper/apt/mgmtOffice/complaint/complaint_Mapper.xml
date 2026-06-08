@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.complaint.mapper.ManagerComplaintMapper">
+
+    <!-- 공통 검색조건 -->
+    <sql id="searchCondition">
+        WHERE c.apt_cmplex_no = #{searchVO.aptCmplexNo}
+        <if test="searchVO.cvplTyCd != null and searchVO.cvplTyCd != ''">
+            AND c.cvpl_ty_cd = #{searchVO.cvplTyCd}
+        </if>
+        <if test="searchVO.cvplSttsCd != null and searchVO.cvplSttsCd != ''">
+            <choose>
+                <when test="searchVO.cvplSttsCd == 'UNHANDLED'">
+                    AND c.cvpl_stts_cd IN ('APLY', 'RCPT', 'POCS')
+                </when>
+                <otherwise>
+                    AND c.cvpl_stts_cd = #{searchVO.cvplSttsCd}
+                </otherwise>
+            </choose>
+        </if>
+        <if test="searchVO.searchDateFrom != null and searchVO.searchDateFrom != ''">
+            AND c.cvpl_reg_dt &gt;= TO_DATE(#{searchVO.searchDateFrom}, 'YYYY-MM-DD')
+        </if>
+        <if test="searchVO.searchDateTo != null and searchVO.searchDateTo != ''">
+            AND c.cvpl_reg_dt &lt; TO_DATE(#{searchVO.searchDateTo}, 'YYYY-MM-DD') + 1
+        </if>
+        <if test="searchWord != null and searchWord != ''">
+            AND (
+            m.user_nm LIKE '%' || #{searchWord} || '%'
+            OR c.cvpl_ttl LIKE '%' || #{searchWord} || '%'
+            OR au.dong_nm || ' ' || ad.ho LIKE '%' || #{searchWord} || '%'
+            )
+        </if>
+    </sql>
+
+    <!-- 민원 목록 건수 조회 -->
+    <select id="selectComplaintCount" resultType="int">
+        SELECT COUNT(*)         /*kr.or.ddit.domain.apt.mgmtOffice.complaint.mapper.ManagerComplaintMapper.selectComplaintCount*/
+        FROM cvpl c
+        LEFT JOIN member m ON c.user_no = m.user_no
+        LEFT JOIN apt_detail ad ON c.ho_no = ad.ho_no
+        LEFT JOIN apt_unit au ON ad.dong_no = au.dong_no
+        <include refid="searchCondition"/>
+    </select>
+
+    <!-- 민원 목록 조회 (페이징) -->
+    <select id="selectComplaintList" resultType="kr.or.ddit.domain.apt.mgmtOffice.complaint.dto.ManagerComplaintDTO">
+        SELECT *                /*kr.or.ddit.domain.apt.mgmtOffice.complaint.mapper.ManagerComplaintMapper.selectComplaintList*/
+        FROM (
+        SELECT ROWNUM AS rn, t.*
+        FROM (
+        SELECT
+        c.cvpl_no
+        ,c.cvpl_ty_cd
+        ,c.cvpl_ttl
+        ,c.cvpl_cn
+        ,c.cvpl_stts_cd
+        ,c.cvpl_prrt
+        ,TO_CHAR(c.cvpl_reg_dt, 'YYYY.MM.DD HH24:MI') AS cvpl_reg_dt
+        ,TO_CHAR(c.cvpl_rcpt_dt, 'YYYY.MM.DD') AS cvpl_rcpt_dt
+        ,TO_CHAR(c.cvpl_end_dt, 'YYYY.MM.DD') AS cvpl_end_dt
+        ,m.user_nm
+        ,au.dong_nm
+        ,ad.ho
+        ,h.pic_id
+        ,h.cvpl_ans
+        ,h.cvpl_stts_cd AS hstry_stts_cd
+        ,c.cvpl_file_no
+        FROM cvpl c
+        LEFT JOIN member m ON c.user_no = m.user_no
+        LEFT JOIN apt_detail ad ON c.ho_no = ad.ho_no
+        LEFT JOIN apt_unit au ON ad.dong_no = au.dong_no
+        LEFT JOIN (
+        SELECT cvpl_no
+        ,pic_id
+        ,cvpl_ans
+        ,cvpl_stts_cd
+        ,ROW_NUMBER() OVER (PARTITION BY cvpl_no ORDER BY cvpl_reg_dt DESC) AS rk
+        FROM cvpl_hstry
+        ) h ON c.cvpl_no = h.cvpl_no AND h.rk = 1
+        <include refid="searchCondition"/>
+        ORDER BY c.cvpl_reg_dt DESC
+        ) t
+        WHERE ROWNUM &lt;= #{endRow}
+        )
+        WHERE rn &gt;= #{startRow}
+    </select>
+
+    <!-- 단지 관리자 정보 select -->
+    <select id="selectMngrList" resultType="kr.or.ddit.domain.apt.mgmtOffice.complaint.dto.ManagerComplaintDTO">
+        SELECT mg.user_no               /*kr.or.ddit.domain.apt.mgmtOffice.complaint.mapper.ManagerComplaintMapper.selectMngrList*/
+              ,m.user_nm
+              ,mg.mngr_duty_cd
+        FROM manager mg
+        INNER JOIN member m ON mg.user_no = m.user_no
+        WHERE mg.MGMT_OFC_NO = #{mgmtOfcNo}
+    </select>
+
+
+    <!-- 민원 첨부파일 조회 -->
+    <select id="selectCvplFileList" resultType="java.util.Map">
+        SELECT file_og_name
+              ,file_path
+              ,file_ext
+              ,file_size
+              ,file_save_uuid
+              ,mime_type
+              ,google_id
+        FROM attach_file
+        WHERE file_group_no = TO_NUMBER(#{cvplFileNo})
+        ORDER BY file_sort_order
+    </select>
+
+    <!-- 민원 이력 insert -->
+    <insert id="insertCvplHstry" parameterType="kr.or.ddit.domain.apt.mgmtOffice.complaint.dto.ManagerComplaintDTO">
+        <selectKey keyProperty="cvplHstryId" resultType="string" order="BEFORE">
+            SELECT 'HSTRY' || LPAD(SEQ_CVPL_HSTRY.nextval, 6, '0')      /*kr.or.ddit.domain.apt.mgmtOffice.complaint.mapper.ManagerComplaintMapper.insertCvplHstry*/
+            FROM dual
+        </selectKey>
+        INSERT INTO cvpl_hstry (
+        cvpl_hstry_id
+        ,cvpl_ans
+        ,pic_id
+        ,cvpl_stts_cd
+        ,cvpl_no
+        ) VALUES (
+        #{cvplHstryId}
+        ,#{cvplAns}
+        ,#{picId}
+        ,#{cvplSttsCd}
+        ,#{cvplNo}
+        )
+    </insert>
+
+    <!-- 민원 상태 업데이트 -->
+    <update id="updateCvplStts" parameterType="kr.or.ddit.domain.apt.mgmtOffice.complaint.dto.ManagerComplaintDTO">
+        UPDATE cvpl
+        SET cvpl_stts_cd = #{cvplSttsCd}
+        ,cvpl_mdf_dt  = SYSDATE
+        <if test="cvplEndDt != null and cvplEndDt != ''">
+            ,cvpl_end_dt  = TO_DATE(#{cvplEndDt}, 'YYYY.MM.DD')
+        </if>
+        WHERE cvpl_no = #{cvplNo}
+    </update>
+</mapper>

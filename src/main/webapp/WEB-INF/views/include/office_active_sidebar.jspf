@@ -1,0 +1,65 @@
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        var activeHref = "${activeSidebarHref}";
+        var activeParent = "${activeSidebarParent}";
+        var activeCurrent = "${activeSidebarCurrent}";
+
+        if (!activeHref) return;
+
+        var activePath;
+        try {
+            activePath = new URL(activeHref, window.location.origin).pathname;
+        } catch (e) {
+            activePath = activeHref;
+        }
+
+        var targetLink = null;
+        document.querySelectorAll(".sidebar .nav-item").forEach(function (item) {
+            var href = item.getAttribute("href");
+            var linkPath;
+
+            if (!href || href === "#" || href.indexOf("javascript:") === 0) {
+                return;
+            }
+
+            try {
+                linkPath = new URL(item.href, window.location.origin).pathname;
+            } catch (e) {
+                return;
+            }
+
+            if (linkPath === activePath) {
+                targetLink = item;
+            }
+        });
+
+        if (!targetLink) return;
+
+        document.querySelectorAll(".sidebar .nav-item.active").forEach(function (item) {
+            item.classList.remove("active");
+        });
+
+        targetLink.classList.add("active");
+
+        var targetGroup = targetLink.closest(".nav-group");
+        document.querySelectorAll(".sidebar .nav-group").forEach(function (group) {
+            if (group !== targetGroup) {
+                group.removeAttribute("open");
+            }
+        });
+
+        if (targetGroup) {
+            targetGroup.setAttribute("open", "open");
+        }
+
+        var parentTarget = document.getElementById("officeBcParent");
+        var currentTarget = document.getElementById("officeBcCurrent");
+
+        if (parentTarget && activeParent) {
+            parentTarget.textContent = activeParent;
+        }
+        if (currentTarget && activeCurrent) {
+            currentTarget.textContent = activeCurrent;
+        }
+    });
+</script>

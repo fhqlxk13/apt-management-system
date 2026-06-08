@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.main.mapper.IAptComplexMapper">
+
+    <select id="selectAptComplex" parameterType="string" resultType="kr.or.ddit.domain.apt.main.vo.AptComplexVO">
+        select apt_cmplex_no,
+               apt_cmplex_nm,
+               bjd_cd,
+               sido_nm,
+               sigungu_nm,
+               emd_nm,
+               unit_cnt,
+               bld_yr,
+               cnsco_nm,
+               img_file_no,
+               rprsnt_img_file_no,
+               heat_ty,
+               pkg_cnt,
+               max_floor,
+               free_pkg_cnt,
+               dong_cnt,
+               dorojuso,
+               cc_cnt
+        from apt_complex
+        where apt_cmplex_no = #{aptCmplexNo}
+    </select>
+
+    <update id="updateComplex" parameterType="kr.or.ddit.domain.apt.main.vo.AptComplexVO">
+
+        UPDATE APT_COMPLEX
+        SET APT_CMPLEX_NM      = #{aptCmplexNm},
+            BJD_CD             = #{bjdCd},
+            SIDO_NM            = #{sidoNm},
+            SIGUNGU_NM         = #{sigunguNm},
+            EMD_NM             = #{emdNm},
+            UNIT_CNT           = #{unitCnt},
+            BLD_YR             = #{bldYr},
+            CNSCO_NM           = #{cnscoNm},
+            IMG_FILE_NO        = #{imgFileNo},
+            HEAT_TY            = #{heatTy},
+            PKG_CNT            = #{pkgCnt},
+            MAX_FLOOR          = #{maxFloor},
+            FREE_PKG_CNT       = #{freePkgCnt},
+            DONG_CNT           = #{dongCnt},
+            DOROJUSO           = #{dorojuso},
+            CC_CNT             = #{ccCnt}
+        WHERE APT_CMPLEX_NO = #{aptCmplexNo}
+
+    </update>
+
+    <select id="selectAptMainDTO"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.main.dto.AptMainPageDTO$AptComplexInfo">
+
+        SELECT APT_CMPLEX_NO AS aptCmplexNo,
+               APT_CMPLEX_NM AS aptCmplexNm,
+               SIDO_NM       AS sidoNm,
+               SIGUNGU_NM    AS sigunguNm,
+               EMD_NM        AS emdNm,
+               DOROJUSO      AS dorojuso,
+               UNIT_CNT      AS unitCnt,
+               DONG_CNT      AS dongCnt,
+               BLD_YR        AS bldYr
+        FROM APT_COMPLEX
+        WHERE APT_CMPLEX_NO = #{aptCmplexNo}
+
+    </select>
+
+    <select id="selectSidoList" resultType="string">
+        SELECT DISTINCT SIDO_NM
+        FROM APT_COMPLEX
+        WHERE SIDO_NM IS NOT NULL
+        ORDER BY SIDO_NM
+    </select>
+
+    <select id="selectMainAptCount" resultType="int">
+        SELECT COUNT(*)
+        FROM APT_COMPLEX
+        WHERE SIDO_NM = #{sidoNm}
+        <if test="keyword != null and keyword != ''">
+            AND (
+            APT_CMPLEX_NM LIKE '%' || #{keyword} || '%'
+            OR DOROJUSO LIKE '%' || #{keyword} || '%'
+            )
+        </if>
+    </select>
+
+    <select id="selectMainAptList"
+            resultType="kr.or.ddit.domain.apt.main.vo.AptComplexVO">
+        SELECT *
+        FROM (
+        SELECT ROWNUM RN,
+        A.*
+        FROM (
+        SELECT
+        APT_CMPLEX_NO AS aptCmplexNo,
+        APT_CMPLEX_NM AS aptCmplexNm,
+        SIDO_NM AS sidoNm,
+        SIGUNGU_NM AS sigunguNm,
+        EMD_NM AS emdNm,
+        DOROJUSO AS dorojuso,
+        UNIT_CNT AS unitCnt,
+        DONG_CNT AS dongCnt,
+        BLD_YR AS bldYr
+        FROM APT_COMPLEX
+        WHERE SIDO_NM = #{sidoNm}
+        <if test="keyword != null and keyword != ''">
+            AND (
+            APT_CMPLEX_NM LIKE '%' || #{keyword} || '%'
+            OR DOROJUSO LIKE '%' || #{keyword} || '%'
+            )
+        </if>
+        ORDER BY APT_CMPLEX_NM ASC
+        ) A
+        WHERE ROWNUM &lt;= #{pagingVO.endRow}
+        )
+        WHERE RN &gt;= #{pagingVO.startRow}
+    </select>
+    <select id="selectMgmtOfcNoAptComplex" resultType="kr.or.ddit.domain.apt.main.vo.AptComplexVO">
+        SELECT apt_cmplex_no
+             , apt_cmplex_nm
+             , bjd_cd
+             , sido_nm
+             , sigungu_nm
+             , emd_nm
+             , lat_val
+             , lon_val
+             , unit_cnt
+             , bld_yr
+             , cnsco_nm
+             , img_file_no
+             , rprsnt_img_file_no
+             , heat_ty
+             , pkg_cnt
+             , max_floor
+             , free_pkg_cnt
+             , dong_cnt
+             , dorojuso
+             , cc_cnt
+        FROM apt_complex
+        WHERE apt_cmplex_no = (SELECT apt_cmplex_no
+                               FROM mgmt_office
+                               WHERE mgmt_ofc_no = #{mgmtOfcNo})
+    </select>
+
+
+    <select id="selectComplexList" resultType="kr.or.ddit.domain.apt.main.vo.AptDetailGridDTO">
+
+        SELECT D.HO_NO,
+               D.DONG_NO,
+
+               U.DONG_NM,
+
+               D.FLOOR,
+               D.HO,
+
+               D.HO_TY_NO,
+
+               T.TY_NM,
+
+               D.HO_STTS_CD,
+
+               D.IMAGE_NO,
+               D.PANO_IMAGE_NO
+
+        FROM APT_DETAIL D
+
+                 JOIN APT_UNIT U
+                      ON D.DONG_NO = U.DONG_NO
+
+                 LEFT JOIN APT_HO_TY T
+                           ON D.HO_TY_NO = T.HO_TY_NO
+
+        WHERE U.APT_CMPLEX_NO = #{aptCmplexNo}
+          AND D.HO_STTS_CD != 'STRUCT_REMOVED'
+
+        ORDER BY U.DONG_NM ASC,
+                 D.FLOOR DESC,
+                 D.HO ASC
+
+    </select>
+    <select id="selectOneAptCmplexByMgmtOfcNo" resultType="java.lang.String" parameterType="string">
+        select APT_CMPLEX_NO
+        from MGMT_OFFICE
+        where MGMT_OFC_NO = #{mgmtOfcNo}
+    </select>
+
+
+    <select id="selectAllHoByDong" resultType="kr.or.ddit.domain.apt.main.vo.AptDetailGridDTO">
+
+        SELECT /*kr.or.ddit.domain.apt.main.mapper.IAptComplexMapper.selectAllHoByDong*/
+            HO_NO
+             , DONG_NO
+             , FLOOR
+             , HO
+             , HO_STTS_CD
+             , HO_TY_NO
+        FROM APT_DETAIL
+        WHERE DONG_NO = #{dongNo}
+
+        ORDER BY FLOOR ASC, HO ASC
+
+    </select>
+
+
+    <select id="getHoTypeList"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.apiApartment.vo.AptHoTyDTO">
+
+        SELECT HT.HO_TY_NO,
+               HT.TY_NM,
+               HT.EXCLUSIVE_SIZE,
+               HT.ROOM_CNT,
+               HT.BATHROOM_CNT,
+               HT.IMAGE_FILE_NO,
+
+               COUNT(AD.HO_NO) AS HOUSEHOLD_CNT
+
+        FROM APT_HO_TY HT
+
+                 LEFT JOIN APT_DETAIL AD
+                           ON AD.HO_TY_NO = HT.HO_TY_NO
+
+        WHERE HT.APT_CMPLEX_NO = #{aptCmplexNo}
+
+        GROUP BY HT.HO_TY_NO,
+                 HT.TY_NM,
+                 HT.EXCLUSIVE_SIZE,
+                 HT.ROOM_CNT,
+                 HT.BATHROOM_CNT,
+                 HT.IMAGE_FILE_NO
+
+        ORDER BY HT.TY_NM
+
+    </select>
+
+</mapper>

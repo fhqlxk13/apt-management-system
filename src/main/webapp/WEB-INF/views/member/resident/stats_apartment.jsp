@@ -1,0 +1,185 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>아파트통계 – 대덕아파트</title>
+  <link rel="stylesheet" href="${pageContext.request.contextPath}/css/headerStyle.css">
+  <link rel="stylesheet" href="${pageContext.request.contextPath}/css/sidebarStyle.css">
+  <link rel="stylesheet" href="${pageContext.request.contextPath}/css/footerStyle.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+  <style>
+    body {font-family: 'Noto Sans KR', sans-serif !important;background: var(--bg);color: var(--text-dark);margin: 0;}
+    .material-symbols-outlined { font-family: 'Material Symbols Outlined' !important; }
+    .main-shell {display:flex;align-items:stretch;width:100%;min-height:calc(100vh - 114px);margin-top:114px;background:var(--bg);}
+    .content-area {flex:1;min-width:0;padding:32px 40px 64px;}
+    .page-content-wrap {max-width:1080px;width:100%;margin:0 auto;}
+    .breadcrumb {display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-light);margin-bottom:18px;}
+    .breadcrumb a {color:var(--text-light);text-decoration:none;} .breadcrumb .cur {color:var(--green-dark);font-weight:700;}
+    .page-title {font-size:22px;font-weight:800;color:var(--text-dark);padding-bottom:14px;border-bottom:2px solid var(--green-dark);margin-bottom:16px;letter-spacing:-.4px;}
+    .page-desc {font-size:13px;line-height:1.8;color:var(--text-light);margin-bottom:24px;}
+    .hero-card,.card,.panel {background:var(--white);border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 24px rgba(30,60,40,.05);}    
+    .hero-card {padding:24px 28px;margin-bottom:20px;background:linear-gradient(135deg,var(--green-dark),#386a4d);color:#fff;}
+    .hero-card h2 {font-size:20px;margin:0 0 8px;letter-spacing:-.3px;} .hero-card p {margin:0;line-height:1.8;color:rgba(255,255,255,.82);font-size:13px;}
+    .chip-row {display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;} .chip {display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(255,255,255,.18);color:#fff;}
+    .stats-grid {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:24px;} .stat-card {background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px 18px 16px;}
+    .stat-label {color:var(--text-light);font-size:12px;margin-bottom:8px;} .stat-value {font-size:24px;font-weight:800;color:var(--green-dark);letter-spacing:-.6px;} .stat-sub {margin-top:6px;font-size:12px;color:var(--text-light);}
+    .grid-2 {display:grid;grid-template-columns:1.2fr .8fr;gap:18px;margin-bottom:22px;} .grid-2.equal {grid-template-columns:1fr 1fr;} .grid-3 {display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:22px;}
+    .section-hd {display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);} .section-hd h3 {margin:0;font-size:15px;font-weight:800;color:var(--text-dark);} .section-hd span {font-size:12px;color:var(--text-light);} .card,.panel {padding:20px;margin-bottom:20px;}
+    .bullet-list {margin:0;padding-left:18px;color:var(--text-mid);line-height:1.8;font-size:13px;} .bullet-list li + li {margin-top:6px;}
+    .data-table {width:100%;border-collapse:collapse;font-size:13px;background:#fff;overflow:hidden;border-radius:12px;} .data-table thead th {background:var(--green-pale);color:var(--text-mid);padding:12px 14px;text-align:left;font-weight:700;border-bottom:1px solid var(--border);} .data-table tbody td {padding:13px 14px;border-bottom:1px solid #edf0eb;color:var(--text-dark);vertical-align:top;} .data-table tbody tr:last-child td {border-bottom:none;} .mini-table td,.mini-table th {padding:10px 12px !important;}
+    .label-grid {display:grid;grid-template-columns:160px 1fr 160px 1fr;border-top:1px solid var(--border);border-left:1px solid var(--border);overflow:hidden;border-radius:12px;margin-bottom:18px;} .label-grid div {padding:13px 16px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);font-size:13px;} .label-grid .th {background:var(--green-pale);color:var(--text-mid);font-weight:700;}
+    .form-grid {display:grid;grid-template-columns:160px 1fr;border-top:1px solid var(--border);border-left:1px solid var(--border);overflow:hidden;border-radius:12px;} .form-grid .th,.form-grid .td {padding:14px 16px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);} .form-grid .th {background:var(--green-pale);color:var(--text-mid);font-size:13px;font-weight:700;}
+    .fake-input,.fake-select,.fake-textarea {width:100%;border:1px solid #d8ddd4;background:#fff;border-radius:10px;padding:11px 13px;font-size:13px;color:var(--text-dark);box-sizing:border-box;} .fake-textarea {min-height:110px;resize:vertical;}
+    .inline-fields {display:flex;gap:10px;flex-wrap:wrap;} .btn-row {display:flex;justify-content:center;gap:10px;margin-top:22px;flex-wrap:wrap;}
+    .btn-main,.btn-sub,.btn-danger,.btn-ghost {display:inline-flex;align-items:center;justify-content:center;min-width:120px;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:800;text-decoration:none;border:none;cursor:pointer;box-sizing:border-box;} .btn-main {background:var(--green-dark);color:#fff;} .btn-sub {background:#edf5ef;color:var(--green-dark);} .btn-danger {background:#b64444;color:#fff;} .btn-ghost {background:#fff;color:var(--text-mid);border:1px solid var(--border);}
+    .badge {display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;} .badge.ok {background:#ecf7ef;color:#2f7a4d;} .badge.wait {background:#fff5df;color:#9a6b00;} .badge.danger {background:#fbe8e8;color:#a23a3a;} .badge.info {background:#edf4fb;color:#2d6688;}
+    .menu-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:24px;} .menu-card {background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;} .menu-card h4 {margin:0 0 8px;font-size:16px;color:var(--text-dark);} .menu-card p {margin:0 0 12px;font-size:13px;color:var(--text-light);line-height:1.7;} .menu-links {display:flex;flex-direction:column;gap:8px;} .menu-links a {text-decoration:none;color:var(--green-dark);font-size:13px;font-weight:700;}
+    .seat-grid {display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:10px;} .room-grid {display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px;} .seat,.room-box {padding:16px 8px;text-align:center;border-radius:12px;font-weight:700;font-size:13px;border:1px solid var(--border);background:#fff;} .seat.available,.room-box.available {background:#f1f8f2;color:#2a6d44;} .seat.busy,.room-box.busy {background:#f8ecec;color:#9f4747;} .seat.selected,.room-box.selected {background:var(--green-dark);color:#fff;}
+    .chart-box {height:240px;border:1px dashed #cfd7cf;border-radius:12px;background:linear-gradient(to top,rgba(43,103,78,.08),rgba(43,103,78,.02)),repeating-linear-gradient(to right,transparent 0 72px,rgba(0,0,0,.03) 72px 73px),repeating-linear-gradient(to bottom,transparent 0 47px,rgba(0,0,0,.04) 47px 48px);position:relative;overflow:hidden;} .chart-line {position:absolute;left:22px;right:22px;bottom:26px;top:28px;} .chart-line svg {width:100%;height:100%;}
+    .chat-layout {display:grid;grid-template-columns:320px 1fr;gap:18px;} .chat-list,.chat-box {background:#fff;border:1px solid var(--border);border-radius:14px;} .chat-list {padding:16px;} .chat-box {padding:18px;} .chat-room-item {padding:12px 10px;border-radius:10px;cursor:pointer;border:1px solid transparent;} .chat-room-item.active {background:#f4f8f5;border-color:#d8e6db;} .message-stream {display:flex;flex-direction:column;gap:12px;min-height:320px;} .message {max-width:72%;padding:12px 14px;border-radius:14px;font-size:13px;line-height:1.7;} .message.me {align-self:flex-end;background:var(--green-dark);color:#fff;} .message.other {align-self:flex-start;background:#f2f4f0;color:var(--text-dark);}
+    .search-row {display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;} .search-row .fake-input,.search-row .fake-select {max-width:220px;} .notice-card {padding:18px 20px;border-radius:14px;background:linear-gradient(135deg,#fff8ea,#fff1d5);border:1px solid #f0dfb4;margin-bottom:18px;}
+    .process-grid {display:grid;grid-template-columns:repeat(4,1fr);gap:14px;} .process-step {padding:18px 14px;border-radius:14px;border:1px solid var(--border);background:#fff;text-align:center;} .process-step.active {background:#eef8f0;border-color:#b8d9c0;}
+    /* 분포 막대 표시 */
+    .meter-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;} .meter-card {border:1px solid #dfe6dc;border-radius:12px;padding:16px;background:#fff;}
+    .meter-title {display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;} .meter-title strong {font-size:15px;color:var(--text-dark);}
+    .meter-grade {display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;background:#ecf7ef;color:#2f7a4d;}
+    .meter-values {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;} .meter-values span {display:block;font-size:11px;color:var(--text-light);margin-bottom:4px;} .meter-values b {font-size:16px;color:var(--text-dark);}
+    .meter-desc {margin-top:6px;font-size:11px;color:var(--text-light);}
+    .gauge {height:8px;border-radius:999px;background:#edf0eb;overflow:hidden;margin-top:8px;} .gauge-bar {height:100%;background:#2f7a4d;border-radius:999px;}
+    .bar-wrap {display:inline-block;width:120px;height:8px;border-radius:999px;background:#edf0eb;vertical-align:middle;margin-right:8px;} .bar-fill {height:100%;background:var(--green-dark);border-radius:999px;}
+    .bar-num {font-size:12px;color:var(--text-dark);font-weight:700;}
+    .rank-cell {font-weight:800;color:var(--green-dark);width:40px;text-align:center;}
+    .text-right {text-align:right !important;}
+    .chart-panel {height:320px;border:1px solid #dfe6dc;border-radius:12px;background:#fff;padding:14px;box-sizing:border-box;}
+    .chart-panel.compact {height:260px;}
+    .chart-panel canvas {width:100% !important;height:100% !important;}
+    .check-summary {display:grid;grid-template-columns:180px 1fr;gap:16px;align-items:center;}
+    .check-copy strong {display:block;font-size:28px;color:var(--green-dark);letter-spacing:-.6px;margin-bottom:6px;}
+    .check-copy p {margin:0 0 12px;font-size:13px;color:var(--text-light);line-height:1.7;}
+    .check-kpis {display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .check-kpi {border:1px solid #dfe6dc;border-radius:10px;padding:12px;background:#fff;}
+    .check-kpi span {display:block;font-size:11px;color:var(--text-light);margin-bottom:4px;}
+    .check-kpi b {font-size:17px;color:var(--text-dark);}
+    @media (max-width:1200px){.stats-grid,.menu-grid,.grid-3,.room-grid,.process-grid{grid-template-columns:repeat(2,1fr)} .grid-2,.grid-2.equal,.chat-layout{grid-template-columns:1fr} .label-grid{grid-template-columns:140px 1fr}}
+    @media (max-width:900px){.main-shell{flex-direction:column}.content-area{padding:24px 18px 48px}.page-content-wrap{max-width:100%}.stats-grid,.menu-grid,.grid-3,.room-grid,.process-grid,.seat-grid,.check-summary,.check-kpis{grid-template-columns:1fr}.form-grid{grid-template-columns:120px 1fr}.label-grid{grid-template-columns:120px 1fr}.chart-panel{height:280px}.chart-panel.compact{height:240px}}
+  </style>
+
+</head>
+<body>
+  <%@ include file="/WEB-INF/views/include/apt_headerLayout.jsp" %>
+  <div class="main-shell">
+    <%@ include file="/WEB-INF/views/include/apt_sidebarLayout.jsp" %>
+    <main class="content-area">
+      <div class="page-content-wrap">
+        <div class="breadcrumb">
+          <a href="${pageContext.request.contextPath}/">HOME</a>
+          <span>›</span>
+          <a href="javascript:void(0);">우리아파트통계</a>
+          <span>›</span>
+          <span class="cur">아파트통계</span>
+        </div>
+        <h1 class="page-title">아파트통계</h1>
+        <p class="page-desc">단지 전체의 입주 현황, 시설 이용 흐름, 점검 요약을 그래프로 확인합니다.</p>
+
+        <%-- 상단 요약 카드 --%>
+        <section class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">전체 세대</div>
+            <div class="stat-value" id="totalUnitCnt">-</div>
+            <div class="stat-sub" id="occupancyRate">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">동 수</div>
+            <div class="stat-value" id="dongCnt">-</div>
+            <div class="stat-sub" id="emptyCnt">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">이번 달 시설 예약</div>
+            <div class="stat-value" id="facilityReservationTotal">-</div>
+            <div class="stat-sub">공용시설 이용 기준</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">시설 점검 완료율</div>
+            <div class="stat-value" id="checkDoneRate">-</div>
+            <div class="stat-sub">사용 제한 <span id="checkRestrictedTop">-</span></div>
+          </div>
+        </section>
+
+        <%-- 입주 현황 + 시설 이용 랭킹 --%>
+        <div class="grid-2 equal">
+          <section class="panel">
+            <div class="section-hd">
+              <h3>입주 현황</h3>
+              <span>입주 세대와 공실 비율</span>
+            </div>
+            <div class="chart-panel compact">
+              <canvas id="occupancyChart"></canvas>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="section-hd">
+              <h3>시설 이용 랭킹</h3>
+              <span>이번 달 Top 5</span>
+            </div>
+            <div class="chart-panel compact">
+              <canvas id="facilityRankChart"></canvas>
+            </div>
+          </section>
+        </div>
+
+        <%-- 시설 이용 표 + 점검 요약 --%>
+        <div class="grid-2 equal">
+          <section class="panel">
+            <div class="section-hd">
+              <h3>시설별 예약 현황</h3>
+              <span>예약 건수 기준</span>
+            </div>
+            <table class="data-table mini-table">
+              <thead><tr><th>순위</th><th>시설</th><th class="text-right">예약</th></tr></thead>
+              <tbody id="facilityRankRows"></tbody>
+            </table>
+          </section>
+
+          <section class="panel">
+            <div class="section-hd">
+              <h3>시설 점검 요약</h3>
+              <span>입주민 공개용 요약</span>
+            </div>
+            <div class="check-summary">
+              <div class="chart-panel compact">
+                <canvas id="checkDoneChart"></canvas>
+              </div>
+              <div class="check-copy">
+                <strong id="checkDoneRateLarge">-</strong>
+                <p>이번 달 등록된 시설 점검 중 완료된 비율입니다.</p>
+                <div class="check-kpis">
+                  <div class="check-kpi">
+                    <span>전체 점검</span>
+                    <b id="checkTotal">-</b>
+                  </div>
+                  <div class="check-kpi">
+                    <span>사용 제한 시설</span>
+                    <b id="checkRestricted">-</b>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+      </div>
+    </main>
+  </div>
+  <%@ include file="/WEB-INF/views/include/apt_footerLayout.jsp" %>
+
+  <script>
+    window.aptStatsContextPath = '${pageContext.request.contextPath}';
+    window.aptStatsAptCmplexNo = '${aptCmplexNo}';
+  </script>
+  <script src="${pageContext.request.contextPath}/js/member/resident/apartmentStats.js"></script>
+</body>
+</html>

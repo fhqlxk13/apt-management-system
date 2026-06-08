@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.move.mapper.IMngResidentMoveMapper">
+
+    <resultMap id="residentMoveMap" type="kr.or.ddit.domain.apt.mgmtOffice.move.vo.MngResidentMoveVO">
+        <result property="userNo" column="userNo"/>
+        <result property="userId" column="userId"/>
+        <result property="userNm" column="userNm"/>
+        <result property="userTelno" column="userTelno"/>
+        <result property="userEml" column="userEml"/>
+        <result property="mgmtOfcNo" column="mgmtOfcNo"/>
+        <result property="aptCmplexNo" column="aptCmplexNo"/>
+        <result property="complexName" column="complexName"/>
+        <result property="hoNo" column="hoNo"/>
+        <result property="dong" column="dong"/>
+        <result property="ho" column="ho"/>
+        <result property="inoutCd" column="inoutCd"/>
+        <result property="inoutNm" column="inoutNm"/>
+        <result property="moveStatus" column="moveStatus"/>
+        <result property="headYn" column="headYn"/>
+        <result property="headYnNm" column="headYnNm"/>
+        <result property="moveInDt" column="moveInDt"/>
+        <result property="moveOutDt" column="moveOutDt"/>
+    </resultMap>
+
+    <sql id="residentMoveWhere">
+        <where>
+            MO.MGMT_OFC_NO = #{mgmtOfcNo}
+
+            <if test="dong != null and dong != ''">
+                AND AD.DONG_NO LIKE '%' || #{dong} || '%'
+            </if>
+
+            <if test="ho != null and ho != ''">
+                AND AD.HO LIKE '%' || #{ho} || '%'
+            </if>
+
+            <if test="moveStatus != null and moveStatus != ''">
+                AND HH.INOUT_CD = #{moveStatus}
+            </if>
+
+            <if test="headYn != null and headYn != ''">
+                AND HH.HEAD_YN = #{headYn}
+            </if>
+
+            <if test="keyword != null and keyword != ''">
+                AND (
+                    M.USER_NO LIKE '%' || #{keyword} || '%'
+                    OR M.USER_NM LIKE '%' || #{keyword} || '%'
+                    OR M.USER_TELNO LIKE '%' || #{keyword} || '%'
+                    OR M.USER_EML LIKE '%' || #{keyword} || '%'
+                    OR AD.DONG_NO LIKE '%' || #{keyword} || '%'
+                    OR AD.HO LIKE '%' || #{keyword} || '%'
+                )
+            </if>
+
+            <if test="moveInStart != null and moveInStart != ''">
+                AND HH.MOVE_IN_DT &gt;= TO_DATE(#{moveInStart}, 'YYYY-MM-DD')
+            </if>
+
+            <if test="moveInEnd != null and moveInEnd != ''">
+                AND HH.MOVE_IN_DT &lt; TO_DATE(#{moveInEnd}, 'YYYY-MM-DD') + 1
+            </if>
+
+            <if test="moveOutStart != null and moveOutStart != ''">
+                AND HH.MOVE_OUT_DT &gt;= TO_DATE(#{moveOutStart}, 'YYYY-MM-DD')
+            </if>
+
+            <if test="moveOutEnd != null and moveOutEnd != ''">
+                AND HH.MOVE_OUT_DT &lt; TO_DATE(#{moveOutEnd}, 'YYYY-MM-DD') + 1
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectResidentMoveList"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.move.dto.MngResidentMoveSearchDTO"
+            resultMap="residentMoveMap">
+
+        SELECT *
+        FROM (
+        SELECT
+        ROW_NUMBER() OVER (
+        ORDER BY AD.DONG_NO, AD.HO, HH.MOVE_IN_DT DESC, M.USER_NM
+        ) rn,
+
+        M.USER_NO AS userNo,
+        M.USER_ID AS userId,
+        M.USER_NM AS userNm,
+        M.USER_TELNO AS userTelno,
+        M.USER_EML AS userEml,
+        MO.MGMT_OFC_NO AS mgmtOfcNo,
+        AC.APT_CMPLEX_NO AS aptCmplexNo,
+        AC.APT_CMPLEX_NM AS complexName,
+        HH.HO_NO AS hoNo,
+        AD.DONG_NO AS dong,
+        AD.HO AS ho,
+        HH.INOUT_CD AS inoutCd,
+
+        CASE HH.INOUT_CD
+        WHEN 'WAIT' THEN '입주대기'
+        WHEN 'LIVE' THEN '입주'
+        WHEN 'OUT' THEN '퇴거'
+        WHEN 'MID' THEN '중도퇴거'
+        ELSE HH.INOUT_CD
+        END AS inoutNm,
+
+        CASE HH.INOUT_CD
+        WHEN 'WAIT' THEN 'WAIT'
+        WHEN 'LIVE' THEN 'LIVE'
+        WHEN 'OUT' THEN 'OUT'
+        WHEN 'MID' THEN 'MID'
+        ELSE HH.INOUT_CD
+        END AS moveStatus,
+
+        HH.HEAD_YN AS headYn,
+
+        CASE HH.HEAD_YN
+        WHEN 'Y' THEN '세대주'
+        ELSE '세대원'
+        END AS headYnNm,
+
+        TO_CHAR(HH.MOVE_IN_DT, 'YYYY-MM-DD') AS moveInDt,
+        TO_CHAR(HH.MOVE_OUT_DT, 'YYYY-MM-DD') AS moveOutDt
+
+        FROM HSHLD_HEAD HH
+        INNER JOIN MEMBER M ON M.USER_NO = HH.USER_NO
+        INNER JOIN APT_DETAIL AD ON AD.HO_NO = HH.HO_NO
+        INNER JOIN APT_UNIT AU ON AU.DONG_NO = AD.DONG_NO
+        INNER JOIN APT_COMPLEX AC ON AC.APT_CMPLEX_NO = AU.APT_CMPLEX_NO
+        INNER JOIN MGMT_OFFICE MO ON MO.APT_CMPLEX_NO = AC.APT_CMPLEX_NO
+
+        <include refid="residentMoveWhere"/>
+
+        )
+        WHERE rn BETWEEN #{startRow} AND #{endRow}
+
+    </select>
+
+    <select id="selectResidentMoveDetail" resultMap="residentMoveMap">
+        SELECT
+            M.USER_NO AS userNo,
+            M.USER_ID AS userId,
+            M.USER_NM AS userNm,
+            M.USER_TELNO AS userTelno,
+            M.USER_EML AS userEml,
+            MO.MGMT_OFC_NO AS mgmtOfcNo,
+            AC.APT_CMPLEX_NO AS aptCmplexNo,
+            AC.APT_CMPLEX_NM AS complexName,
+            HH.HO_NO AS hoNo,
+            AD.DONG_NO AS dong,
+            AD.HO AS ho,
+            HH.INOUT_CD AS inoutCd,
+            CASE HH.INOUT_CD
+                WHEN 'WAIT' THEN '입주대기'
+                WHEN 'LIVE' THEN '입주'
+                WHEN 'OUT' THEN '퇴거'
+                WHEN 'MID' THEN '중도퇴거'
+                ELSE HH.INOUT_CD
+            END AS inoutNm,
+            HH.INOUT_CD AS moveStatus,
+            HH.HEAD_YN AS headYn,
+            CASE HH.HEAD_YN
+                WHEN 'Y' THEN '세대주'
+                ELSE '세대원'
+            END AS headYnNm,
+            TO_CHAR(HH.MOVE_IN_DT, 'YYYY-MM-DD') AS moveInDt,
+            TO_CHAR(HH.MOVE_OUT_DT, 'YYYY-MM-DD') AS moveOutDt
+        FROM HSHLD_HEAD HH
+                 INNER JOIN MEMBER M ON M.USER_NO = HH.USER_NO
+                 INNER JOIN APT_DETAIL AD ON AD.HO_NO = HH.HO_NO
+                 INNER JOIN APT_UNIT AU ON AU.DONG_NO = AD.DONG_NO
+                 INNER JOIN APT_COMPLEX AC ON AC.APT_CMPLEX_NO = AU.APT_CMPLEX_NO
+                 INNER JOIN MGMT_OFFICE MO ON MO.APT_CMPLEX_NO = AC.APT_CMPLEX_NO
+        WHERE MO.MGMT_OFC_NO = #{mgmtOfcNo}
+          AND M.USER_NO = #{userNo}
+          AND HH.HO_NO = #{hoNo}
+    </select>
+
+    <select id="countResidentMoveByKey" parameterType="map" resultType="int">
+        SELECT COUNT(*)
+        FROM HSHLD_HEAD
+        WHERE USER_NO = #{userNo}
+          AND HO_NO = #{hoNo}
+    </select>
+
+    <insert id="insertResidentMove">
+        INSERT INTO HSHLD_HEAD (
+            USER_NO,
+            HO_NO,
+            INOUT_CD,
+            MOVE_IN_DT,
+            MOVE_OUT_DT,
+            HEAD_YN
+        ) VALUES (
+            #{userNo},
+            #{hoNo},
+            #{inoutCd},
+            <choose>
+                <when test="moveInDt != null and moveInDt != ''">
+                    TO_DATE(#{moveInDt}, 'YYYY-MM-DD')
+                </when>
+                <otherwise>
+                    SYSDATE
+                </otherwise>
+            </choose>,
+            <choose>
+                <when test="moveOutDt != null and moveOutDt != ''">
+                    TO_DATE(#{moveOutDt}, 'YYYY-MM-DD')
+                </when>
+                <otherwise>
+                    NULL
+                </otherwise>
+            </choose>,
+            #{headYn}
+        )
+    </insert>
+
+    <update id="updateResidentMove">
+        UPDATE HSHLD_HEAD
+        <set>
+
+            <if test="hoNo != null and hoNo != ''">
+                HO_NO = #{hoNo},
+            </if>
+
+            <if test="inoutCd != null and inoutCd != ''">
+                INOUT_CD = #{inoutCd},
+            </if>
+
+            <choose>
+                <when test="moveInDt != null and moveInDt != ''">
+                    MOVE_IN_DT = TO_DATE(#{moveInDt}, 'YYYY-MM-DD'),
+                </when>
+                <otherwise>
+                    MOVE_IN_DT = NULL,
+                </otherwise>
+            </choose>
+
+            <choose>
+                <when test="moveOutDt != null and moveOutDt != ''">
+                    MOVE_OUT_DT = TO_DATE(#{moveOutDt}, 'YYYY-MM-DD'),
+                </when>
+                <otherwise>
+                    MOVE_OUT_DT = NULL,
+                </otherwise>
+            </choose>
+
+            <if test="headYn != null and headYn != ''">
+                HEAD_YN = #{headYn},
+            </if>
+
+        </set>
+
+        WHERE USER_NO = #{userNo}
+        AND HO_NO = #{hoNo}
+    </update>
+
+
+
+    <select id="selectResidentMoveCount"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.move.dto.MngResidentMoveSearchDTO"
+            resultType="int">
+
+        SELECT COUNT(*)
+
+        FROM HSHLD_HEAD HH
+        INNER JOIN MEMBER M ON M.USER_NO = HH.USER_NO
+        INNER JOIN APT_DETAIL AD ON AD.HO_NO = HH.HO_NO
+        INNER JOIN APT_UNIT AU ON AU.DONG_NO = AD.DONG_NO
+        INNER JOIN APT_COMPLEX AC ON AC.APT_CMPLEX_NO = AU.APT_CMPLEX_NO
+        INNER JOIN MGMT_OFFICE MO ON MO.APT_CMPLEX_NO = AC.APT_CMPLEX_NO
+
+        <include refid="residentMoveWhere"/>
+
+    </select>
+
+
+    <select id="selectMemberInfo"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.move.vo.MngResidentMoveVO">
+
+        SELECT
+            USER_NO AS userNo,
+            USER_NM AS userNm,
+            USER_TELNO AS userTelno
+        FROM MEMBER
+        WHERE USER_NO = #{userNo}
+
+    </select>
+
+
+</mapper>

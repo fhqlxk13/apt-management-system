@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.member.resident.mapper.IVstVhclMapper">
+
+    <insert id="insertVisitReservation">
+        INSERT INTO VST_VHCL_RSVT (
+                    VST_VHCL_RSVT_NO
+                  , VST_VHCL_TY_CD
+                  , VST_VHCL_NO
+                  , VSTR_NM
+                  , VST_YMD
+                  , VST_STTS_CD
+                  , REG_DT
+                  , VST_PRPS_CN
+                  , USER_NO
+                  , HO_NO
+                  , STAY_HR
+        ) VALUES (
+                   'VSTRSVT_' || SEQ_VST_VHCL_RSVT.NEXTVAL
+                 , #{vstVhclTyCd}
+                 , #{vstVhclNo}
+                 , #{vstrNm}
+                 , #{vstYmd}
+                 , #{vstSttsCd}
+                 , SYSDATE
+                 , #{vstPrpsCn}
+                 , #{userNo}
+                 , #{hoNo}
+                 , #{stayHr}
+                 )
+
+    </insert>
+
+    <delete id="deleteVisit">
+        DELETE  /*kr.or.ddit.domain.member.resident.mapper.IVstVhclMapper.deleteVisit*/
+        FROM VST_VHCL_RSVT
+
+        WHERE VST_VHCL_RSVT_NO = #{rsvtNo}
+          AND USER_NO = #{userNo}
+    </delete>
+
+    <select id="selectVisitCount"
+            resultType="int">
+
+        SELECT COUNT(*)
+
+        FROM VST_VHCL_RSVT
+
+        WHERE USER_NO = #{userNo}
+
+          AND HO_NO LIKE #{aptCmplexNo} || '%'
+
+          AND (
+            VST_YMD + (STAY_HR / 24)
+                >= SYSDATE - 7
+            )
+
+    </select>
+
+
+    <select id="selectVisitList"
+            resultType="kr.or.ddit.domain.member.resident.vo.VstVhclRsvtVO">
+
+        SELECT *
+
+        FROM
+            (
+                SELECT
+                    ROW_NUMBER() OVER (
+                        ORDER BY VST_YMD DESC
+                        ) RN
+
+                     , VST_VHCL_RSVT_NO
+                     , VST_VHCL_TY_CD
+                     , VST_VHCL_NO
+                     , VSTR_NM
+                     , VST_YMD
+                     , VST_STTS_CD
+                     , REG_DT
+                     , MDF_DT
+                     , VST_PRPS_CN
+                     , USER_NO
+                     , HO_NO
+                     , STAY_HR
+
+                FROM VST_VHCL_RSVT
+
+                WHERE USER_NO = #{userNo}
+
+                  AND HO_NO LIKE #{aptCmplexNo} || '%'
+
+                  AND (
+                    VST_YMD + (STAY_HR / 24)
+                        >= SYSDATE - 7
+                    )
+            )
+
+        WHERE RN BETWEEN
+                  #{pagingVO.startRow}
+                  AND #{pagingVO.endRow}
+
+        ORDER BY VST_YMD DESC, REG_DT DESC
+    </select>
+
+</mapper>

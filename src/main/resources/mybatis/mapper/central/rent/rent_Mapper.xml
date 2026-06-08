@@ -1,0 +1,632 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.or.ddit.domain.central.mapper.IRentMapper">
+
+    <resultMap id="rentListingMapResultMap"
+               type="kr.or.ddit.domain.central.dto.RentListingMapDTO">
+
+        <!-- RENT_LISTING -->
+        <id property="rentLstgNo" column="RENT_LSTG_NO"/>
+        <result property="rentTypeCd" column="RENT_TYPE_CD"/>
+        <result property="rentTypeNm" column="RENT_TYPE_NM"/>
+        <result property="dpstAmt" column="DPST_AMT"/>
+        <result property="mthlyRentAmt" column="MTHLY_RENT_AMT"/>
+        <result property="rentLstgCn" column="RENT_LSTG_CN"/>
+        <result property="hoNo" column="HO_NO"/>
+        <result property="rentTtl" column="RENT_TTL"/>
+        <result property="rcrtBgngDt" column="RCRT_BGNG_DT"/>
+        <result property="rcrtEndDt" column="RCRT_END_DT"/>
+
+        <!-- 공고 매핑 -->
+        <result property="annNo" column="ANN_NO"/>
+        <result property="annTtl" column="ANN_TTL"/>
+
+        <!-- APT_DETAIL -->
+        <result property="dongNo" column="DONG_NO"/>
+        <result property="floor" column="FLOOR"/>
+        <result property="ho" column="HO"/>
+        <result property="empty" column="HO_STTS_NM"/>
+        <result property="imageNo" column="IMAGE_NO"/>
+        <result property="panoImageNo" column="PANO_IMAGE_NO"/>
+
+        <!-- APT_UNIT -->
+        <result property="dongNm" column="DONG_NM"/>
+        <result property="dongMaxFloor" column="DONG_MAX_FLOOR"/>
+        <result property="dongUnitCnt" column="DONG_UNIT_CNT"/>
+
+        <!-- APT_HO_TY -->
+        <result property="exclusiveSize" column="EXCLUSIVE_SIZE"/>
+
+        <!-- APT_COMPLEX -->
+        <result property="aptCmplexNo" column="APT_CMPLEX_NO"/>
+        <result property="aptCmplexNm" column="APT_CMPLEX_NM"/>
+        <result property="sidoNm" column="SIDO_NM"/>
+        <result property="sigunguNm" column="SIGUNGU_NM"/>
+        <result property="emdNm" column="EMD_NM"/>
+        <result property="dorojuso" column="DOROJUSO"/>
+        <result property="latVal" column="LAT_VAL"/>
+        <result property="lonVal" column="LON_VAL"/>
+        <result property="unitCnt" column="UNIT_CNT"/>
+        <result property="dongCnt" column="DONG_CNT"/>
+        <result property="bldYr" column="BLD_YR"/>
+        <result property="cnscoNm" column="CNSCO_NM"/>
+        <result property="rprsntImgFileNo" column="RPRSNT_IMG_FILE_NO"/>
+        <result property="rprsntImgGoogleIds" column="RPRSNT_IMG_GOOGLE_IDS"/>
+        <result property="rprsntImgCats" column="RPRSNT_IMG_CATS"/>
+
+    </resultMap>
+
+    <sql id="rentSearchWhere">
+        <where>
+
+            <!-- 임대유형: ALL / JS / PE -->
+            <if test="searchVO != null
+                  and searchVO.searchRentTypeCd != null
+                  and searchVO.searchRentTypeCd != ''
+                  and searchVO.searchRentTypeCd != 'ALL'">
+                AND R.RENT_TYPE_CD = #{searchVO.searchRentTypeCd}
+            </if>
+
+            <!-- 지역: 예) 서울특별시 마포구 -->
+            <if test="searchVO != null
+                  and searchVO.searchRegion != null
+                  and searchVO.searchRegion != ''
+                  and searchVO.searchRegion != 'ALL'">
+                AND (A.SIDO_NM || ' ' || A.SIGUNGU_NM) = #{searchVO.searchRegion}
+            </if>
+
+            <!-- 금액: 보증금 기준 -->
+            <if test="searchVO != null
+                  and searchVO.searchAmountRange != null
+                  and searchVO.searchAmountRange != ''
+                  and searchVO.searchAmountRange != 'ALL'">
+                <choose>
+                    <when test="searchVO.searchAmountRange == 'UNDER_5000'">
+                        AND R.DPST_AMT <![CDATA[<=]]> 50000000
+                    </when>
+
+                    <when test="searchVO.searchAmountRange == '5000_10000'">
+                        AND R.DPST_AMT <![CDATA[>]]> 50000000
+                        AND R.DPST_AMT <![CDATA[<=]]> 100000000
+                    </when>
+
+                    <when test="searchVO.searchAmountRange == '10000_20000'">
+                        AND R.DPST_AMT <![CDATA[>]]> 100000000
+                        AND R.DPST_AMT <![CDATA[<=]]> 200000000
+                    </when>
+
+                    <when test="searchVO.searchAmountRange == 'OVER_20000'">
+                        AND R.DPST_AMT <![CDATA[>]]> 200000000
+                    </when>
+                </choose>
+            </if>
+
+            <!--
+                상태 검색
+                기존 처리 유지:
+                CLOSE 선택 시 조회 결과 없음 처리
+            -->
+            <if test="searchVO != null
+                  and searchVO.searchStatus != null
+                  and searchVO.searchStatus == 'CLOSE'">
+                AND 1 = 0
+            </if>
+
+            <!-- 키워드: 매물명, 설명, 단지명, 주소, 지역명 -->
+            <if test="searchVO != null
+                  and searchVO.searchKeyword != null
+                  and searchVO.searchKeyword != ''">
+                AND (
+                R.RENT_TTL LIKE '%' || #{searchVO.searchKeyword} || '%'
+                OR R.RENT_LSTG_CN LIKE '%' || #{searchVO.searchKeyword} || '%'
+                OR A.APT_CMPLEX_NM LIKE '%' || #{searchVO.searchKeyword} || '%'
+                OR A.DOROJUSO LIKE '%' || #{searchVO.searchKeyword} || '%'
+                OR A.SIDO_NM LIKE '%' || #{searchVO.searchKeyword} || '%'
+                OR A.SIGUNGU_NM LIKE '%' || #{searchVO.searchKeyword} || '%'
+                OR A.EMD_NM LIKE '%' || #{searchVO.searchKeyword} || '%'
+                )
+            </if>
+
+        </where>
+    </sql>
+
+    <select id="selectRentListingMapList"
+            resultMap="rentListingMapResultMap">
+
+        SELECT
+        R.RENT_LSTG_NO
+        , R.RENT_TYPE_CD
+        , NVL(RC.CODE_NAME, R.RENT_TYPE_CD) AS RENT_TYPE_NM
+        , R.DPST_AMT
+        , R.MTHLY_RENT_AMT
+        , R.RENT_LSTG_CN
+        , R.HO_NO
+        , R.RENT_TTL
+        , R.ANN_NO
+        , P.TTL AS ANN_TTL
+
+        <!--모집기간: DATE 타입의 UTC 변환으로 하루 빠지는 문제 방지-->
+        , TO_CHAR(P.RCRT_BGNG_DT, 'YYYY-MM-DD') AS RCRT_BGNG_DT
+        , TO_CHAR(P.RCRT_END_DT, 'YYYY-MM-DD') AS RCRT_END_DT
+
+        , D.DONG_NO
+        , D.FLOOR
+        , D.HO
+        , D.HO_STTS_CD
+        , NVL(HC.CODE_NAME, D.HO_STTS_CD) AS HO_STTS_NM
+        , D.IMAGE_NO
+        , D.PANO_IMAGE_NO
+
+        , U.DONG_NM
+        , U.FLOOR AS DONG_MAX_FLOOR
+        , U.UNIT_CNT AS DONG_UNIT_CNT
+
+        , T.EXCLUSIVE_SIZE
+
+        , A.APT_CMPLEX_NO
+        , A.APT_CMPLEX_NM
+        , A.SIDO_NM
+        , A.SIGUNGU_NM
+        , A.EMD_NM
+        , A.DOROJUSO
+        , A.LAT_VAL
+        , A.LON_VAL
+        , A.UNIT_CNT
+        , A.DONG_CNT
+        , A.BLD_YR
+        , A.CNSCO_NM
+        , A.RPRSNT_IMG_FILE_NO
+        , IMG.GOOGLE_IDS AS RPRSNT_IMG_GOOGLE_IDS
+        , IMG.CATS AS RPRSNT_IMG_CATS
+
+        FROM RENT_LISTING R
+
+        LEFT JOIN CENTER_ANN_BOARD_POST P
+        ON P.ANN_NO = R.ANN_NO
+
+        INNER JOIN APT_DETAIL D
+        ON R.HO_NO = D.HO_NO
+
+        INNER JOIN APT_UNIT U
+        ON D.DONG_NO = U.DONG_NO
+
+        LEFT JOIN APT_HO_TY T
+        ON D.HO_TY_NO = T.HO_TY_NO
+        AND U.APT_CMPLEX_NO = T.APT_CMPLEX_NO
+
+        INNER JOIN APT_COMPLEX A
+        ON U.APT_CMPLEX_NO = A.APT_CMPLEX_NO
+
+        LEFT JOIN (
+        SELECT
+        AF.FILE_GROUP_NO
+
+        , LISTAGG(AF.GOOGLE_ID, ',')
+        WITHIN GROUP (
+        ORDER BY NVL(AF.FILE_SORT_ORDER, 999999)
+        , AF.REG_DT
+        , AF.FILE_SAVE_UUID
+        ) AS GOOGLE_IDS
+
+        , LISTAGG(
+        NVL(AF.CAT, 'NONE'),
+        ','
+        )
+        WITHIN GROUP (
+        ORDER BY NVL(AF.FILE_SORT_ORDER, 999999)
+        , AF.REG_DT
+        , AF.FILE_SAVE_UUID
+        ) AS CATS
+
+        FROM ATTACH_FILE AF
+        WHERE AF.GOOGLE_ID IS NOT NULL
+        GROUP BY AF.FILE_GROUP_NO
+        ) IMG
+        ON IMG.FILE_GROUP_NO = A.RPRSNT_IMG_FILE_NO
+
+        LEFT JOIN COMMON_CODE RC
+        ON RC.GROUP_CODE_NO = 'RENT_TY'
+        AND RC.CODE_NO_CD = R.RENT_TYPE_CD
+        AND RC.USE_YN = 'Y'
+
+        LEFT JOIN COMMON_CODE HC
+        ON HC.GROUP_CODE_NO = 'HO_STTS'
+        AND HC.CODE_NO_CD = D.HO_STTS_CD
+        AND HC.USE_YN = 'Y'
+
+        ORDER BY R.RENT_LSTG_NO DESC
+
+    </select>
+
+    <select id="selectRentListingCount"
+            resultType="int">
+
+        SELECT COUNT(*)
+
+        FROM RENT_LISTING R
+
+        INNER JOIN APT_DETAIL D
+        ON R.HO_NO = D.HO_NO
+
+        INNER JOIN APT_UNIT U
+        ON D.DONG_NO = U.DONG_NO
+
+        INNER JOIN APT_COMPLEX A
+        ON U.APT_CMPLEX_NO = A.APT_CMPLEX_NO
+
+        LEFT JOIN COMMON_CODE RC
+        ON RC.GROUP_CODE_NO = 'RENT_TY'
+        AND RC.CODE_NO_CD = R.RENT_TYPE_CD
+        AND RC.USE_YN = 'Y'
+
+        LEFT JOIN COMMON_CODE HC
+        ON HC.GROUP_CODE_NO = 'HO_STTS'
+        AND HC.CODE_NO_CD = D.HO_STTS_CD
+        AND HC.USE_YN = 'Y'
+
+        <include refid="rentSearchWhere"/>
+
+    </select>
+
+    <select id="selectRentListingDetail"
+            parameterType="string"
+            resultMap="rentListingMapResultMap">
+
+        SELECT
+        R.RENT_LSTG_NO
+        , R.RENT_TYPE_CD
+        , NVL(RC.CODE_NAME, R.RENT_TYPE_CD) AS RENT_TYPE_NM
+        , R.DPST_AMT
+        , R.MTHLY_RENT_AMT
+        , R.RENT_LSTG_CN
+        , R.HO_NO
+        , R.RENT_TTL
+        , R.ANN_NO
+        , P.TTL AS ANN_TTL
+
+        , TO_CHAR(P.RCRT_BGNG_DT, 'YYYY-MM-DD') AS RCRT_BGNG_DT
+        , TO_CHAR(P.RCRT_END_DT, 'YYYY-MM-DD') AS RCRT_END_DT
+
+        , D.DONG_NO
+        , D.FLOOR
+        , D.HO
+        , D.HO_STTS_CD
+        , NVL(HC.CODE_NAME, D.HO_STTS_CD) AS HO_STTS_NM
+        , D.IMAGE_NO
+        , D.PANO_IMAGE_NO
+
+        , U.DONG_NM
+        , U.FLOOR AS DONG_MAX_FLOOR
+        , U.UNIT_CNT AS DONG_UNIT_CNT
+
+        , T.EXCLUSIVE_SIZE
+
+        , A.APT_CMPLEX_NO
+        , A.APT_CMPLEX_NM
+        , A.SIDO_NM
+        , A.SIGUNGU_NM
+        , A.EMD_NM
+        , A.DOROJUSO
+        , A.LAT_VAL
+        , A.LON_VAL
+        , A.UNIT_CNT
+        , A.DONG_CNT
+        , A.BLD_YR
+        , A.CNSCO_NM
+        , A.RPRSNT_IMG_FILE_NO
+
+        , IMG.GOOGLE_IDS AS RPRSNT_IMG_GOOGLE_IDS
+        , IMG.CATS AS RPRSNT_IMG_CATS
+
+
+        FROM RENT_LISTING R
+
+        LEFT JOIN CENTER_ANN_BOARD_POST P
+        ON P.ANN_NO = R.ANN_NO
+
+        INNER JOIN APT_DETAIL D
+        ON R.HO_NO = D.HO_NO
+
+        INNER JOIN APT_UNIT U
+        ON D.DONG_NO = U.DONG_NO
+
+        LEFT JOIN APT_HO_TY T
+        ON D.HO_TY_NO = T.HO_TY_NO
+        AND U.APT_CMPLEX_NO = T.APT_CMPLEX_NO
+
+        INNER JOIN APT_COMPLEX A
+        ON U.APT_CMPLEX_NO = A.APT_CMPLEX_NO
+
+        LEFT JOIN (
+        SELECT
+        AF.FILE_GROUP_NO
+        , LISTAGG(AF.GOOGLE_ID, ',')
+        WITHIN GROUP (
+        ORDER BY NVL(AF.FILE_SORT_ORDER, 999999)
+        , AF.REG_DT
+        , AF.FILE_SAVE_UUID
+        ) AS GOOGLE_IDS
+        , LISTAGG(
+        NVL(AF.CAT, 'NONE'),
+        ','
+        )
+        WITHIN GROUP (
+        ORDER BY NVL(AF.FILE_SORT_ORDER, 999999)
+        , AF.REG_DT
+        , AF.FILE_SAVE_UUID
+        ) AS CATS
+
+        FROM ATTACH_FILE AF
+        WHERE AF.GOOGLE_ID IS NOT NULL
+        GROUP BY AF.FILE_GROUP_NO
+        ) IMG
+        ON IMG.FILE_GROUP_NO = A.RPRSNT_IMG_FILE_NO
+
+        LEFT JOIN COMMON_CODE RC
+        ON RC.GROUP_CODE_NO = 'RENT_TY'
+        AND RC.CODE_NO_CD = R.RENT_TYPE_CD
+        AND RC.USE_YN = 'Y'
+
+        LEFT JOIN COMMON_CODE HC
+        ON HC.GROUP_CODE_NO = 'HO_STTS'
+        AND HC.CODE_NO_CD = D.HO_STTS_CD
+        AND HC.USE_YN = 'Y'
+
+        WHERE R.RENT_LSTG_NO = #{rentLstgNo}
+
+    </select>
+
+    <select id="selectRentListingPagingList"
+            resultMap="rentListingMapResultMap">
+
+        SELECT *
+        FROM (
+        SELECT
+        ROW_NUMBER() OVER (ORDER BY R.RENT_LSTG_NO DESC) AS RN
+
+        , R.RENT_LSTG_NO
+        , R.RENT_TYPE_CD
+        , NVL(RC.CODE_NAME, R.RENT_TYPE_CD) AS RENT_TYPE_NM
+        , R.DPST_AMT
+        , R.MTHLY_RENT_AMT
+        , R.RENT_LSTG_CN
+        , R.HO_NO
+        , R.RENT_TTL
+        , R.ANN_NO
+        , P.TTL AS ANN_TTL
+
+        , TO_CHAR(P.RCRT_BGNG_DT, 'YYYY-MM-DD') AS RCRT_BGNG_DT
+        , TO_CHAR(P.RCRT_END_DT, 'YYYY-MM-DD') AS RCRT_END_DT
+
+        , D.DONG_NO
+        , D.FLOOR
+        , D.HO
+        , D.HO_STTS_CD
+        , NVL(HC.CODE_NAME, D.HO_STTS_CD) AS HO_STTS_NM
+        , D.IMAGE_NO
+        , D.PANO_IMAGE_NO
+
+        , U.DONG_NM
+        , U.FLOOR AS DONG_MAX_FLOOR
+        , U.UNIT_CNT AS DONG_UNIT_CNT
+
+        , T.EXCLUSIVE_SIZE
+
+        , A.APT_CMPLEX_NO
+        , A.APT_CMPLEX_NM
+        , A.SIDO_NM
+        , A.SIGUNGU_NM
+        , A.EMD_NM
+        , A.DOROJUSO
+        , A.LAT_VAL
+        , A.LON_VAL
+        , A.UNIT_CNT
+        , A.DONG_CNT
+        , A.BLD_YR
+        , A.CNSCO_NM
+        , A.RPRSNT_IMG_FILE_NO
+
+        , IMG.GOOGLE_IDS AS RPRSNT_IMG_GOOGLE_IDS
+        , IMG.CATS AS RPRSNT_IMG_CATS
+
+        FROM RENT_LISTING R
+
+        LEFT JOIN CENTER_ANN_BOARD_POST P
+        ON P.ANN_NO = R.ANN_NO
+
+        INNER JOIN APT_DETAIL D
+        ON R.HO_NO = D.HO_NO
+
+        INNER JOIN APT_UNIT U
+        ON D.DONG_NO = U.DONG_NO
+
+        LEFT JOIN APT_HO_TY T
+        ON D.HO_TY_NO = T.HO_TY_NO
+        AND U.APT_CMPLEX_NO = T.APT_CMPLEX_NO
+
+        INNER JOIN APT_COMPLEX A
+        ON U.APT_CMPLEX_NO = A.APT_CMPLEX_NO
+
+        LEFT JOIN (
+        SELECT
+        AF.FILE_GROUP_NO
+        , LISTAGG(AF.GOOGLE_ID, ',')
+        WITHIN GROUP (
+        ORDER BY NVL(AF.FILE_SORT_ORDER, 999999)
+        , AF.REG_DT
+        , AF.FILE_SAVE_UUID
+        ) AS GOOGLE_IDS
+        , LISTAGG(
+        NVL(AF.CAT, 'NONE'),
+        ','
+        )
+        WITHIN GROUP (
+        ORDER BY NVL(AF.FILE_SORT_ORDER, 999999)
+        , AF.REG_DT
+        , AF.FILE_SAVE_UUID
+        ) AS CATS
+
+        FROM ATTACH_FILE AF
+        WHERE AF.GOOGLE_ID IS NOT NULL
+        GROUP BY AF.FILE_GROUP_NO
+        ) IMG
+        ON IMG.FILE_GROUP_NO = A.RPRSNT_IMG_FILE_NO
+
+        LEFT JOIN COMMON_CODE RC
+        ON RC.GROUP_CODE_NO = 'RENT_TY'
+        AND RC.CODE_NO_CD = R.RENT_TYPE_CD
+        AND RC.USE_YN = 'Y'
+
+        LEFT JOIN COMMON_CODE HC
+        ON HC.GROUP_CODE_NO = 'HO_STTS'
+        AND HC.CODE_NO_CD = D.HO_STTS_CD
+        AND HC.USE_YN = 'Y'
+
+        <include refid="rentSearchWhere"/>
+        )
+        WHERE RN BETWEEN #{startRow} AND #{endRow}
+
+    </select>
+
+    <select id="selectRentMapComplexList"
+            resultType="kr.or.ddit.domain.central.dto.RentListingMapDTO">
+
+        SELECT
+        A.APT_CMPLEX_NO     AS aptCmplexNo
+        , A.APT_CMPLEX_NM     AS aptCmplexNm
+        , A.DOROJUSO          AS dorojuso
+        , A.SIDO_NM           AS sidoNm
+        , A.SIGUNGU_NM        AS sigunguNm
+        , A.EMD_NM            AS emdNm
+        , A.LAT_VAL           AS latVal
+        , A.LON_VAL           AS lonVal
+        , COUNT(DISTINCT R.RENT_LSTG_NO) AS rentCount
+        , SUM(CASE WHEN R.RENT_TYPE_CD = 'JS' THEN 1 ELSE 0 END) AS JS_COUNT
+        , SUM(CASE WHEN R.RENT_TYPE_CD = 'PE' THEN 1 ELSE 0 END) AS PE_COUNT
+
+        , MIN(CASE WHEN R.RENT_TYPE_CD = 'JS' THEN R.DPST_AMT END) AS MIN_JS_DPST_AMT
+        , MIN(CASE WHEN R.RENT_TYPE_CD = 'PE' THEN R.MTHLY_RENT_AMT END) AS MIN_PE_MONTHLY_RENT_AMT
+
+        , MAX(R.DPST_AMT) AS MAX_DPST_AMT
+        , MIN(CASE WHEN R.RENT_TYPE_CD = 'PE' THEN R.MTHLY_RENT_AMT END) AS MIN_MONTHLY_RENT_AMT
+        FROM RENT_LISTING R
+        INNER JOIN APT_DETAIL D
+        ON R.HO_NO = D.HO_NO
+        INNER JOIN APT_UNIT U
+        ON D.DONG_NO = U.DONG_NO
+        INNER JOIN APT_COMPLEX A
+        ON U.APT_CMPLEX_NO = A.APT_CMPLEX_NO
+        WHERE A.LAT_VAL IS NOT NULL
+        AND A.LON_VAL IS NOT NULL
+        AND R.ANN_NO IS NOT NULL
+        GROUP BY
+        A.APT_CMPLEX_NO
+        , A.APT_CMPLEX_NM
+        , A.DOROJUSO
+        , A.SIDO_NM
+        , A.SIGUNGU_NM
+        , A.EMD_NM
+        , A.LAT_VAL
+        , A.LON_VAL
+
+
+    </select>
+
+    <select id="selectRentListByComplexNo" resultMap="rentListingMapResultMap">
+
+        SELECT
+        R.RENT_LSTG_NO
+        , R.RENT_TYPE_CD
+        , NVL(RC.CODE_NAME, R.RENT_TYPE_CD) AS RENT_TYPE_NM
+        , R.DPST_AMT
+        , R.MTHLY_RENT_AMT
+        , R.RENT_LSTG_CN
+        , R.HO_NO
+        , R.RENT_TTL
+        , R.ANN_NO
+        , P.TTL AS ANN_TTL
+        , TO_CHAR(P.RCRT_BGNG_DT, 'YYYY-MM-DD') AS RCRT_BGNG_DT
+        , TO_CHAR(P.RCRT_END_DT, 'YYYY-MM-DD') AS RCRT_END_DT
+
+        , D.DONG_NO
+        , D.FLOOR
+        , D.HO
+        , D.HO_STTS_CD
+        , NVL(HC.CODE_NAME, D.HO_STTS_CD) AS HO_STTS_NM
+        , D.IMAGE_NO
+        , D.PANO_IMAGE_NO
+
+        , U.DONG_NM
+        , U.FLOOR AS DONG_MAX_FLOOR
+        , U.UNIT_CNT AS DONG_UNIT_CNT
+
+        , T.EXCLUSIVE_SIZE
+
+        , A.APT_CMPLEX_NO
+        , A.APT_CMPLEX_NM
+        , A.SIDO_NM
+        , A.SIGUNGU_NM
+        , A.EMD_NM
+        , A.DOROJUSO
+        , A.LAT_VAL
+        , A.LON_VAL
+        , A.UNIT_CNT
+        , A.DONG_CNT
+        , A.BLD_YR
+        , A.CNSCO_NM
+        , A.RPRSNT_IMG_FILE_NO
+
+        , IMG.GOOGLE_IDS AS RPRSNT_IMG_GOOGLE_IDS
+        , IMG.CATS AS RPRSNT_IMG_CATS
+
+        FROM RENT_LISTING R
+
+        LEFT JOIN CENTER_ANN_BOARD_POST P
+        ON P.ANN_NO = R.ANN_NO
+
+        INNER JOIN APT_DETAIL D
+        ON R.HO_NO = D.HO_NO
+
+        INNER JOIN APT_UNIT U
+        ON D.DONG_NO = U.DONG_NO
+
+        LEFT JOIN APT_HO_TY T
+        ON D.HO_TY_NO = T.HO_TY_NO
+        AND U.APT_CMPLEX_NO = T.APT_CMPLEX_NO
+
+        INNER JOIN APT_COMPLEX A
+        ON U.APT_CMPLEX_NO = A.APT_CMPLEX_NO
+
+        LEFT JOIN (
+        SELECT
+        AF.FILE_GROUP_NO
+        , LISTAGG(AF.GOOGLE_ID, ',') WITHIN GROUP (
+        ORDER BY NVL(AF.FILE_SORT_ORDER, 999999), AF.REG_DT, AF.FILE_SAVE_UUID
+        ) AS GOOGLE_IDS
+        , LISTAGG(NVL(AF.CAT, 'NONE'), ',') WITHIN GROUP (
+        ORDER BY NVL(AF.FILE_SORT_ORDER, 999999), AF.REG_DT, AF.FILE_SAVE_UUID
+        ) AS CATS
+        FROM ATTACH_FILE AF
+        WHERE AF.GOOGLE_ID IS NOT NULL
+        GROUP BY AF.FILE_GROUP_NO
+        ) IMG
+        ON IMG.FILE_GROUP_NO = A.IMG_FILE_NO
+
+        LEFT JOIN COMMON_CODE RC
+        ON RC.GROUP_CODE_NO = 'RENT_TY'
+        AND RC.CODE_NO_CD = R.RENT_TYPE_CD
+        AND RC.USE_YN = 'Y'
+
+        LEFT JOIN COMMON_CODE HC
+        ON HC.GROUP_CODE_NO = 'HO_STTS'
+        AND HC.CODE_NO_CD = D.HO_STTS_CD
+        AND HC.USE_YN = 'Y'
+
+        WHERE A.APT_CMPLEX_NO = #{aptCmplexNo}
+        AND R.ANN_NO IS NOT NULL
+
+        ORDER BY R.RENT_LSTG_NO DESC
+
+    </select>
+</mapper>

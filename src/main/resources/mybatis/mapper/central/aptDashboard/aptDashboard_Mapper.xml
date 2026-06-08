@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.central.aptDashboard.mapper.IAptDashboardMapper">
+
+    <sql id="aptFilter">
+        <if test="sidoNm != null and sidoNm != ''">
+            AND ac.sido_nm = #{sidoNm}
+        </if>
+        <if test="aptCmplexNo != null and aptCmplexNo != ''">
+            AND ac.apt_cmplex_no = #{aptCmplexNo}
+        </if>
+    </sql>
+
+    <!-- 단지 필터 : @Param search 기준 -->
+    <sql id="aptFilterBySearch">
+        <if test="search.sidoNm != null and search.sidoNm != ''">
+            AND ac.sido_nm = #{search.sidoNm}
+        </if>
+        <if test="search.aptCmplexNo != null and search.aptCmplexNo != ''">
+            AND ac.apt_cmplex_no = #{search.aptCmplexNo}
+        </if>
+    </sql>
+
+    <sql id="annBaseDate">COALESCE(CAST(cap.rcrt_bgng_dt AS DATE), CAST(cap.reg_dttm AS DATE))</sql>
+
+    <sql id="cap2BaseDate">COALESCE(CAST(cap2.rcrt_bgng_dt AS DATE), CAST(cap2.reg_dttm AS DATE))</sql>
+
+    <sql id="cap4BaseDate">COALESCE(CAST(cap4.rcrt_bgng_dt AS DATE), CAST(cap4.reg_dttm AS DATE))</sql>
+
+    <select id="selectSidoList" resultType="kr.or.ddit.domain.central.aptDashboard.dto.AptDashboardOptionDTO">
+        SELECT DISTINCT
+               sido_nm AS value,
+               sido_nm AS label
+        FROM apt_complex
+        WHERE sido_nm IS NOT NULL
+        ORDER BY sido_nm
+    </select>
+
+    <select id="selectAptList" parameterType="kr.or.ddit.domain.central.aptDashboard.dto.AptDashboardSearchDTO"
+            resultType="kr.or.ddit.domain.central.aptDashboard.dto.AptDashboardOptionDTO">
+        SELECT
+               ac.apt_cmplex_no AS value,
+               ac.apt_cmplex_nm AS label
+        FROM apt_complex ac
+        WHERE 1 = 1
+        <include refid="aptFilter"/>
+        ORDER BY ac.apt_cmplex_nm
+    </select>
+
+    <select id="selectSummary" parameterType="kr.or.ddit.domain.central.aptDashboard.dto.AptDashboardSearchDTO"
+            resultType="kr.or.ddit.domain.central.aptDashboard.dto.AptDashboardSummaryDTO">
+        SELECT
+               /* 총 세대 수 */
+               NVL((
+                   SELECT SUM(ac.unit_cnt)
+                   FROM apt_complex ac
+                   WHERE 1 = 1
+                   <include refid="aptFilter"/>
+               ), 0) AS totalUnitCnt,
+
+               /* 공고 수 */
+               NVL((
+                   SELECT COUNT(DISTINCT cap.ann_no)
+                   FROM center_ann_board_post cap
+                        INNER JOIN center_board_instance cbi ON cbi.board_no = cap.board_no
+                        INNER JOIN apt_complex ac ON ac.apt_cmplex_no = cbi.apt_cmplex_no
+                   WHERE NVL(cap.del_yn, 'N') = 'N'
+                     AND TO_CHAR(<include refid="annBaseDate"/>, 'YYYY') = TO_CHAR(#{year})
+                   <include refid="aptFilter"/>
+               ), 0) AS announcementCnt,
+
+               /* 임대 매물 수 */
+               NVL((
+                   SELECT COUNT(DISTINCT rl.ho_no)
+                   FROM rent_listing rl
+                        INNER JOIN apt_detail ad ON ad.ho_no = rl.ho_no
+                        INNER JOIN apt_unit au ON au.dong_no = ad.dong_no
+                        INNER JOIN apt_complex ac ON ac.apt_cmplex_no = au.apt_cmplex_no
+                        LEFT JOIN center_ann_board_post cap2 ON cap2.ann_no = rl.ann_no
+                   WHERE TO_CHAR(<include refid="cap2BaseDate"/>, 'YYYY') = TO_CHAR(#{year})
+                   <include refid="aptFilter"/>
+               ), 0) AS rentListingCnt,
+
+               /* 계약 완료 매물 수 */
+               NVL((
+                   SELECT COUNT(DISTINCT rl.ho_no)
+                   FROM rent_ctrt rc
+                        INNER JOIN rent_listing rl ON rl.rent_lstg_no = rc.rent_lstg_no
+                        INNER JOIN apt_detail ad ON ad.ho_no = rl.ho_no
+                        INNER JOIN apt_unit au ON au.dong_no = ad.dong_no
+                        INNER JOIN apt_complex ac ON ac.apt_cmplex_no = au.apt_cmplex_no
+                        LEFT JOIN center_ann_board_post cap2 ON cap2.ann_no = rl.ann_no
+                   WHERE rc.ctrt_stts_cd = 'APPROVED'
+                     AND TO_CHAR(<include refid="cap2BaseDate"/>, 'YYYY') = TO_CHAR(#{year})
+                   <include refid="aptFilter"/>
+               ), 0) AS approvedContractCnt,
+
+               /* 임대계약률 */
+               NVL(ROUND(
+                   NVL((
+                       SELECT COUNT(DISTINCT rl.ho_no)
+                       FROM rent_ctrt rc
+                            INNER JOIN rent_listing rl ON rl.rent_lstg_no = rc.rent_lstg_no
+                            INNER JOIN apt_detail ad ON ad.ho_no = rl.ho_no
+                            INNER JOIN apt_unit au ON au.dong_no = ad.dong_no
+                            INNER JOIN apt_complex ac ON ac.apt_cmplex_no = au.apt_cmplex_no
+                            LEFT JOIN center_ann_board_post cap2 ON cap2.ann_no = rl.ann_no
+                       WHERE rc.ctrt_stts_cd = 'APPROVED'
+                         AND TO_CHAR(<include refid="cap2BaseDate"/>, 'YYYY') = TO_CHAR(#{year})
+                       <include refid="aptFilter"/>
+                   ), 0)
+                   / NULLIF(NVL((
+                       SELECT COUNT(DISTINCT rl.ho_no)
+                       FROM rent_listing rl
+                            INNER JOIN apt_detail ad ON ad.ho_no = rl.ho_no
+                            INNER JOIN apt_unit au ON au.dong_no = ad.dong_no
+                            INNER JOIN apt_complex ac ON ac.apt_cmplex_no = au.apt_cmplex_no
+                            LEFT JOIN center_ann_board_post cap4 ON cap4.ann_no = rl.ann_no
+                       WHERE TO_CHAR(<include refid="cap4BaseDate"/>, 'YYYY') = TO_CHAR(#{year})
+                       <include refid="aptFilter"/>
+                   ), 0), 0) * 100, 1), 0) AS rentContractRate
+        FROM dual
+    </select>
+
+    <select id="selectMonthlyList" parameterType="kr.or.ddit.domain.central.aptDashboard.dto.AptDashboardSearchDTO"
+            resultType="kr.or.ddit.domain.central.aptDashboard.dto.AptDashboardMonthlyDTO">
+        SELECT
+               LPAD(m.lv, 2, '0') AS month,
+               NVL(a.announcement_cnt, 0) AS announcementCnt,
+               NVL(c.contract_cnt, 0) AS contractCnt
+        FROM (
+            SELECT LEVEL lv
+            FROM dual
+            CONNECT BY LEVEL <![CDATA[<=]]> 12
+        ) m
+        LEFT JOIN (
+            SELECT TO_NUMBER(TO_CHAR(<include refid="annBaseDate"/>, 'MM')) AS mm,
+                   COUNT(DISTINCT cap.ann_no) AS announcement_cnt
+            FROM center_ann_board_post cap
+                 INNER JOIN center_board_instance cbi ON cbi.board_no = cap.board_no
+                 INNER JOIN apt_complex ac ON ac.apt_cmplex_no = cbi.apt_cmplex_no
+            WHERE NVL(cap.del_yn, 'N') = 'N'
+              AND TO_CHAR(<include refid="annBaseDate"/>, 'YYYY') = TO_CHAR(#{year})
+            <include refid="aptFilter"/>
+            GROUP BY TO_NUMBER(TO_CHAR(<include refid="annBaseDate"/>, 'MM'))
+        ) a ON a.mm = m.lv
+        LEFT JOIN (
+            SELECT TO_NUMBER(TO_CHAR(<include refid="annBaseDate"/>, 'MM')) AS mm,
+                   COUNT(DISTINCT rl.ho_no) AS contract_cnt
+            FROM rent_ctrt rc
+                 INNER JOIN rent_listing rl ON rl.rent_lstg_no = rc.rent_lstg_no
+                 INNER JOIN apt_detail ad ON ad.ho_no = rl.ho_no
+                 INNER JOIN apt_unit au ON au.dong_no = ad.dong_no
+                 INNER JOIN apt_complex ac ON ac.apt_cmplex_no = au.apt_cmplex_no
+                 LEFT JOIN center_ann_board_post cap ON cap.ann_no = rl.ann_no
+            WHERE rc.ctrt_stts_cd = 'APPROVED'
+              AND TO_CHAR(<include refid="annBaseDate"/>, 'YYYY') = TO_CHAR(#{year})
+            <include refid="aptFilter"/>
+            GROUP BY TO_NUMBER(TO_CHAR(<include refid="annBaseDate"/>, 'MM'))
+        ) c ON c.mm = m.lv
+        ORDER BY m.lv
+    </select>
+
+    <select id="selectListingStatusList" parameterType="kr.or.ddit.domain.central.aptDashboard.dto.AptDashboardSearchDTO"
+            resultType="kr.or.ddit.domain.central.aptDashboard.dto.AptDashboardListingStatusDTO">
+        SELECT
+               listing_status_cd AS listingStatusCd,
+               listing_status_nm AS listingStatusNm,
+               rent_listing_cnt AS rentListingCnt,
+               NVL(ROUND(rent_listing_cnt / NULLIF(SUM(rent_listing_cnt) OVER (), 0) * 100, 1), 0) AS ratio
+        FROM (
+            SELECT
+                   NVL(rl.deal_stts_cd, 'UNKNOWN') AS listing_status_cd,
+                   CASE NVL(rl.deal_stts_cd, 'UNKNOWN')
+                        WHEN 'AVL' THEN '임대 가능'
+                        WHEN 'ING' THEN '계약 진행'
+                        WHEN 'CMP' THEN '계약 완료'
+                        ELSE '기타'
+                   END AS listing_status_nm,
+                   COUNT(DISTINCT rl.ho_no) AS rent_listing_cnt
+            FROM rent_listing rl
+                 INNER JOIN apt_detail ad ON ad.ho_no = rl.ho_no
+                 INNER JOIN apt_unit au ON au.dong_no = ad.dong_no
+                 INNER JOIN apt_complex ac ON ac.apt_cmplex_no = au.apt_cmplex_no
+                 LEFT JOIN center_ann_board_post cap ON cap.ann_no = rl.ann_no
+            WHERE TO_CHAR(<include refid="annBaseDate"/>, 'YYYY') = TO_CHAR(#{year})
+            <include refid="aptFilter"/>
+            GROUP BY NVL(rl.deal_stts_cd, 'UNKNOWN')
+        )
+        ORDER BY
+             CASE listing_status_cd
+                  WHEN 'AVL' THEN 1
+                  WHEN 'ING' THEN 2
+                  WHEN 'CMP' THEN 3
+                  ELSE 9
+             END,
+             listing_status_nm
+    </select>
+
+    <select id="selectAptRowList"
+            resultType="kr.or.ddit.domain.central.aptDashboard.dto.AptDashboardAptRowDTO">
+        SELECT *
+        FROM (
+        SELECT
+               ROW_NUMBER() OVER (ORDER BY ac.apt_cmplex_nm) AS rn,
+               ac.apt_cmplex_no AS aptCmplexNo,
+               ac.apt_cmplex_nm AS aptCmplexNm,
+               TRIM(ac.sido_nm || ' ' || ac.sigungu_nm) AS region,
+               NVL(ac.unit_cnt, 0) AS unitCnt,
+               NVL(ann.announcement_cnt, 0) AS announcementCnt,
+               NVL(lst.rent_listing_cnt, 0) AS rentListingCnt,
+               NVL(ctrt.approved_contract_cnt, 0) AS approvedContractCnt,
+               NVL(ROUND(NVL(ctrt.approved_contract_cnt, 0) / NULLIF(NVL(lst.rent_listing_cnt, 0), 0) * 100, 1), 0) AS rentContractRate
+        FROM apt_complex ac
+             LEFT JOIN (
+                 SELECT cbi.apt_cmplex_no,
+                        COUNT(DISTINCT cap.ann_no) AS announcement_cnt
+                 FROM center_ann_board_post cap
+                      INNER JOIN center_board_instance cbi ON cbi.board_no = cap.board_no
+                 WHERE NVL(cap.del_yn, 'N') = 'N'
+                   AND TO_CHAR(<include refid="annBaseDate"/>, 'YYYY') = TO_CHAR(#{search.year})
+                 GROUP BY cbi.apt_cmplex_no
+             ) ann ON ann.apt_cmplex_no = ac.apt_cmplex_no
+             LEFT JOIN (
+                 SELECT au.apt_cmplex_no,
+                        COUNT(DISTINCT rl.ho_no) AS rent_listing_cnt
+                 FROM rent_listing rl
+                      INNER JOIN apt_detail ad ON ad.ho_no = rl.ho_no
+                      INNER JOIN apt_unit au ON au.dong_no = ad.dong_no
+                      LEFT JOIN center_ann_board_post cap ON cap.ann_no = rl.ann_no
+                 WHERE TO_CHAR(<include refid="annBaseDate"/>, 'YYYY') = TO_CHAR(#{search.year})
+                 GROUP BY au.apt_cmplex_no
+             ) lst ON lst.apt_cmplex_no = ac.apt_cmplex_no
+             LEFT JOIN (
+                 SELECT au.apt_cmplex_no,
+                        COUNT(DISTINCT rl.ho_no) AS approved_contract_cnt
+                 FROM rent_ctrt rc
+                      INNER JOIN rent_listing rl ON rl.rent_lstg_no = rc.rent_lstg_no
+                      INNER JOIN apt_detail ad ON ad.ho_no = rl.ho_no
+                      INNER JOIN apt_unit au ON au.dong_no = ad.dong_no
+                      LEFT JOIN center_ann_board_post cap ON cap.ann_no = rl.ann_no
+                 WHERE rc.ctrt_stts_cd = 'APPROVED'
+                   AND TO_CHAR(<include refid="annBaseDate"/>, 'YYYY') = TO_CHAR(#{search.year})
+                 GROUP BY au.apt_cmplex_no
+             ) ctrt ON ctrt.apt_cmplex_no = ac.apt_cmplex_no
+        WHERE 1 = 1
+        <include refid="aptFilterBySearch"/>
+        )
+        WHERE rn BETWEEN #{pagingVO.startRow} AND #{pagingVO.endRow}
+        ORDER BY rn
+    </select>
+
+    <select id="selectAptRowCount" parameterType="kr.or.ddit.domain.central.aptDashboard.dto.AptDashboardSearchDTO"
+            resultType="int">
+        SELECT COUNT(*)
+        FROM apt_complex ac
+        WHERE 1 = 1
+        <include refid="aptFilter"/>
+    </select>
+</mapper>

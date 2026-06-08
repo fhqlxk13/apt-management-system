@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.member.resident.mapper.IResidentPaymentMapper">
+
+    <resultMap id="paymentMap" type="kr.or.ddit.domain.member.resident.vo.PaymentVO">
+        <!-- PAYMENT 컬럼 -->
+        <id property="pymtNo" column="PYMT_NO"/>
+        <result property="billNo" column="BILL_NO"/>
+        <result property="impUid" column="IMP_UID"/>
+        <result property="payMthdCd" column="PAY_MTHD_CD"/>
+        <result property="payAmt" column="PAY_AMT"/>
+        <result property="paySttsCd" column="PAY_STTS_CD"/>
+        <result property="payReqDt" column="PAY_REQ_DT"/>
+        <result property="payCmplDt" column="PAY_CMPL_DT"/>
+        <result property="failRsnCn" column="FAIL_RSN_CN"/>
+        <result property="ordId" column="ORD_ID"/>
+        <result property="userNo" column="USER_NO"/>
+
+        <!-- 화면/API 조회용 -->
+        <result property="payMthdNm" column="PAY_MTHD_NM"/>
+        <result property="paySttsNm" column="PAY_STTS_NM"/>
+        <result property="billYm" column="BILL_YM"/>
+        <result property="billTotAmt" column="BILL_TOT_AMT"/>
+        <result property="hoNo" column="HO_NO"/>
+        <result property="displayDongHo" column="DISPLAY_DONG_HO"/>
+    </resultMap>
+
+    <!-- 결제번호 생성 -->
+    <select id="selectNextPymtNo" resultType="string">
+        SELECT
+            'PY' || TO_CHAR(SYSDATE, 'YYMMDD')
+                || LPAD(SEQ_PAYMENT.NEXTVAL, 7, '0')
+        FROM DUAL
+    </select>
+
+    <!-- 결제요청 등록 -->
+    <insert id="insertPaymentRequest"
+            parameterType="kr.or.ddit.domain.member.resident.vo.PaymentVO">
+        INSERT INTO PAYMENT (
+            PYMT_NO,
+            BILL_NO,
+            IMP_UID,
+            PAY_MTHD_CD,
+            PAY_AMT,
+            PAY_STTS_CD,
+            PAY_REQ_DT,
+            PAY_CMPL_DT,
+            FAIL_RSN_CN,
+            ORD_ID,
+            USER_NO
+        ) VALUES (
+                     #{pymtNo},
+                     #{billNo},
+                     NULL,
+                     #{payMthdCd},
+                     #{payAmt},
+                     'UNPAID',
+                     SYSDATE,
+                     NULL,
+                     NULL,
+                     #{ordId},
+                     #{userNo}
+                 )
+    </insert>
+
+    <!-- 고지서별 결제 이력 조회 -->
+    <select id="selectPaymentListByBillNo" resultMap="paymentMap">
+        SELECT
+            P.PYMT_NO,
+            P.BILL_NO,
+            P.IMP_UID,
+            P.PAY_MTHD_CD,
+            P.PAY_AMT,
+            P.PAY_STTS_CD,
+            P.PAY_REQ_DT,
+            P.PAY_CMPL_DT,
+            P.FAIL_RSN_CN,
+            P.ORD_ID,
+            P.USER_NO,
+
+            M.CODE_NAME AS PAY_MTHD_NM,
+            S.CODE_NAME AS PAY_STTS_NM,
+
+            B.BILL_YM,
+            B.BILL_TOT_AMT,
+            B.HO_NO,
+
+            U.DONG_NM || '동 ' || H.HO || '호' AS DISPLAY_DONG_HO
+
+        FROM PAYMENT P
+                 JOIN BILL B
+                      ON P.BILL_NO = B.BILL_NO
+                 JOIN APT_DETAIL H
+                      ON B.HO_NO = H.HO_NO
+                 JOIN APT_UNIT U
+                      ON H.DONG_NO = U.DONG_NO
+                 LEFT JOIN COMMON_CODE M
+                           ON M.GROUP_CODE_NO = 'PAY_MET'
+                               AND M.CODE_NO_CD = P.PAY_MTHD_CD
+                               AND M.USE_YN = 'Y'
+                 LEFT JOIN COMMON_CODE S
+                           ON S.GROUP_CODE_NO = 'PAY_STTS'
+                               AND S.CODE_NO_CD = P.PAY_STTS_CD
+                               AND S.USE_YN = 'Y'
+        WHERE P.BILL_NO = #{billNo}
+        ORDER BY P.PAY_REQ_DT DESC
+    </select>
+
+    <!-- 이미 납부 완료된 고지서인지 확인 -->
+    <select id="selectPaidBillCount" resultType="int">
+        SELECT COUNT(*)
+        FROM BILL
+        WHERE BILL_NO = #{billNo}
+          AND PYMT_STTS_CD = 'PAID'
+    </select>
+
+    <!-- 결제 요청 대상 고지서 조회 -->
+    <select id="selectPaymentTargetBill" resultMap="paymentMap">
+        SELECT
+            B.BILL_NO,
+            B.BILL_YM,
+            B.BILL_TOT_AMT,
+            B.HO_NO,
+
+            U.DONG_NM || '동 ' || H.HO || '호' AS DISPLAY_DONG_HO,
+
+            #{userNo} AS USER_NO
+
+        FROM BILL B
+                 JOIN APT_DETAIL H
+                      ON B.HO_NO = H.HO_NO
+                 JOIN APT_UNIT U
+                      ON H.DONG_NO = U.DONG_NO
+                 JOIN HSHLD_HEAD HH
+                      ON H.HO_NO = HH.HO_NO
+        WHERE B.BILL_NO = #{billNo}
+          AND HH.USER_NO = #{userNo}
+          AND B.PYMT_STTS_CD != 'PAID'
+    </select>
+
+    <!-- 주문번호로 결제 조회 -->
+    <select id="selectPaymentByOrdId" resultMap="paymentMap">
+        SELECT
+            P.PYMT_NO,
+            P.BILL_NO,
+            P.IMP_UID,
+            P.PAY_MTHD_CD,
+            P.PAY_AMT,
+            P.PAY_STTS_CD,
+            P.PAY_REQ_DT,
+            P.PAY_CMPL_DT,
+            P.FAIL_RSN_CN,
+            P.ORD_ID,
+            P.USER_NO,
+
+            M.CODE_NAME AS PAY_MTHD_NM,
+            S.CODE_NAME AS PAY_STTS_NM,
+
+            B.BILL_YM,
+            B.BILL_TOT_AMT,
+            B.HO_NO,
+
+            U.DONG_NM || '동 ' || H.HO || '호' AS DISPLAY_DONG_HO
+
+        FROM PAYMENT P
+                 JOIN BILL B
+                      ON P.BILL_NO = B.BILL_NO
+                 JOIN APT_DETAIL H
+                      ON B.HO_NO = H.HO_NO
+                 JOIN APT_UNIT U
+                      ON H.DONG_NO = U.DONG_NO
+                 LEFT JOIN COMMON_CODE M
+                           ON M.GROUP_CODE_NO = 'PAY_MET'
+                               AND M.CODE_NO_CD = P.PAY_MTHD_CD
+                               AND M.USE_YN = 'Y'
+                 LEFT JOIN COMMON_CODE S
+                           ON S.GROUP_CODE_NO = 'PAY_STTS'
+                               AND S.CODE_NO_CD = P.PAY_STTS_CD
+                               AND S.USE_YN = 'Y'
+        WHERE P.ORD_ID = #{ordId}
+    </select>
+
+    <!-- 결제 성공 처리 : PortOne 서버 검증 성공 후 실행 -->
+    <update id="updatePaymentPaid"
+            parameterType="kr.or.ddit.domain.member.resident.vo.PaymentVO">
+        UPDATE PAYMENT
+        SET IMP_UID = #{impUid},
+            PAY_STTS_CD = 'PAID',
+            PAY_CMPL_DT = SYSDATE,
+            FAIL_RSN_CN = NULL
+        WHERE PYMT_NO = #{pymtNo}
+          AND ORD_ID = #{ordId}
+          AND PAY_STTS_CD = 'UNPAID'
+    </update>
+
+    <!-- 결제창 취소 또는 결제 실패 처리 -->
+    <update id="updatePaymentCancel"
+            parameterType="kr.or.ddit.domain.member.resident.vo.PaymentVO">
+        UPDATE PAYMENT
+        SET PAY_STTS_CD = 'CANCEL',
+            FAIL_RSN_CN = #{failRsnCn}
+        WHERE PYMT_NO = #{pymtNo}
+          AND ORD_ID = #{ordId}
+          AND PAY_STTS_CD = 'UNPAID'
+    </update>
+
+    <!--
+        고지서 납부완료 처리
+        PAYMENT 결제 검증 성공 후 함께 실행
+        BILL의 상태코드는 PAY_ST 기준
+    -->
+    <update id="updateBillPaid">
+        UPDATE BILL
+        SET PYMT_STTS_CD = 'PAID',
+            PYMT_DT = SYSDATE,
+            PYMT_AMT = #{payAmt}
+        WHERE BILL_NO = #{billNo}
+          AND PYMT_STTS_CD != 'PAID'
+    </update>
+
+    <!--
+    입주민 납부완료 영수증 목록 조회
+
+    - 로그인 사용자와 연결된 세대의 결제만 조회
+    - 납부완료된 PAYMENT/BILL만 영수증으로 노출
+    - 다주택자의 경우 해당 사용자 세대의 영수증이 모두 조회됨
+-->
+    <select id="selectReceiptList" resultMap="paymentMap">
+        SELECT
+            P.PYMT_NO,
+            P.BILL_NO,
+            P.IMP_UID,
+            P.PAY_MTHD_CD,
+            P.PAY_AMT,
+            P.PAY_STTS_CD,
+            P.PAY_REQ_DT,
+            P.PAY_CMPL_DT,
+            P.FAIL_RSN_CN,
+            P.ORD_ID,
+            P.USER_NO,
+
+            PM.CODE_NAME AS PAY_MTHD_NM,
+            PS.CODE_NAME AS PAY_STTS_NM,
+
+            B.BILL_YM,
+            B.BILL_TOT_AMT,
+            B.HO_NO,
+
+            U.DONG_NM || '동 ' || H.HO || '호' AS DISPLAY_DONG_HO
+
+        FROM PAYMENT P
+                 JOIN BILL B
+                      ON P.BILL_NO = B.BILL_NO
+                 JOIN APT_DETAIL H
+                      ON B.HO_NO = H.HO_NO
+                 JOIN APT_UNIT U
+                      ON H.DONG_NO = U.DONG_NO
+                 JOIN HSHLD_HEAD HH
+                      ON H.HO_NO = HH.HO_NO
+
+                 LEFT JOIN COMMON_CODE PM
+                           ON PM.GROUP_CODE_NO = 'PAY_MET'
+                               AND PM.CODE_NO_CD = P.PAY_MTHD_CD
+                               AND PM.USE_YN = 'Y'
+
+                 LEFT JOIN COMMON_CODE PS
+                           ON PS.GROUP_CODE_NO = 'PAY_STTS'
+                               AND PS.CODE_NO_CD = P.PAY_STTS_CD
+                               AND PS.USE_YN = 'Y'
+
+        WHERE HH.USER_NO = #{userNo}
+          AND SUBSTR(B.BILL_YM, 1, 4) = #{billYear}
+          AND P.PAY_STTS_CD = 'PAID'
+          AND B.PYMT_STTS_CD = 'PAID'
+
+        ORDER BY B.BILL_YM DESC, P.PAY_CMPL_DT DESC
+    </select>
+</mapper>

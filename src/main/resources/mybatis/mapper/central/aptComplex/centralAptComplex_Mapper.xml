@@ -1,0 +1,361 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.central.mapper.ICentralAptComplexMapper">
+
+    <!-- 단지 목록 조회 -->
+    <select id="selectAptComplexList"
+            resultType="kr.or.ddit.domain.apt.main.vo.AptComplexVO">
+
+        SELECT *
+        FROM (
+        SELECT
+        ROWNUM rnum,
+        A.*
+        FROM (
+
+        SELECT
+        APT_CMPLEX_NO
+        , APT_CMPLEX_NM
+        , BJD_CD
+        , SIDO_NM
+        , SIGUNGU_NM
+        , EMD_NM
+        , LAT_VAL
+        , LON_VAL
+        , UNIT_CNT
+        , BLD_YR
+        , CNSCO_NM
+        , IMG_FILE_NO
+        , RPRSNT_IMG_FILE_NO
+        , HEAT_TY
+        , PKG_CNT
+        , MAX_FLOOR
+        , FREE_PKG_CNT
+        , DONG_CNT
+        , DOROJUSO
+        , CC_CNT
+        FROM APT_COMPLEX
+        WHERE 1 = 1
+
+        <choose>
+
+            <when test='searchWord == "ㄱ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '가'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '나'
+            </when>
+
+            <when test='searchWord == "ㄴ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '나'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '다'
+            </when>
+
+            <when test='searchWord == "ㄷ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '다'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '라'
+            </when>
+
+            <when test='searchWord == "ㄹ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '라'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '마'
+            </when>
+
+            <when test='searchWord == "ㅁ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '마'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '바'
+            </when>
+
+            <when test='searchWord == "ㅂ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '바'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '사'
+            </when>
+
+            <when test='searchWord == "ㅅ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '사'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '아'
+            </when>
+
+            <when test='searchWord == "ㅇ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '아'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '자'
+            </when>
+
+            <when test='searchWord == "ㅈ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '자'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '차'
+            </when>
+
+            <when test='searchWord == "ㅊ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '차'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '카'
+            </when>
+
+            <when test='searchWord == "ㅋ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '카'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '타'
+            </when>
+
+            <when test='searchWord == "ㅌ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '타'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '파'
+            </when>
+
+            <when test='searchWord == "ㅍ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '파'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '하'
+            </when>
+
+            <when test='searchWord == "ㅎ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '하'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt;= '힣'
+            </when>
+
+        </choose>
+
+        <if test="searchType != null and searchType != ''">
+            AND (
+                APT_CMPLEX_NM LIKE '%' || #{searchType} || '%'
+                OR DOROJUSO LIKE '%' || #{searchType} || '%'
+            )
+        </if>
+
+        <if test="searchVO != null and searchVO.sidoNm != null and searchVO.sidoNm != ''">
+            AND SIDO_NM = #{searchVO.sidoNm}
+        </if>
+
+        <if test="searchVO != null and searchVO.sigunguNm != null and searchVO.sigunguNm != ''">
+            AND SIGUNGU_NM = #{searchVO.sigunguNm}
+        </if>
+
+        <if test="searchVO != null and searchVO.emdNm != null and searchVO.emdNm != ''">
+            AND EMD_NM = #{searchVO.emdNm}
+        </if>
+
+        <if test="searchVO != null and searchVO.unitCnt != 0">
+            <choose>
+                <when test="searchVO.unitCnt == 1">
+                    AND UNIT_CNT &lt; 500
+                </when>
+
+                <when test="searchVO.unitCnt == 2">
+                    AND UNIT_CNT &gt;= 500
+                    AND UNIT_CNT &lt; 1000
+                </when>
+
+                <when test="searchVO.unitCnt == 3">
+                    AND UNIT_CNT &gt;= 1000
+                </when>
+            </choose>
+        </if>
+
+        ORDER BY APT_CMPLEX_NM ASC
+
+        ) A
+        WHERE ROWNUM &lt;= #{endRow}
+        )
+        WHERE rnum &gt;= #{startRow}
+
+    </select>
+
+
+    <select id="selectAptComplexCount"
+            resultType="int">
+
+        SELECT COUNT(*)
+        FROM APT_COMPLEX
+        WHERE 1 = 1
+
+        <choose>
+
+            <when test='searchWord == "ㄱ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '가'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '나'
+            </when>
+
+            <when test='searchWord == "ㄴ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '나'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '다'
+            </when>
+
+            <when test='searchWord == "ㄷ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '다'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '라'
+            </when>
+
+            <when test='searchWord == "ㄹ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '라'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '마'
+            </when>
+
+            <when test='searchWord == "ㅁ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '마'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '바'
+            </when>
+
+            <when test='searchWord == "ㅂ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '바'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '사'
+            </when>
+
+            <when test='searchWord == "ㅅ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '사'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '아'
+            </when>
+
+            <when test='searchWord == "ㅇ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '아'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '자'
+            </when>
+
+            <when test='searchWord == "ㅈ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '자'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '차'
+            </when>
+
+            <when test='searchWord == "ㅊ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '차'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '카'
+            </when>
+
+            <when test='searchWord == "ㅋ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '카'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '타'
+            </when>
+
+            <when test='searchWord == "ㅌ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '타'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '파'
+            </when>
+
+            <when test='searchWord == "ㅍ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '파'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt; '하'
+            </when>
+
+            <when test='searchWord == "ㅎ"'>
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) >= '하'
+                AND SUBSTR(APT_CMPLEX_NM, 1, 1) &lt;= '힣'
+            </when>
+
+        </choose>
+
+        <if test="searchType != null and searchType != ''">
+            AND (
+                APT_CMPLEX_NM LIKE '%' || #{searchType} || '%'
+                OR DOROJUSO LIKE '%' || #{searchType} || '%'
+            )
+        </if>
+
+        <if test="searchVO != null and searchVO.sidoNm != null and searchVO.sidoNm != ''">
+            AND SIDO_NM = #{searchVO.sidoNm}
+        </if>
+
+        <if test="searchVO != null and searchVO.sigunguNm != null and searchVO.sigunguNm != ''">
+            AND SIGUNGU_NM = #{searchVO.sigunguNm}
+        </if>
+
+        <if test="searchVO != null and searchVO.unitCnt != 0">
+            <choose>
+                <when test="searchVO.unitCnt == 1">
+                    AND UNIT_CNT &lt; 500
+                </when>
+
+                <when test="searchVO.unitCnt == 2">
+                    AND UNIT_CNT &gt;= 500
+                    AND UNIT_CNT &lt; 1000
+                </when>
+
+                <when test="searchVO.unitCnt == 3">
+                    AND UNIT_CNT &gt;= 1000
+                </when>
+            </choose>
+        </if>
+
+    </select>
+
+
+    <select id="searchApt"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.main.vo.AptComplexVO">
+
+        SELECT
+            APT_CMPLEX_NO
+             , APT_CMPLEX_NM
+             , DOROJUSO
+        FROM APT_COMPLEX
+        WHERE APT_CMPLEX_NM LIKE '%' || #{keyword} || '%'
+        ORDER BY APT_CMPLEX_NM ASC
+
+    </select>
+
+    <select id="selectSigunguList" parameterType="string" resultType="string">
+        SELECT DISTINCT SIGUNGU_NM
+        FROM APT_COMPLEX
+        WHERE SIDO_NM = #{sidoNm}
+          AND SIGUNGU_NM IS NOT NULL
+        ORDER BY SIGUNGU_NM
+    </select>
+
+    <select id="selectSidoList" resultType="string">
+        SELECT DISTINCT SIDO_NM
+        FROM APT_COMPLEX
+        WHERE SIDO_NM IS NOT NULL
+        ORDER BY SIDO_NM
+    </select>
+
+    <select id="selectDongList" resultType="string">
+
+        SELECT DISTINCT EMD_NM
+        FROM APT_COMPLEX
+        WHERE SIDO_NM = #{sidoNm}
+          AND SIGUNGU_NM = #{sigunguNm}
+          AND EMD_NM IS NOT NULL
+        ORDER BY EMD_NM
+
+    </select>
+
+    <select id="selectAptComplexDetail"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.main.vo.AptComplexVO">
+
+        SELECT
+            APT_CMPLEX_NO,
+            APT_CMPLEX_NM,
+            BJD_CD,
+            SIDO_NM,
+            SIGUNGU_NM,
+            EMD_NM,
+            LAT_VAL,
+            LON_VAL,
+            UNIT_CNT,
+            BLD_YR,
+            CNSCO_NM,
+            IMG_FILE_NO,
+            RPRSNT_IMG_FILE_NO,
+            HEAT_TY,
+            PKG_CNT,
+            MAX_FLOOR,
+            FREE_PKG_CNT,
+            DONG_CNT,
+            DOROJUSO,
+            CC_CNT
+        FROM APT_COMPLEX
+        WHERE APT_CMPLEX_NO = #{aptCmplexNo}
+    </select>
+
+    <select id="selectAptMapList"
+            resultType="kr.or.ddit.domain.apt.main.vo.AptComplexVO">
+        SELECT
+            APT_CMPLEX_NO       AS aptCmplexNo,
+            APT_CMPLEX_NM       AS aptCmplexNm,
+            SIDO_NM             AS sidoNm,
+            SIGUNGU_NM          AS sigunguNm,
+            DOROJUSO            AS dorojuso,
+            LAT_VAL             AS latVal,
+            LON_VAL             AS lonVal,
+            UNIT_CNT            AS unitCnt,
+            DONG_CNT            AS dongCnt
+        FROM APT_COMPLEX
+        WHERE LAT_VAL IS NOT NULL
+          AND LON_VAL IS NOT NULL
+    </select>
+</mapper>

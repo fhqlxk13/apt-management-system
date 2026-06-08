@@ -1,0 +1,487 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.survey.mapper.IMngSurveyMapper">
+
+
+
+
+
+    <insert id="insertSurvey">
+
+        INSERT INTO SURVEY (
+
+            SURVEY_NO,
+            SURVEY_NM,
+            SURVEY_CN,
+            SURVEY_TY_CD,
+            SURVEY_QITEM_CN,
+            SURVEY_BGNG_DT,
+            SURVEY_END_DT,
+            SURVEY_STTS_CD,
+            RGTR_ID,
+            APT_CD
+
+        )
+        VALUES (
+
+                   'SV' || TO_CHAR(SYSTIMESTAMP, 'MMDDHH24MISSFF3'),
+
+                   #{surveyNm},
+                   #{surveyCn},
+                   #{surveyTypeCd},
+                   #{surveyQitemCn},
+
+                   TO_DATE(#{surveyBgngDt}, 'YYYY-MM-DD'),
+                   TO_DATE(#{surveyEndDt}, 'YYYY-MM-DD'),
+
+                   #{surveySttsCd},
+                   #{rgtrId},
+                   #{aptCd}
+
+               )
+
+    </insert>
+
+    <select id="selectSurveyList"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.survey.dto.MngSurveyDTO">
+
+        SELECT
+
+            S.SURVEY_NO AS surveyNo,
+            S.SURVEY_NM AS surveyNm,
+            S.SURVEY_CN AS surveyCn,
+            S.SURVEY_TY_CD AS surveyTypeCd,
+            S.SURVEY_QITEM_CN AS surveyQitemCn,
+
+            TO_CHAR(S.SURVEY_BGNG_DT, 'YYYY-MM-DD')
+                AS surveyBgngDt,
+
+            TO_CHAR(S.SURVEY_END_DT, 'YYYY-MM-DD')
+                AS surveyEndDt,
+
+            S.SURVEY_STTS_CD AS surveySttsCd,
+            S.RGTR_ID AS rgtrId,
+            S.APT_CD AS aptCd,
+
+            NVL(R.PARTICIPANT_COUNT, 0)
+                AS participantCount,
+
+            ROUND(
+                    (
+                        NVL(R.PARTICIPANT_COUNT, 0)
+                            /
+                        NULLIF(
+                                (
+                                    SELECT COUNT(*)
+
+                                    FROM APT_DETAIL AD
+
+                                             INNER JOIN APT_UNIT AU
+                                                        ON AU.DONG_NO = AD.DONG_NO
+
+                                    WHERE AU.APT_CMPLEX_NO = S.APT_CD
+                                ),
+                                0
+                        )
+                        ) * 100,
+                    2
+            ) AS answerRate
+
+        FROM SURVEY S
+
+                 LEFT JOIN (
+            SELECT
+                SURVEY_NO,
+                COUNT(DISTINCT HO_NO) AS PARTICIPANT_COUNT
+            FROM SURVEY_RSPNS
+            GROUP BY SURVEY_NO
+        ) R
+                           ON R.SURVEY_NO = S.SURVEY_NO
+
+        WHERE S.APT_CD = #{aptCd}
+
+        ORDER BY S.SURVEY_BGNG_DT DESC
+
+    </select>
+
+    <select id="selectSurveyDetail"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.survey.dto.MngSurveyDTO">
+
+        SELECT
+
+            SURVEY_NO         AS surveyNo,
+            SURVEY_NM         AS surveyNm,
+            SURVEY_CN         AS surveyCn,
+            SURVEY_TY_CD      AS surveyTypeCd,
+            SURVEY_QITEM_CN   AS surveyQitemCn,
+            SURVEY_BGNG_DT    AS surveyBgngDt,
+            SURVEY_END_DT     AS surveyEndDt,
+            SURVEY_STTS_CD    AS surveySttsCd,
+            RGTR_ID           AS rgtrId,
+            APT_CD            AS aptCd
+
+        FROM SURVEY
+
+        WHERE SURVEY_NO = #{surveyNo}
+
+    </select>
+
+    <update id="updateSurvey">
+
+        UPDATE SURVEY
+        SET
+
+            SURVEY_NM = #{surveyNm},
+            SURVEY_CN = #{surveyCn},
+            SURVEY_TY_CD = #{surveyTypeCd},
+            SURVEY_QITEM_CN = #{surveyQitemCn},
+            SURVEY_BGNG_DT =
+                TO_DATE(#{surveyBgngDt}, 'YYYY-MM-DD'),
+
+            SURVEY_END_DT =
+                TO_DATE(#{surveyEndDt}, 'YYYY-MM-DD'),
+
+            SURVEY_STTS_CD = #{surveySttsCd},
+            MDF_DT = SYSDATE
+
+        WHERE SURVEY_NO = #{surveyNo}
+
+    </update>
+
+
+    <delete id="deleteSurveyResponses">
+
+        DELETE FROM SURVEY_RSPNS
+        WHERE SURVEY_NO = #{surveyNo}
+
+    </delete>
+
+    <delete id="deleteSurveyResults">
+
+        DELETE FROM SURVEY_RSLT
+        WHERE SURVEY_NO = #{surveyNo}
+
+    </delete>
+
+
+
+
+    <delete id="deleteSurvey">
+
+        DELETE FROM SURVEY
+        WHERE SURVEY_NO = #{surveyNo}
+
+    </delete>
+
+
+
+    <select id="selectSurveyResult"
+            parameterType="string"
+            resultType="map">
+
+        SELECT
+
+            S.SURVEY_NO      AS "surveyNo",
+            S.SURVEY_NM      AS "surveyNm",
+            S.SURVEY_CN      AS "surveyCn",
+            S.SURVEY_TY_CD   AS "surveyTypeCd",
+            S.SURVEY_STTS_CD AS "surveySttsCd",
+
+            DBMS_LOB.SUBSTR(S.SURVEY_QITEM_CN, 4000, 1)
+                             AS "surveyQitemCn",
+
+            TO_CHAR(S.SURVEY_BGNG_DT, 'YYYY-MM-DD')
+                             AS "surveyBgngDt",
+
+            TO_CHAR(S.SURVEY_END_DT, 'YYYY-MM-DD')
+                             AS "surveyEndDt",
+
+            NVL(R.PARTICIPANT_COUNT, 0)
+                             AS "participantCount",
+
+            ROUND(
+                    NVL(
+                            (
+                                R.PARTICIPANT_COUNT * 100
+                                ) /
+                            NULLIF(
+                                    (
+                                        SELECT COUNT(*)
+
+                                        FROM HSHLD_HEAD HM
+
+                                                 INNER JOIN APT_DETAIL AD
+                                                            ON AD.HO_NO = HM.HO_NO
+
+                                                 INNER JOIN APT_UNIT AU
+                                                            ON AU.DONG_NO = AD.DONG_NO
+
+                                                 INNER JOIN MGMT_OFFICE MO
+                                                            ON AU.APT_CMPLEX_NO = MO.APT_CMPLEX_NO
+
+                                        WHERE MO.APT_CMPLEX_NO = S.APT_CD
+                                    ),
+                                    0
+                            ),
+                            0
+                    ),
+                    1) AS "answerRate",
+
+            (
+                SELECT COUNT(*)
+
+                FROM HSHLD_HEAD HM
+
+                         INNER JOIN APT_DETAIL AD
+                                    ON AD.HO_NO = HM.HO_NO
+
+                         INNER JOIN APT_UNIT AU
+                                    ON AU.DONG_NO = AD.DONG_NO
+
+                         INNER JOIN MGMT_OFFICE MO
+                                    ON AU.APT_CMPLEX_NO = MO.APT_CMPLEX_NO
+
+                WHERE MO.APT_CMPLEX_NO = S.APT_CD
+
+            ) AS "totalResident"
+
+        FROM SURVEY S
+                 LEFT JOIN (
+            SELECT
+                SURVEY_NO,
+                COUNT(DISTINCT USER_NO)
+                    AS PARTICIPANT_COUNT
+            FROM SURVEY_RSPNS
+            GROUP BY SURVEY_NO
+        ) R
+                           ON R.SURVEY_NO = S.SURVEY_NO
+
+        WHERE S.SURVEY_NO = #{surveyNo}
+
+    </select>
+
+
+
+    <select id="selectMySurveyResponse"
+            resultType="string">
+
+        SELECT RSPNS_CN
+
+        FROM SURVEY_RSPNS
+
+        WHERE SURVEY_NO = #{surveyNo}
+          AND USER_NO = #{userNo}
+          AND ROWNUM = 1
+
+    </select>
+
+
+    <insert id="insertSurveyResponse">
+
+        INSERT INTO SURVEY_RSPNS (
+
+            RSPNS_NO,
+            SURVEY_NO,
+            RSPNS_CN,
+            REG_DT,
+            USER_NO,
+            HO_NO
+
+        )
+        VALUES (
+
+                   'RS' || LPAD(SEQ_SURVEY_RSPNS.NEXTVAL, 13, '0'),
+
+                   #{surveyNo},
+                   #{response},
+                   SYSDATE,
+                   #{userNo},
+                   #{hoNo}
+
+               )
+
+    </insert>
+
+    <select id="existsSurveyResponse"
+            resultType="int">
+
+        SELECT COUNT(*)
+
+        FROM SURVEY_RSPNS
+
+        WHERE SURVEY_NO = #{surveyNo}
+          AND USER_NO = #{userNo}
+
+    </select>
+
+
+
+
+    <select id="selectSurveyTypeList"
+            parameterType="map"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.survey.dto.MngSurveyDTO">
+
+        SELECT
+
+            SURVEY_NO         surveyNo,
+            SURVEY_NM         surveyNm,
+            SURVEY_CN         surveyCn,
+            SURVEY_TY_CD      surveyTypeCd,
+            SURVEY_QITEM_CN   surveyQitemCn,
+            SURVEY_BGNG_DT    surveyBgngDt,
+            SURVEY_END_DT     surveyEndDt,
+            SURVEY_STTS_CD    surveySttsCd,
+            RGTR_ID           rgtrId,
+            APT_CD            aptCd
+
+        FROM SURVEY
+
+        WHERE SURVEY_TY_CD = #{type}
+          AND SURVEY_STTS_CD = 'OPEN'
+          AND APT_CD = #{aptCd}
+
+        ORDER BY SURVEY_BGNG_DT DESC
+
+    </select>
+
+    <select id="selectSurveyStatistics"
+            parameterType="string"
+            resultType="map">
+
+        SELECT
+
+            QITEM_NM AS "QITEM_NM",
+            ANSR_CN  AS "ANSR_CN",
+            ANSR_CNT AS "ANSR_CNT"
+
+        FROM SURVEY_RSLT
+
+        WHERE SURVEY_NO = #{surveyNo}
+
+        ORDER BY QITEM_NM, ANSR_CNT DESC
+
+    </select>
+
+
+
+
+
+
+    <select id="selectAllSurveyResponses"
+            parameterType="string"
+            resultType="string">
+
+        SELECT RSPNS_CN
+
+        FROM SURVEY_RSPNS
+
+        WHERE SURVEY_NO = #{surveyNo}
+
+    </select>
+
+
+    <select id="existsSurveyResult"
+            resultType="int">
+
+        SELECT COUNT(*)
+
+        FROM SURVEY_RSLT
+
+        WHERE SURVEY_NO = #{surveyNo}
+          AND QITEM_NM = #{qitemNm}
+          AND ANSR_CN = #{ansrCn}
+
+    </select>
+
+
+    <update id="updateSurveyResultCount">
+
+        UPDATE SURVEY_RSLT
+
+        SET ANSR_CNT = ANSR_CNT + 1
+
+        WHERE SURVEY_NO = #{surveyNo}
+          AND QITEM_NM = #{qitemNm}
+          AND ANSR_CN = #{ansrCn}
+
+    </update>
+
+
+
+    <insert id="insertSurveyResult">
+
+        INSERT INTO SURVEY_RSLT (
+
+            SURVEY_RSLT_NO,
+            QITEM_NM,
+            ANSR_CN,
+            ANSR_CNT,
+            SURVEY_NO
+
+        )
+        VALUES (
+
+                   'RT' || LPAD(SEQ_SURVEY_RSLT.NEXTVAL, 13, '0'),
+                   #{qitemNm},
+                   #{ansrCn},
+                   1,
+                   #{surveyNo}
+
+               )
+
+    </insert>
+
+
+
+    <select id="selectSurveyResultList"
+            parameterType="string"
+            resultType="map">
+
+        SELECT
+
+            QITEM_NM AS "qitemNm",
+            ANSR_CN  AS "ansrCn",
+            ANSR_CNT AS "ansrCnt"
+
+        FROM SURVEY_RSLT
+
+        WHERE SURVEY_NO = #{surveyNo}
+
+        ORDER BY QITEM_NM, ANSR_CNT DESC
+
+    </select>
+
+
+    <select id="selectShortAnswerList"
+            parameterType="string"
+            resultType="map">
+
+        SELECT
+
+            M.USER_NM AS "userNm",
+
+            DBMS_LOB.SUBSTR(
+                    SR.RSPNS_CN,
+                    4000,
+                    1
+            ) AS "rspnsCn"
+
+        FROM SURVEY_RSPNS SR
+
+                 INNER JOIN MEMBER M
+                            ON SR.USER_NO = M.USER_NO
+
+        WHERE SR.SURVEY_NO = #{surveyNo}
+
+        ORDER BY SR.REG_DT DESC
+
+    </select>
+
+
+
+</mapper>
+
+
+

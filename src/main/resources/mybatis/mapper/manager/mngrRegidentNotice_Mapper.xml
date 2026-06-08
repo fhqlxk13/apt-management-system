@@ -1,0 +1,478 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.board.mapper.ImngrRegidentNoticeMapper">
+
+    <!-- 공지 목록 개수 -->
+    <select id="selectNoticeCount"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.board.dto.MngrRegidentNoticeDTO"
+            resultType="int">
+        SELECT COUNT(*)
+        FROM APT_ANN_BOARD_POST P
+        INNER JOIN APT_BOARD_INSTANCE B
+        ON P.BOARD_NO = B.BOARD_NO
+        WHERE P.DEL_YN = 'N'
+        AND B.USE_YN = 'Y'
+        AND B.BOARD_TY_CD = 'NOTICE'
+        AND B.APT_CMPLEX_NO = #{aptCmplexNo}
+        AND P.BOARD_NO = #{boardNo}
+
+        <if test="searchAnnNo != null and searchAnnNo != ''">
+            AND P.ANN_NO LIKE '%' || #{searchAnnNo} || '%'
+        </if>
+
+        <if test="searchTtl != null and searchTtl != ''">
+            AND P.TTL LIKE '%' || #{searchTtl} || '%'
+        </if>
+
+        <if test="searchWrtrId != null and searchWrtrId != ''">
+            AND P.WRTR_ID LIKE '%' || #{searchWrtrId} || '%'
+        </if>
+
+        <if test="searchStartDt != null and searchStartDt != ''">
+            AND TRUNC(P.REG_DTTM) <![CDATA[>=]]> TO_DATE(#{searchStartDt}, 'YYYY-MM-DD')
+        </if>
+
+        <if test="searchEndDt != null and searchEndDt != ''">
+            AND TRUNC(P.REG_DTTM) <![CDATA[<=]]> TO_DATE(#{searchEndDt}, 'YYYY-MM-DD')
+        </if>
+
+        <!-- 긴급공지 체크 시: 긴급공지인 글만 조회 -->
+        <if test='searchTopFixYn != null and searchTopFixYn.equals("Y")'>
+            AND P.TOP_FIX_YN = 'Y'
+        </if>
+
+        <!-- 첨부파일 여부 검색 -->
+        <!-- 첨부파일 체크 시: 첨부파일 있는 공지만 조회 -->
+        <if test='searchAttachYn != null and searchAttachYn.equals("Y")'>
+            AND EXISTS (
+            SELECT 1
+            FROM ATTACH_FILE F
+            WHERE TO_CHAR(F.FILE_GROUP_NO) = P.ATCH_FILE_ID
+            )
+        </if>
+    </select>
+
+    <!-- 공지 목록 -->
+    <select id="selectNoticeList"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.board.dto.MngrRegidentNoticeDTO"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.board.dto.MngrRegidentNoticeDTO">
+
+        SELECT *
+        FROM (
+        SELECT
+        ROW_NUMBER() OVER (
+        ORDER BY
+        /* 1순위: 긴급공지 우선 */
+        CASE WHEN P.TOP_FIX_YN = 'Y' THEN 0 ELSE 1 END ASC,
+
+        /* 2순위: 사용자가 클릭한 컬럼 정렬 */
+        <choose>
+            <when test='sortColumn == "ANN_NO"'>
+                P.ANN_NO
+            </when>
+            <when test='sortColumn == "TTL"'>
+                P.TTL
+            </when>
+            <when test='sortColumn == "WRTR_ID"'>
+                P.WRTR_ID
+            </when>
+            <when test='sortColumn == "REG_DTTM"'>
+                P.REG_DTTM
+            </when>
+            <when test='sortColumn == "INQ_CNT"'>
+                P.INQ_CNT
+            </when>
+            <otherwise>
+                P.REG_DTTM
+            </otherwise>
+        </choose>
+
+        <choose>
+            <when test='sortOrder == "ASC"'>
+                ASC
+            </when>
+            <otherwise>
+                DESC
+            </otherwise>
+        </choose>,
+
+        /* 3순위: 작성일 최신순 */
+        P.REG_DTTM DESC,
+
+        /* 4순위: 공지번호 최신순 */
+        P.ANN_NO DESC
+
+        ) AS ROW_NO
+        , P.ANN_NO
+        , P.BOARD_NO
+        , B.APT_CMPLEX_NO
+        , P.TTL
+        , P.CN
+        , P.WRTR_ID
+        , P.REG_DTTM
+        , P.MDF_DTTM
+        , NVL(P.INQ_CNT, 0) AS INQ_CNT
+        , P.DEL_YN
+        , P.ATCH_FILE_ID
+        , P.TOP_FIX_YN
+        /*
+        * 실제 ATTACH_FILE 테이블에 남아있는 파일 개수
+        * 왜 필요?
+        * → ATCH_FILE_ID만 보면 파일을 모두 삭제해도 첨부파일 있음으로 보일 수 있음.
+        */
+        , (
+        SELECT COUNT(*)
+        FROM ATTACH_FILE F
+        WHERE TO_CHAR(F.FILE_GROUP_NO) = P.ATCH_FILE_ID
+        ) AS FILE_CNT
+        FROM APT_ANN_BOARD_POST P
+        INNER JOIN APT_BOARD_INSTANCE B
+        ON P.BOARD_NO = B.BOARD_NO
+        WHERE P.DEL_YN = 'N'
+        AND B.USE_YN = 'Y'
+        AND B.BOARD_TY_CD = 'NOTICE'
+        AND B.APT_CMPLEX_NO = #{aptCmplexNo}
+        AND P.BOARD_NO = #{boardNo}
+
+        <if test="searchAnnNo != null and searchAnnNo != ''">
+            AND P.ANN_NO LIKE '%' || #{searchAnnNo} || '%'
+        </if>
+
+        <if test="searchTtl != null and searchTtl != ''">
+            AND P.TTL LIKE '%' || #{searchTtl} || '%'
+        </if>
+
+        <if test="searchWrtrId != null and searchWrtrId != ''">
+            AND P.WRTR_ID LIKE '%' || #{searchWrtrId} || '%'
+        </if>
+
+        <if test="searchStartDt != null and searchStartDt != ''">
+            AND TRUNC(P.REG_DTTM) <![CDATA[>=]]> TO_DATE(#{searchStartDt}, 'YYYY-MM-DD')
+        </if>
+
+        <if test="searchEndDt != null and searchEndDt != ''">
+            AND TRUNC(P.REG_DTTM) <![CDATA[<=]]> TO_DATE(#{searchEndDt}, 'YYYY-MM-DD')
+        </if>
+
+        <if test='searchTopFixYn != null and searchTopFixYn.equals("Y")'>
+            AND P.TOP_FIX_YN = 'Y'
+        </if>
+
+        <if test='searchAttachYn != null and searchAttachYn.equals("Y")'>
+            AND EXISTS (
+            SELECT 1
+            FROM ATTACH_FILE F
+            WHERE TO_CHAR(F.FILE_GROUP_NO) = P.ATCH_FILE_ID
+            )
+        </if>
+        )
+        WHERE ROW_NO BETWEEN #{startRow} AND #{endRow}
+
+    </select>
+
+    <select id="selectNoticeWriterName"
+            parameterType="map"
+            resultType="string">
+        /*
+         * MEMBER.USER_NM에 이미 단지명이 포함되어 있으면 그대로 사용.
+         * 포함되어 있지 않으면 단지명_사용자명 형태로 생성.
+         */
+        SELECT CASE
+                   WHEN M.USER_NM LIKE A.APT_CMPLEX_NM || '_%' THEN M.USER_NM
+                   ELSE A.APT_CMPLEX_NM || '_' || M.USER_NM
+                   END AS WRTR_NM
+        FROM APT_COMPLEX A
+                 INNER JOIN MEMBER M
+                            ON M.USER_NO = #{userNo}
+        WHERE A.APT_CMPLEX_NO = #{aptCmplexNo}
+    </select>
+
+    <!-- 수정 모달용 상세조회 -->
+    <select id="selectNoticeDetail"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.board.dto.MngrRegidentNoticeDTO"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.board.dto.MngrRegidentNoticeDTO">
+        /*
+         * 공지사항 기본 정보 조회
+         * 첨부파일은 별도 selectNoticeAttachFileList 에서 조회함
+         */
+
+        SELECT
+            P.ANN_NO
+             , P.BOARD_NO
+             , B.APT_CMPLEX_NO
+             , P.TTL
+             , P.CN
+             , P.WRTR_ID
+             , P.REG_DTTM
+             , P.MDF_DTTM
+             , NVL(P.INQ_CNT, 0) AS INQ_CNT
+             , P.DEL_YN
+             , P.ATCH_FILE_ID
+             , P.TOP_FIX_YN
+
+        FROM APT_ANN_BOARD_POST P
+                 INNER JOIN APT_BOARD_INSTANCE B
+                            ON P.BOARD_NO = B.BOARD_NO
+
+        WHERE P.ANN_NO = #{annNo}
+          AND P.BOARD_NO = #{boardNo}
+          AND B.APT_CMPLEX_NO = #{aptCmplexNo}
+          AND B.BOARD_TY_CD = 'NOTICE'
+          AND B.USE_YN = 'Y'
+          AND P.DEL_YN = 'N'
+
+    </select>
+
+    <!-- 첨부파일 여러개 조회 -->
+    <select id="selectNoticeAttachFileList"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.board.dto.MngrRegidentNoticeDTO"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.board.dto.MngrRegidentNoticeDTO">
+
+        SELECT
+            TO_CHAR(F.FILE_GROUP_NO) AS ATCH_FILE_ID
+             , F.FILE_OG_NAME AS FILE_OG_NAME
+             , F.FILE_PATH AS FILE_PATH
+             , F.MIME_TYPE AS MIME_TYPE
+             , F.GOOGLE_ID AS GOOGLE_ID
+        FROM ATTACH_FILE F
+        WHERE TO_CHAR(F.FILE_GROUP_NO) = #{atchFileId}
+        ORDER BY F.FILE_SORT_ORDER ASC
+
+    </select>
+
+    <!-- 등록 -->
+    <insert id="insertNotice"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.board.dto.MngrRegidentNoticeDTO">
+
+        INSERT INTO APT_ANN_BOARD_POST
+        (
+          ANN_NO
+        , BOARD_NO
+        , TTL
+        , CN
+        , WRTR_ID
+        , TOP_FIX_YN
+        , PBLANC_BGNG_DT
+        , PBLANC_END_DT
+        , REG_DTTM
+        , MDF_DTTM
+        , INQ_CNT
+        , DEL_YN
+        , ATCH_FILE_ID
+        )
+        VALUES
+            (
+              'NTC' || TO_CHAR(SYSDATE, 'YYMMDD') || LPAD(SEQ_ANN_BOARD_POST.NEXTVAL, 4, '0')
+            , #{boardNo}
+            , #{ttl}
+            , #{cn}
+            , #{wrtrId}
+            , #{topFixYn}
+
+                /* 공고 시작일: 화면에서 값이 오면 그 값, 없으면 오늘 */
+            , NVL(TO_DATE(#{pblancBgngDt}, 'YYYY-MM-DD'), TRUNC(SYSDATE))
+
+                /* 공고 종료일: 화면에서 값이 오면 그 값, 없으면 시작일 기준 7일 */
+            , NVL(TO_DATE(#{pblancEndDt}, 'YYYY-MM-DD'), TRUNC(SYSDATE) + 7)
+
+                /* 등록일 */
+            , SYSDATE
+
+                /* 최초 등록 시 수정일도 등록일과 동일하게 저장 */
+            , SYSDATE
+
+            , 0
+            , 'N'
+            , #{atchFileId}
+            )
+    </insert>
+
+    <!-- 수정 -->
+    <update id="updateNotice"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.board.dto.MngrRegidentNoticeDTO">
+
+        UPDATE APT_ANN_BOARD_POST
+        SET TTL = #{ttl}
+          , CN = #{cn}
+          , TOP_FIX_YN = #{topFixYn}
+          , MDF_DTTM = SYSDATE
+        WHERE ANN_NO = #{annNo}
+          AND BOARD_NO = #{boardNo}
+          AND DEL_YN = 'N'
+    </update>
+
+    <!-- 삭제 -->
+    <update id="deleteNotice"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.board.dto.MngrRegidentNoticeDTO">
+
+        UPDATE APT_ANN_BOARD_POST
+        SET DEL_YN = 'Y'
+          , MDF_DTTM = SYSDATE
+        WHERE ANN_NO = #{annNo}
+          AND BOARD_NO = #{boardNo}
+          AND DEL_YN = 'N'
+    </update>
+
+
+    <select id="selectAptCmplexNoByMgmtOfcNo"
+            parameterType="string"
+            resultType="string">
+        /* ImngrRegidentNoticeMapper.selectAptCmplexNoByMgmtOfcNo */
+        SELECT apt_cmplex_no
+        FROM mgmt_office
+        WHERE mgmt_ofc_no = #{mgmtOfcNo}
+          AND use_yn = 'Y'
+    </select>
+
+    <select id="selectNoticeBoardNoByAptCmplexNo"
+            parameterType="string"
+            resultType="string">
+        /* ImngrRegidentNoticeMapper.selectNoticeBoardNoByAptCmplexNo */
+        SELECT board_no
+        FROM apt_board_instance
+        WHERE apt_cmplex_no = #{aptCmplexNo}
+          AND board_ty_cd = 'NOTICE'
+          AND use_yn = 'Y'
+    </select>
+
+
+    <select id="selectAttachFileGroupNo" resultType="int">
+        SELECT SEQ_ATTACH_FILE_GROUP_NO.NEXTVAL
+        FROM DUAL
+    </select>
+
+    <insert id="insertAttachFile"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.board.dto.MngrRegidentNoticeDTO">
+
+        INSERT INTO ATTACH_FILE
+        (
+          FILE_GROUP_NO
+        , FILE_OG_NAME
+        , FILE_SAVE_UUID
+        , FILE_PATH
+        , FILE_EXT
+        , FILE_SIZE
+        , MIME_TYPE
+        , REG_DT
+        , FILE_SORT_ORDER
+        , DOWN_CNT
+        , GOOGLE_ID
+        , CAT
+        )
+        VALUES
+            (
+              TO_NUMBER(#{atchFileId})
+            , #{fileOgName}
+            , #{fileSaveUuid}
+            , #{filePath}
+            , #{fileExt}
+            , #{fileSize}
+            , #{mimeType}
+            , SYSDATE
+            , 1
+            , 0
+            , #{googleId}
+            , 'NOTICE'
+            )
+
+    </insert>
+
+    <update id="updateNoticeAttachFileId">
+        UPDATE APT_ANN_BOARD_POST
+        SET ATCH_FILE_ID = #{atchFileId}
+        WHERE ANN_NO = #{annNo}
+    </update>
+
+    <delete id="deleteAttachFileByGoogleId"
+            parameterType="string">
+
+        DELETE FROM ATTACH_FILE
+        WHERE GOOGLE_ID = #{googleId}
+
+    </delete>
+
+    <select id="selectAttachFileCount"
+            parameterType="string"
+            resultType="int">
+        /*
+         * 첨부파일 그룹에 실제 파일이 몇 개 남았는지 조회
+         */
+        SELECT COUNT(*)
+        FROM ATTACH_FILE
+        WHERE TO_CHAR(FILE_GROUP_NO) = #{atchFileId}
+    </select>
+
+    <update id="clearNoticeAttachFileId"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.board.dto.MngrRegidentNoticeDTO">
+        /*
+         * 첨부파일을 모두 삭제한 경우 공지사항의 첨부파일 그룹 연결 해제
+         */
+        UPDATE APT_ANN_BOARD_POST
+        SET ATCH_FILE_ID = NULL
+          , MDF_DTTM = SYSDATE
+        WHERE ANN_NO = #{annNo}
+          AND BOARD_NO = #{boardNo}
+          AND DEL_YN = 'N'
+    </update>
+
+    <select id="selectManagerOfficeInfo"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.board.dto.MngrRegidentNoticeDTO">
+
+        SELECT
+            MO.MGMT_OFC_NO      AS mgmtOfcNo,
+            MO.MGMT_OFC_NM      AS mgmtOfcNm,
+            MO.APT_CMPLEX_NO    AS aptCmplexNo,
+            AC.APT_CMPLEX_NM    AS aptCmplexNm
+        FROM MGMT_OFFICE MO
+                 JOIN APT_COMPLEX AC
+                      ON MO.APT_CMPLEX_NO = AC.APT_CMPLEX_NO
+        WHERE MO.MGMT_OFC_NO = #{mgmtOfcNo}
+
+    </select>
+
+    <insert id="mergeNoticeBoardInstance"
+            parameterType="string">
+        /*
+         * MERGE란?
+         * → 있으면 INSERT 안 하고, 없으면 INSERT 하는 Oracle 문법.
+         *
+         * 왜 사용?
+         * → 글쓰기 버튼을 여러 번 눌러도 같은 게시판이 중복 생성되지 않게 하기 위해.
+         */
+        MERGE INTO APT_BOARD_INSTANCE B
+        USING (
+            SELECT
+                #{aptCmplexNo} || '_notice' AS BOARD_NO,
+                #{aptCmplexNo}              AS APT_CMPLEX_NO,
+                'NOTICE'                    AS BOARD_TY_CD,
+                '공지게시판'                 AS BOARD_NM,
+                'Y'                         AS USE_YN
+            FROM DUAL
+        ) S
+        ON (
+            B.APT_CMPLEX_NO = S.APT_CMPLEX_NO
+                AND B.BOARD_TY_CD = S.BOARD_TY_CD
+            )
+        WHEN NOT MATCHED THEN
+            INSERT (
+                BOARD_NO,
+                APT_CMPLEX_NO,
+                BOARD_TY_CD,
+                BOARD_NM,
+                USE_YN
+            )
+            VALUES (
+                       S.BOARD_NO,
+                       S.APT_CMPLEX_NO,
+                       S.BOARD_TY_CD,
+                       S.BOARD_NM,
+                       S.USE_YN
+                   )
+    </insert>
+
+
+</mapper>

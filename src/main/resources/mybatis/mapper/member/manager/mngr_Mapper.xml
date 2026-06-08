@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.main.mapper.IMngrMapper">
+
+    <resultMap id="mngrMap" type="kr.or.ddit.domain.member.manager.vo.MngrVO"
+            extends="kr.or.ddit.domain.member.mapper.IMemberMapper.memberMap">
+        <result property="mgmtOfcNo" column="mgmt_ofc_no"/>
+        <result property="mngrDutyCd" column="mngr_duty_cd"/>
+        <result property="mgmtOfcNm" column="mgmt_ofc_nm"/>
+        <result property="aptCmplexNo" column="apt_cmplex_no"/>
+    </resultMap>
+
+    <!-- 단지관리자 시큐리티 VO 정보 조회 -->
+    <select id="selectOneMngrInfo" parameterType="string" resultMap="mngrMap">
+        select M.MGMT_OFC_NO /* kr.or.ddit.domain.member.manager.mapper.IMngrMapper.selectOneMngrInfo */
+             , M.MNGR_DUTY_CD
+             , O.MGMT_OFC_NM
+             , O.APT_CMPLEX_NO
+        from MANAGER M
+                 inner join MGMT_OFFICE O on(M.MGMT_OFC_NO = O.MGMT_OFC_NO)
+        where M.USER_NO = #{user_no}
+    </select>
+
+</mapper>

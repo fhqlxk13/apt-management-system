@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.central.admin.mapper.IReactSalesMapper">
+
+    <resultMap id="aptDetailMap" type="kr.or.ddit.domain.apt.main.vo.AptDetailVO">
+        <result property="hoNo" column="HO_NO"/>
+        <result property="floor" column="FLOOR"/>
+        <result property="hoTyNo" column="HO_TY_NO"/>
+        <result property="hoSttsCd" column="HO_STTS_CD"/>
+        <result property="ho" column="HO"/>
+        <association property="rentInfo" javaType="kr.or.ddit.domain.apt.main.vo.AptDetailVO$RentInfo">
+            <result property="rentTypeCd" column="RENT_TYPE_CD"/>
+            <result property="rcrtLstgSttsCd" column="RCRT_LSTG_STTS_CD"/>
+            <result property="mvinPsblDt" column="MVIN_PSBL_DT"/>
+            <result property="dealSttsCd" column="DEAL_STTS_CD"/>
+            <result property="dpstAmt" column="DPST_AMT"/>
+            <result property="mthlyRentAmt" column="MTHLY_RENT_AMT"/>
+        </association>
+
+    </resultMap>
+
+
+    <insert id="insertRentListing">
+
+        <selectKey resultType="string" keyProperty="rentLstgNo" order="BEFORE">
+            SELECT
+            'RENT_' || LPAD(SEQ_RENT_LISTING.NEXTVAL,6,'0')
+            FROM
+            DUAL
+        </selectKey>
+
+        INSERT INTO RENT_LISTING (
+        RENT_LSTG_NO
+        ,HO_NO
+        ,RENT_TTL
+        ,RENT_TYPE_CD
+        ,DPST_AMT
+        ,MTHLY_RENT_AMT
+        ,RENT_LSTG_CN
+        ,RCRT_LSTG_STTS_CD
+        ,DEAL_STTS_CD
+        ,MVIN_PSBL_DT
+        ) VALUES (
+        #{rentLstgNo}
+        ,#{hoNo}
+        ,#{rentTtl}
+        ,#{rentTypeCd}
+        ,#{dpstAmt}
+        ,#{mthlyRentAmt}
+        ,#{rentLstgCn}
+        ,#{rcrtLstgSttsCd}
+        ,#{dealSttsCd}
+        ,#{mvinPsblDt}
+        )
+    </insert>
+    <insert id="insertRentContractDoc">
+        INSERT INTO RENT_CTRT_DOC(SBMSN_DOC_TY_CD,
+                                  RENT_LSTG_NO)
+        VALUES ( #{sbmsnDocTyCd}
+               , #{rentLstgNo})
+
+    </insert>
+    <update id="updateRentListing">
+        UPDATE RENT_LISTING
+        SET RENT_TTL          = #{rentTtl}
+          , RENT_TYPE_CD      = #{rentTypeCd}
+          , DPST_AMT          = #{dpstAmt}
+          , MTHLY_RENT_AMT    = #{mthlyRentAmt}
+          , RENT_LSTG_CN      = #{rentLstgCn}
+          , RCRT_LSTG_STTS_CD = #{rcrtLstgSttsCd}
+          , DEAL_STTS_CD      = #{dealSttsCd}
+          , MVIN_PSBL_DT      = #{mvinPsblDt}
+
+        WHERE RENT_LSTG_NO = #{rentLstgNo}
+    </update>
+
+
+    <select id="selectBuildingList" resultType="java.lang.String">
+        SELECT dong_nm
+        FROM APT_UNIT
+        WHERE apt_cmplex_no = #{aptCmplexNo}
+
+        ORDER BY TO_NUMBER(
+                         REGEXP_REPLACE(dong_nm, '[^0-9]')
+                 )
+    </select>
+
+    <select id="selectHoList" resultMap="aptDetailMap">
+        SELECT AD.HO_NO,
+               AD.FLOOR,
+               AD.HO_TY_NO,
+               AD.HO_STTS_CD,
+               AD.HO,
+
+               RL.RENT_TYPE_CD,
+               RL.RCRT_LSTG_STTS_CD,
+               RL.MVIN_PSBL_DT,
+               RL.DEAL_STTS_CD,
+               RL.DPST_AMT,
+               RL.MTHLY_RENT_AMT
+
+        FROM APT_DETAIL AD
+                 JOIN APT_UNIT D
+                      ON AD.DONG_NO = D.DONG_NO
+
+                 LEFT JOIN RENT_LISTING RL
+                           ON AD.HO_NO = RL.HO_NO
+                               AND RL.DEAL_STTS_CD = 'AVL'
+
+        WHERE D.APT_CMPLEX_NO = #{aptCmplexNo}
+          AND D.DONG_NM = #{dongNm}
+
+        ORDER BY FLOOR DESC,
+                 TO_NUMBER(AD.HO)
+    </select>
+    <select id="selectExistRentListing" resultType="java.lang.String">
+        SELECT RENT_LSTG_NO
+        FROM RENT_LISTING
+        WHERE HO_NO = #{hoNo}
+          AND DEAL_STTS_CD = 'AVL'
+    </select>
+
+    <select id="selectCurrentContractInfo" resultType="map">
+        SELECT MVOUT_DT
+        FROM RENT_CTRT
+        WHERE RENT_LSTG_NO IN (SELECT RENT_LSTG_NO
+                               FROM RENT_LISTING
+                               WHERE HO_NO = #{hoNo})
+          AND MVOUT_CMPL_DT IS NULL
+    </select>
+
+    <delete id="deleteRentContractDoc">
+        DELETE
+        FROM RENT_CTRT_DOC
+        WHERE RENT_LSTG_NO =
+              #{rentLstgNo}
+    </delete>
+    <delete id="deleteRentListing">
+        DELETE
+        FROM RENT_LISTING
+        WHERE RENT_LSTG_NO =
+              #{rentLstgNo}
+    </delete>
+
+
+</mapper>

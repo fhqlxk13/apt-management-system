@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.central.mapper.IFacilityHistoryMapper">
+
+    <select id="selectFacilityHistoryList"
+            resultType="kr.or.ddit.domain.central.vo.FacilityHistoryVO">
+
+        SELECT
+            fch.fac_chk_hstry_no AS facChkHstryNo,
+            fch.facility_no AS facilityNo,
+            fch.partner_no AS partnerNo,
+            fch.chk_dt AS chkDt,
+            fch.chk_cn AS chkCn,
+            fch.chk_stts_cd AS chkSttsCd,
+            fch.chk_ty_cd AS chkTyCd,
+
+            f.FACILITY_NM AS facilityName,   -- ✅ 수정 완료
+            m.USER_NM AS managerName
+
+        FROM FACILITY_CHECK_HSTRY fch
+                 JOIN FACILITY f
+                      ON fch.facility_no = f.facility_no
+                 JOIN MANAGER mg
+                      ON fch.partner_no = mg.mgmt_ofc_no
+                 JOIN MEMBER m
+                      ON mg.user_no = m.user_no
+
+        ORDER BY fch.chk_dt DESC
+
+    </select>
+
+    <select id="selectFacilityHistoryDetail"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.central.vo.FacilityHistoryVO">
+
+
+
+        SELECT
+            fch.fac_chk_hstry_no AS facChkHstryNo,
+            fch.facility_no AS facilityNo,
+            fch.partner_no AS partnerNo,
+            fch.chk_dt AS chkDt,
+            fch.chk_cn AS chkCn,
+            fch.chk_stts_cd AS chkSttsCd,
+            fch.chk_ty_cd AS chkTyCd,
+            fch.rmk AS rmk,
+
+            f.FACILITY_NM AS facilityName,
+            m.USER_NM AS managerName
+
+        FROM FACILITY_CHECK_HSTRY fch
+                 JOIN FACILITY f
+                      ON fch.facility_no = f.facility_no
+                 JOIN MANAGER mg
+                      ON fch.partner_no = mg.mgmt_ofc_no
+                 JOIN MEMBER m
+                      ON mg.user_no = m.user_no
+
+        WHERE fch.fac_chk_hstry_no = #{id}
+
+    </select>
+
+</mapper>

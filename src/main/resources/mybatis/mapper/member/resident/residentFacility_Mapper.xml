@@ -1,0 +1,410 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.or.ddit.domain.member.resident.mapper.IResidentFacilityMapper">
+
+    <select id="selectResidentAptCmplexNo" resultType="string">
+        /* IResidentFacilityMapper.selectResidentAptCmplexNo */
+        SELECT au.apt_cmplex_no
+        FROM hshld_head hh
+                 JOIN apt_detail ad
+                      ON hh.ho_no = ad.ho_no
+                 JOIN apt_unit au
+                      ON ad.dong_no = au.dong_no
+        WHERE hh.user_no = #{userNo}
+          AND NVL(hh.inout_cd, 'IN') != 'OUT'
+          AND rownum = 1
+    </select>
+
+    <select id="selectAptInfo"
+            resultType="kr.or.ddit.domain.central.dto.FacilityInfoDTO">
+        /* IResidentFacilityMapper.selectAptInfo */
+        SELECT ac.apt_cmplex_no  aptCmplexNo
+             , ac.apt_cmplex_nm  aptCmplexNm
+             , mo.mgmt_ofc_nm    mgmtOfficeInfo
+             , ac.sido_nm        sidoNm
+             , ac.sigungu_nm     sigunguNm
+             , ac.emd_nm         emdNm
+             , ac.dorojuso       dorojuso
+             , ac.heat_ty        heatTy
+             , ac.cnsco_nm       cnscoNm
+             , ac.unit_cnt       unitCnt
+             , ac.dong_cnt       dongCnt
+             , ac.pkg_cnt        pkgCnt
+             , ac.free_pkg_cnt   freePkgCnt
+             , ac.max_floor      maxFloor
+             , ac.cc_cnt         ccCnt
+             , ac.bld_yr         bldYr
+        FROM apt_complex ac
+                 LEFT JOIN mgmt_office mo
+                           ON ac.apt_cmplex_no = mo.apt_cmplex_no
+                               AND NVL(mo.use_yn, 'Y') = 'Y'
+        WHERE ac.apt_cmplex_no = #{aptCmplexNo}
+    </select>
+
+    <select id="selectFacilityDongList"
+            resultType="kr.or.ddit.domain.central.dto.FacilityInfoDTO">
+        /* IResidentFacilityMapper.selectFacilityDongList */
+        SELECT DISTINCT
+            f.dong_no dongNo
+        FROM facility f
+        WHERE f.apt_cmplex_no = #{aptCmplexNo}
+          AND NVL(f.use_yn, 'Y') = 'Y'
+        ORDER BY f.dong_no
+    </select>
+
+    <select id="selectResidentFacilityInfoList"
+            resultType="kr.or.ddit.domain.central.dto.FacilityInfoDTO">
+        /* IResidentFacilityMapper.selectResidentFacilityInfoList */
+        SELECT *
+        FROM (
+        SELECT rownum rn
+        , a.*
+        FROM (
+        SELECT f.facility_no              facilityNo
+        , f.facility_ty_cd           facilityTyCd
+        , ft.code_name               facilityTyNm
+        , f.facility_nm              facilityNm
+        , f.dong_no                  dongNo
+        , f.loc_cn                   locCn
+        , f.use_yn                   useYn
+        FROM facility f
+        LEFT JOIN common_code ft
+        ON ft.group_code_no = 'FACILITY_TY'
+        AND ft.code_no_cd = f.facility_ty_cd
+        AND ft.use_yn = 'Y'
+        WHERE f.apt_cmplex_no = #{aptCmplexNo}
+        AND NVL(f.use_yn, 'Y') = 'Y'
+
+        <if test="facilityTyCd != null and facilityTyCd != ''">
+            AND (
+            f.facility_ty_cd LIKE '%' || #{facilityTyCd} || '%'
+            OR ft.code_name LIKE '%' || #{facilityTyCd} || '%'
+            OR CASE f.facility_ty_cd
+            WHEN 'COMM' THEN '커뮤니티시설'
+            WHEN 'ELV' THEN '엘리베이터'
+            WHEN 'GYM' THEN '피트니스센터'
+            WHEN 'SEC' THEN '보안시설'
+            WHEN 'PLAY' THEN '어린이 놀이시설'
+            WHEN 'STUDY' THEN '독서실'
+            WHEN 'PARK' THEN '입주민 주차장'
+            WHEN 'PARKING' THEN '방문자 주차구역'
+            WHEN 'MEET' THEN '주민회의실'
+            WHEN 'WTR' THEN '수도시설'
+            WHEN 'ELC' THEN '전기시설'
+            WHEN 'GAS' THEN '가스시설'
+            WHEN 'FIRE' THEN '소방시설'
+            ELSE '기타시설'
+            END LIKE '%' || #{facilityTyCd} || '%'
+            )
+        </if>
+
+        <if test="facilityNm != null and facilityNm != ''">
+            AND f.facility_nm LIKE '%' || #{facilityNm} || '%'
+        </if>
+
+        <if test="dongNo != null and dongNo != ''">
+            AND f.dong_no = #{dongNo}
+        </if>
+
+        <if test="locCn != null and locCn != ''">
+            AND f.loc_cn LIKE '%' || #{locCn} || '%'
+        </if>
+
+        ORDER BY ${sortColumn} ${sortOrder}
+        ) a
+        WHERE rownum &lt;= #{endRow}
+        )
+        WHERE rn &gt;= #{startRow}
+    </select>
+
+    <select id="selectResidentFacilityInfoCount" resultType="int">
+        /* IResidentFacilityMapper.selectResidentFacilityInfoCount */
+        SELECT COUNT(*)
+        FROM facility f
+        LEFT JOIN common_code ft
+        ON ft.group_code_no = 'FACILITY_TY'
+        AND ft.code_no_cd = f.facility_ty_cd
+        AND ft.use_yn = 'Y'
+        WHERE f.apt_cmplex_no = #{aptCmplexNo}
+        AND NVL(f.use_yn, 'Y') = 'Y'
+
+        <if test="facilityTyCd != null and facilityTyCd != ''">
+            AND (
+            f.facility_ty_cd LIKE '%' || #{facilityTyCd} || '%'
+            OR ft.code_name LIKE '%' || #{facilityTyCd} || '%'
+            OR CASE f.facility_ty_cd
+            WHEN 'COMM' THEN '커뮤니티시설'
+            WHEN 'ELV' THEN '엘리베이터'
+            WHEN 'GYM' THEN '피트니스센터'
+            WHEN 'SEC' THEN '보안시설'
+            WHEN 'PLAY' THEN '어린이 놀이시설'
+            WHEN 'STUDY' THEN '독서실'
+            WHEN 'PARK' THEN '입주민 주차장'
+            WHEN 'PARKING' THEN '방문자 주차구역'
+            WHEN 'MEET' THEN '주민회의실'
+            WHEN 'WTR' THEN '수도시설'
+            WHEN 'ELC' THEN '전기시설'
+            WHEN 'GAS' THEN '가스시설'
+            WHEN 'FIRE' THEN '소방시설'
+            ELSE '기타시설'
+            END LIKE '%' || #{facilityTyCd} || '%'
+            )
+        </if>
+
+        <if test="facilityNm != null and facilityNm != ''">
+            AND f.facility_nm LIKE '%' || #{facilityNm} || '%'
+        </if>
+
+        <if test="dongNo != null and dongNo != ''">
+            AND f.dong_no = #{dongNo}
+        </if>
+
+        <if test="locCn != null and locCn != ''">
+            AND f.loc_cn LIKE '%' || #{locCn} || '%'
+        </if>
+    </select>
+
+    <select id="selectFacilityStatusCardList"
+            resultType="kr.or.ddit.domain.member.resident.dto.ResidentFacilityHistoryDTO">
+        /* IResidentFacilityMapper.selectFacilityStatusCardList */
+        SELECT f.facility_no                         facilityNo
+             , f.facility_nm                         facilityNm
+             , f.facility_ty_cd                      facilityTyCd
+             , ft.code_name                          facilityTyNm
+             , TO_CHAR(fch.chk_dt, 'YYYY-MM-DD')     chkDt
+             , NVL(fch.chk_stts_cd, 'WAIT')          chkSttsCd
+             , cs.code_name                          chkSttsNm
+             , NVL(fch.chk_cn, '최근 점검 이력 없음') chkCn
+             , fch.chk_ty_cd                         chkTyCd
+             , ct.code_name                          chkTyNm
+             , p.partner_nm                          partnerNm
+             , NVL(p.pic_nm, p.partner_nm)           picNm
+        FROM facility f
+                 LEFT JOIN common_code ft
+                           ON ft.group_code_no = 'FACILITY_TY'
+                               AND ft.code_no_cd = f.facility_ty_cd
+                               AND ft.use_yn = 'Y'
+                 LEFT JOIN (
+            SELECT fac_chk_hstry_no
+                 , facility_no
+                 , partner_no
+                 , chk_dt
+                 , chk_stts_cd
+                 , chk_cn
+                 , chk_ty_cd
+                 , reg_dt
+                 , ROW_NUMBER() OVER (
+                PARTITION BY facility_no
+                ORDER BY chk_dt DESC NULLS LAST
+                    , reg_dt DESC NULLS LAST
+                    , fac_chk_hstry_no DESC
+                ) rn
+            FROM facility_check_hstry
+        ) fch
+                           ON f.facility_no = fch.facility_no
+                               AND fch.rn = 1
+                 LEFT JOIN common_code cs
+                           ON cs.group_code_no = 'CHECK_STTS'
+                               AND cs.code_no_cd = fch.chk_stts_cd
+                               AND cs.use_yn = 'Y'
+                 LEFT JOIN common_code ct
+                           ON ct.group_code_no = 'CHECK_TY'
+                               AND ct.code_no_cd = fch.chk_ty_cd
+                               AND ct.use_yn = 'Y'
+                 LEFT JOIN partner p
+                           ON fch.partner_no = p.partner_no
+        WHERE f.apt_cmplex_no = #{aptCmplexNo}
+          AND NVL(f.use_yn, 'Y') = 'Y'
+        ORDER BY ft.sort_order
+               , f.facility_nm
+    </select>
+
+    <select id="selectFacilityHistoryList"
+            resultType="kr.or.ddit.domain.member.resident.dto.ResidentFacilityHistoryDTO">
+        /* IResidentFacilityMapper.selectFacilityHistoryList */
+        SELECT *
+        FROM (
+        SELECT rownum rn
+        , a.*
+        FROM (
+        SELECT fch.fac_chk_hstry_no           facChkHstryNo
+        , f.facility_no                  facilityNo
+        , f.facility_nm                  facilityNm
+        , f.facility_ty_cd               facilityTyCd
+        , ft.code_name                   facilityTyNm
+        , TO_CHAR(fch.chk_dt, 'YYYY-MM-DD') chkDt
+        , fch.chk_stts_cd                chkSttsCd
+        , cs.code_name                   chkSttsNm
+        , fch.chk_cn                     chkCn
+        , fch.chk_ty_cd                  chkTyCd
+        , ct.code_name                   chkTyNm
+        , p.partner_nm                   partnerNm
+        , NVL(p.pic_nm, p.partner_nm)    picNm
+        FROM facility_check_hstry fch
+        JOIN facility f
+        ON fch.facility_no = f.facility_no
+        LEFT JOIN common_code ft
+        ON ft.group_code_no = 'FACILITY_TY'
+        AND ft.code_no_cd = f.facility_ty_cd
+        AND ft.use_yn = 'Y'
+        LEFT JOIN common_code cs
+        ON cs.group_code_no = 'CHECK_STTS'
+        AND cs.code_no_cd = fch.chk_stts_cd
+        AND cs.use_yn = 'Y'
+        LEFT JOIN common_code ct
+        ON ct.group_code_no = 'CHECK_TY'
+        AND ct.code_no_cd = fch.chk_ty_cd
+        AND ct.use_yn = 'Y'
+        LEFT JOIN partner p
+        ON fch.partner_no = p.partner_no
+        WHERE f.apt_cmplex_no = #{aptCmplexNo}
+        AND NVL(f.use_yn, 'Y') = 'Y'
+
+        <if test="facilityTyCd != null and facilityTyCd != ''">
+            AND (
+            f.facility_ty_cd LIKE '%' || #{facilityTyCd} || '%'
+            OR ft.code_name LIKE '%' || #{facilityTyCd} || '%'
+            )
+        </if>
+
+        <if test="historyChkStartDt != null and historyChkStartDt != ''">
+            AND TRUNC(fch.chk_dt) &gt;= TO_DATE(#{historyChkStartDt}, 'YYYY-MM-DD')
+        </if>
+
+        <if test="historyChkEndDt != null and historyChkEndDt != ''">
+            AND TRUNC(fch.chk_dt) &lt;= TO_DATE(#{historyChkEndDt}, 'YYYY-MM-DD')
+        </if>
+
+        <if test="historyFacilityNm != null and historyFacilityNm != ''">
+            AND f.facility_nm LIKE '%' || #{historyFacilityNm} || '%'
+        </if>
+
+        <if test="historyChkCn != null and historyChkCn != ''">
+            AND fch.chk_cn LIKE '%' || #{historyChkCn} || '%'
+        </if>
+
+        <if test="historyChkStts != null and historyChkStts != ''">
+            AND (
+            fch.chk_stts_cd LIKE '%' || #{historyChkStts} || '%'
+            OR cs.code_name LIKE '%' || #{historyChkStts} || '%'
+            OR CASE fch.chk_stts_cd
+            WHEN 'WAIT' THEN '점검대기'
+            WHEN 'ING' THEN '점검중'
+            WHEN 'DONE' THEN '점검완료'
+            WHEN 'FAULT' THEN '이상발견'
+            ELSE '점검대기'
+            END LIKE '%' || #{historyChkStts} || '%'
+            )
+        </if>
+
+        <if test="historyPicNm != null and historyPicNm != ''">
+            AND NVL(p.pic_nm, p.partner_nm) LIKE '%' || #{historyPicNm} || '%'
+        </if>
+
+        ORDER BY
+        <choose>
+            <when test="sortColumn == 'chk_dt'">fch.chk_dt</when>
+            <when test="sortColumn == 'facility_nm'">f.facility_nm</when>
+            <when test="sortColumn == 'chk_cn'">fch.chk_cn</when>
+            <when test="sortColumn == 'chk_stts_cd'">cs.code_name</when>
+            <when test="sortColumn == 'pic_nm'">NVL(p.pic_nm, p.partner_nm)</when>
+            <otherwise>fch.chk_dt</otherwise>
+        </choose>
+        ${sortOrder}
+        NULLS LAST
+        , fch.reg_dt DESC NULLS LAST
+        , fch.fac_chk_hstry_no DESC
+        ) a
+        WHERE rownum &lt;= #{endRow}
+        )
+        WHERE rn &gt;= #{startRow}
+    </select>
+
+    <select id="selectFacilityHistoryCount" resultType="int">
+        /* IResidentFacilityMapper.selectFacilityHistoryCount */
+        SELECT COUNT(*)
+        FROM facility_check_hstry fch
+        JOIN facility f
+        ON fch.facility_no = f.facility_no
+        LEFT JOIN common_code ft
+        ON ft.group_code_no = 'FACILITY_TY'
+        AND ft.code_no_cd = f.facility_ty_cd
+        AND ft.use_yn = 'Y'
+        LEFT JOIN common_code cs
+        ON cs.group_code_no = 'CHECK_STTS'
+        AND cs.code_no_cd = fch.chk_stts_cd
+        AND cs.use_yn = 'Y'
+        LEFT JOIN partner p
+        ON fch.partner_no = p.partner_no
+        WHERE f.apt_cmplex_no = #{aptCmplexNo}
+        AND NVL(f.use_yn, 'Y') = 'Y'
+
+        <if test="facilityTyCd != null and facilityTyCd != ''">
+            AND (
+            f.facility_ty_cd LIKE '%' || #{facilityTyCd} || '%'
+            OR ft.code_name LIKE '%' || #{facilityTyCd} || '%'
+            )
+        </if>
+
+        <if test="historyChkStartDt != null and historyChkStartDt != ''">
+            AND TRUNC(fch.chk_dt) &gt;= TO_DATE(#{historyChkStartDt}, 'YYYY-MM-DD')
+        </if>
+
+        <if test="historyChkEndDt != null and historyChkEndDt != ''">
+            AND TRUNC(fch.chk_dt) &lt;= TO_DATE(#{historyChkEndDt}, 'YYYY-MM-DD')
+        </if>
+
+        <if test="historyFacilityNm != null and historyFacilityNm != ''">
+            AND f.facility_nm LIKE '%' || #{historyFacilityNm} || '%'
+        </if>
+
+        <if test="historyChkCn != null and historyChkCn != ''">
+            AND fch.chk_cn LIKE '%' || #{historyChkCn} || '%'
+        </if>
+
+        <if test="historyChkStts != null and historyChkStts != ''">
+            AND (
+            fch.chk_stts_cd LIKE '%' || #{historyChkStts} || '%'
+            OR cs.code_name LIKE '%' || #{historyChkStts} || '%'
+            OR CASE fch.chk_stts_cd
+            WHEN 'WAIT' THEN '점검대기'
+            WHEN 'ING' THEN '점검중'
+            WHEN 'DONE' THEN '점검완료'
+            WHEN 'FAULT' THEN '이상발견'
+            ELSE '점검대기'
+            END LIKE '%' || #{historyChkStts} || '%'
+            )
+        </if>
+
+        <if test="historyPicNm != null and historyPicNm != ''">
+            AND NVL(p.pic_nm, p.partner_nm) LIKE '%' || #{historyPicNm} || '%'
+        </if>
+    </select>
+
+    <select id="selectReservablePublicFacilityCardList"
+            resultType="kr.or.ddit.domain.central.dto.FacilityInfoDTO">
+        /*
+         * 예약 가능한 편의시설 조회
+         * CMN_FACILITY_RSV_YN = 'Y' 인 데이터만 카드로 보여줍니다.
+         */
+        SELECT pf.cmn_facility_no      cmnFacilityNo
+             , pf.cmn_facility_nm      cmnFacilityNm
+             , pf.cmn_facility_cn      cmnFacilityCn
+             , pf.cmn_facility_amt     cmnFacilityAmt
+             , pf.cmn_facility_rsv_yn  cmnFacilityRsvYn
+             , pf.cmn_facility_opr_hr  cmnFacilityOprHr
+             , f.facility_no           facilityNo
+             , f.facility_nm           facilityNm
+             , f.dong_no               dongNo
+             , f.loc_cn                locCn
+        FROM public_facility pf
+                 LEFT JOIN facility f
+                           ON pf.facility_no = f.facility_no
+        WHERE pf.apt_cmplex_no = #{aptCmplexNo}
+          AND pf.cmn_facility_rsv_yn = 'Y'
+        ORDER BY pf.cmn_facility_nm
+    </select>
+
+</mapper>

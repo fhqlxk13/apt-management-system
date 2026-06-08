@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.apiApartment.mapper.IApiMemberMapper">
+
+    <insert id="insertMember">
+        <selectKey keyProperty="userNo" order="BEFORE" resultType="string">
+            SELECT 't_' || SEQ_MEMBER.NEXTVAL FROM dual
+        </selectKey>
+
+        INSERT INTO MEMBER (
+            USER_NO,
+            USER_ID,
+            USER_PW,
+            USER_NM,
+            USER_RRNO,
+            USER_TELNO
+        ) VALUES (
+            #{userNo},
+            #{userId},
+            #{userPw},
+            #{userNm},
+            #{userRrno},
+            #{userTelno}
+        )
+    </insert>
+
+    <insert id="insertMemberAuth">
+        INSERT INTO AUTH (
+            USER_NO,
+            USER_ROLE_CD
+        )VALUES (
+            #{userNo},
+            #{auth}
+        )
+
+    </insert>
+
+    <insert id="insertMemberAssign">
+        INSERT INTO HSHLD_HEAD (
+            USER_NO,
+            HO_NO,
+            INOUT_CD,
+            MOVE_IN_DT,
+            HEAD_YN
+        )VALUES (
+            #{userNo},
+            #{hoNo},
+            #{inoutCd},
+            SYSDATE,
+            #{headYn}
+        )
+    </insert>
+    <insert id="insertHshldMember">
+        INSERT INTO HSHLD_MEMBER (
+            HO_NO,
+            HSHLD_MBR_NM
+        )values (
+            #{hoNo},
+            #{hshldMbrNm}
+        )
+    </insert>
+
+    <update id="updateMemberAuth">
+        UPDATE AUTH
+        SET USER_ROLE_CD = 'ROLE_RESIDENT'
+        WHERE USER_NO = #{userNo}
+    </update>
+
+    <select id="selectNotAssignedUserCount" resultType="int">
+        SELECT COUNT(*)
+        FROM AUTH
+        WHERE USER_ROLE_CD = 'ROLE_MEMBER'
+        AND USER_NO LIKE 't%'
+    </select>
+
+    <select id="selectNotAssignedTestUsers" resultType="kr.or.ddit.domain.member.vo.MemberVO">
+        SELECT M.*
+        FROM MEMBER M
+            JOIN AUTH A ON M.USER_NO = A.USER_NO
+        WHERE M.USER_NO LIKE 't%'
+          AND A.USER_ROLE_CD = 'ROLE_MEMBER'
+    </select>
+
+    <select id="countUserId"
+            parameterType="string"
+            resultType="int">
+        SELECT COUNT(*)
+        FROM MEMBER
+        WHERE USER_ID = #{userId}
+    </select>
+</mapper>

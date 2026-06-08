@@ -1,0 +1,341 @@
+/*
+  centralAside.css
+
+  - 이 파일에 넣는 것
+    - 앱 공통 토큰/리셋(전역 변수, box-sizing, body 기본)
+    - 중앙관리 레이아웃의 사이드바(aside) UI 전용 스타일
+    - 사이드바에 종속된 공통 유틸(예: tooltip)
+
+  - 이 파일에 넣지 않는 것
+    - 상단 헤더(topbar) 스타일 → centralHeader.css
+    - 화면(페이지)별 전용 스타일 → pages/*.css (추후)
+*/
+
+/* ================================================
+   TOKENS / RESET / BASE
+   - 전역 색상/라운드/그림자 토큰(:root)
+   - 기본 리셋(*, box-sizing)
+   - body 기본 폰트/배경/기본 레이아웃(display:flex)
+   ================================================ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+:root {
+  --bg: #f5f6f8;
+  --card: #fff;
+  --border: #e8eaed;
+  --gray-soft: #f3f4f6;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-tertiary: #9ca3af;
+  --accent: #3b82f6;
+  --red: #dc2626;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --r-sm: 8px;
+  --r-md: 12px;
+  --sb-bg: #1a2332;
+  --sb-hover: rgba(255, 255, 255, 0.07);
+  --sb-divider: rgba(255, 255, 255, 0.08);
+  --sb-text: rgba(255, 255, 255, 0.72);
+  --sb-icon: rgba(255, 255, 255, 0.45);
+  --sb-label: rgba(255, 255, 255, 0.35);
+  --sb-active-bg: rgba(101, 196, 120, 0.15);
+  --sb-active: #65c478;
+}
+body {
+  font-family: "Noto Sans KR", sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  font-size: 15px;
+  line-height: 1.6;
+  letter-spacing: -0.02em;
+}
+
+/* ================================================
+   SIDEBAR (중앙관리 사이드바 UI)
+   - .sidebar 폭/접힘(collapsed) 애니메이션
+   - 로고/접기 버튼, 메뉴 그룹/섹션 라벨
+   - nav-item 활성/hover, 배지(nav-badge)
+   - 하단 관리자 카드(.admin-card)
+   ================================================ */
+.sidebar {
+  width: 240px;
+  background: var(--sb-bg);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  overflow: hidden;
+  z-index: 100;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.05s;
+}
+.sidebar.collapsed {
+  width: 64px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0s;
+}
+.sidebar-nav {
+  overflow-y: auto;
+  scrollbar-width: none;
+  flex: 1;
+  padding: 8px 10px 16px;
+}
+.sidebar-nav::-webkit-scrollbar {
+  display: none;
+}
+.nav-text,
+.nav-badge,
+.logo-text,
+.admin-info,
+.section-label {
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 180px;
+  opacity: 1;
+  transition:
+    max-width 0.18s cubic-bezier(0.4, 0, 1, 1) 0s,
+    opacity 0.13s ease 0s;
+}
+.sidebar.collapsed .nav-text,
+.sidebar.collapsed .nav-badge,
+.sidebar.collapsed .logo-text,
+.sidebar.collapsed .admin-info,
+.sidebar.collapsed .section-label {
+  max-width: 0;
+  opacity: 0;
+  transition:
+    max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1) 0.18s,
+    opacity 0.2s ease 0.2s;
+}
+.sidebar-logo {
+  padding: 22px 18px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--sb-divider);
+  flex-shrink: 0;
+}
+.logo-mark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo-icon {
+  width: 34px;
+  height: 34px;
+  background: linear-gradient(135deg, #65c478, #3b9e52);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.logo-icon .material-symbols-rounded {
+  color: #fff;
+  font-size: 18px;
+}
+.logo-text h1 {
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.3px;
+}
+.logo-text p {
+  font-size: 10px;
+  color: var(--sb-label);
+  margin-top: 1px;
+}
+.sidebar.collapsed .logo-icon {
+  cursor: pointer;
+}
+.collapse-btn {
+  width: 28px;
+  height: 28px;
+  background: var(--sb-hover);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sb-icon);
+  max-width: 28px;
+  opacity: 1;
+  transition:
+    max-width 0.15s ease,
+    opacity 0.12s ease;
+}
+.sidebar.collapsed .collapse-btn {
+  max-width: 0;
+  opacity: 0;
+}
+.nav-group {
+  margin-bottom: 4px;
+}
+.section-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--sb-label);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 20px 10px 6px;
+  display: block;
+}
+.section-divider {
+  height: 1px;
+  background: var(--sb-divider);
+  margin: 6px 4px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--r-sm);
+  color: var(--sb-text);
+  text-decoration: none;
+  cursor: pointer;
+  transition: 0.15s;
+  background: transparent;
+  width: 100%;
+  margin-bottom: 1px;
+}
+.nav-item:hover {
+  background: var(--sb-hover);
+  color: #fff;
+}
+.nav-item.active {
+  background: var(--sb-active-bg);
+  color: var(--sb-active);
+}
+.nav-icon {
+  color: var(--sb-icon);
+  font-size: 20px;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+.nav-item.active .nav-icon {
+  color: var(--sb-active);
+}
+.nav-text {
+  font-size: 14px;
+  font-weight: 500;
+  flex: 1;
+}
+.nav-badge {
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 99px;
+}
+.nav-badge.yellow {
+  background: #d97706;
+}
+.admin-card {
+  margin: 10px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid var(--sb-divider);
+  overflow: hidden;
+  max-height: 80px;
+  opacity: 1;
+  transition:
+    max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1) 0s,
+    opacity 0.2s ease 0s,
+    margin 0.25s cubic-bezier(0.4, 0, 0.2, 1) 0s,
+    padding 0.25s cubic-bezier(0.4, 0, 0.2, 1) 0s;
+}
+.sidebar.collapsed .admin-card {
+  max-height: 0;
+  opacity: 0;
+  margin: 0 10px;
+  padding: 0 14px;
+  transition:
+    max-height 0.2s cubic-bezier(0.4, 0, 1, 1) 0.05s,
+    opacity 0.15s ease 0s,
+    margin 0.2s ease 0.05s,
+    padding 0.2s ease 0.05s;
+}
+.admin-avatar {
+  width: 34px;
+  height: 34px;
+  background: linear-gradient(135deg, #65c478, #3b9e52);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.admin-info {
+  flex: 1;
+  min-width: 0;
+}
+.admin-info p {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+.admin-info span {
+  font-size: 10px;
+  color: var(--sb-label);
+  white-space: nowrap;
+}
+.icon-btn {
+  width: 26px;
+  height: 26px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--sb-icon);
+  transition: 0.15s;
+}
+.icon-btn:hover {
+  background: var(--sb-hover);
+  color: #fff;
+}
+
+/* ================================================
+   TOOLTIP (사이드바에서 쓰는 공통 유틸)
+   - data-tooltip 속성 기반 툴팁
+   ================================================ */
+[data-tooltip] {
+  position: relative;
+}
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  background: var(--text-primary);
+  color: #fff;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: 0.15s;
+  z-index: 99;
+}
+[data-tooltip]:hover::after {
+  opacity: 1;
+}

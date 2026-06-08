@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.board.free.mapper.IResidentBoardMapper">
+
+    <!-- 게시글 등록 -->
+    <insert id="insertBoardFree" parameterType="kr.or.ddit.domain.apt.board.free.vo.RsidBoardVO">
+        <selectKey keyProperty="postNo" resultType="string" order="BEFORE">
+            SELECT seq_board_post.nextval FROM dual
+        </selectKey>
+        INSERT INTO apt_board_post (    /*kr.or.ddit.domain.apt.board.free.mapper.IResidentBoardMapper.insertBoardFree*/
+        post_no
+        ,board_no
+        ,ttl
+        ,cn
+        ,wrtr_id
+        ,prrt_cd
+        ,reg_dttm
+        ,mdf_dttm
+        ,inq_cnt
+        ,del_yn
+        ,atch_file_id
+        ,opn_yn
+        ) VALUES (
+        #{postNo}
+        ,#{boardNo}
+        ,#{ttl}
+        ,#{cn}
+        ,#{wrtrId}
+        ,#{prrtCd}
+        ,SYSDATE
+        ,SYSDATE
+        ,0
+        ,'N'
+        ,#{atchFileId}
+        ,NVL(#{opnYn}, 'Y')
+        )
+    </insert>
+
+    <!-- 댓글 삭제(상태만 병경) -->
+    <update id="deleteBoardComment" parameterType="string">
+        UPDATE apt_board_comment    /*kr.or.ddit.domain.apt.board.free.mapper.IResidentBoardMapper.deleteBoardComment*/
+           SET del_yn = 'Y'
+         WHERE cmt_no = #{cmtNo}
+    </update>
+
+    <!-- 댓글 수정 -->
+    <update id="updateBoardComment" parameterType="kr.or.ddit.domain.apt.board.free.vo.RsidBoardCommentVO">
+        UPDATE apt_board_comment    /*kr.or.ddit.domain.apt.board.free.mapper.IResidentBoardMapper.updateBoardComment*/
+        SET cmt_cn = #{cmtCn},
+            mdf_dttm = SYSDATE
+        WHERE cmt_no = #{cmtNo}
+    </update>
+
+    <!-- 게시글 목록 조회(페이징 처리 포함) -->
+    <select id="boardFreeList" resultType="kr.or.ddit.domain.apt.board.free.vo.RsidBoardVO" parameterType="kr.or.ddit.common.model.PaginationInfoVO">
+        SELECT *    /*kr.or.ddit.domain.apt.board.free.mapper.IResidentBoardMapper.boardFreeList*/
+            FROM (
+        SELECT ROWNUM rn, a.*
+            FROM (
+        SELECT p.post_no
+               ,p.board_no
+               ,p.ttl
+               ,p.cn
+               ,p.wrtr_id
+               ,m.user_nm AS wrtr_nm
+               ,p.prrt_cd
+               ,p.reg_dttm
+               ,p.mdf_dttm
+               ,p.inq_cnt
+               ,p.del_yn
+               ,p.atch_file_id
+               ,p.opn_yn
+        FROM apt_board_post p
+        LEFT JOIN member m ON p.wrtr_id = m.user_id
+        WHERE p.board_no = #{aptCmplexNo}
+        AND p.del_yn = 'N'
+        <if test="searchWord != null and searchWord != ''">
+            <choose>
+                <when test="searchType == 'ttl'">
+                AND p.ttl LIKE '%' || #{searchWord} || '%'
+                </when>
+                <when test="searchType == 'wrtrId'">
+                AND (p.wrtr_id LIKE '%' || #{searchWord} || '%'
+                     OR m.user_nm LIKE '%' || #{searchWord} || '%')
+                </when>
+                <when test="searchType == 'cn'">
+                AND p.cn LIKE '%' || #{searchWord} || '%'
+                </when>
+                <otherwise>
+                AND p.ttl LIKE '%' || #{searchWord} || '%'
+                </otherwise>
+            </choose>
+        </if>
+        ORDER BY p.reg_dttm DESC, p.post_no DESC
+        ) a WHERE ROWNUM &lt;= #{endRow}
+        ) WHERE rn >= #{startRow}
+    </select>
+
+    <!-- 게시글 전체 조회(총 몇개의 글이 있는지 조회, 페이지 수 계산) -->
+    <select id="selectBoardFreeCount" resultType="int" parameterType="kr.or.ddit.common.model.PaginationInfoVO">
+        SELECT COUNT(*)     /*kr.or.ddit.domain.apt.board.free.mapper.IResidentBoardMapper.selectBoardFreeCount*/
+        FROM apt_board_post p
+        LEFT JOIN member m ON p.wrtr_id = m.user_id
+        WHERE p.board_no = #{aptCmplexNo}
+        AND p.del_yn = 'N'
+        <if test="searchWord != null and searchWord != ''">
+            <choose>
+                <when test="searchType == 'ttl'">
+                AND p.ttl LIKE '%' || #{searchWord} || '%'
+                </when>
+                <when test="searchType == 'wrtrId'">
+                AND (p.wrtr_id LIKE '%' || #{searchWord} || '%'
+                     OR m.user_nm LIKE '%' || #{searchWord} || '%')
+                </when>
+                <when test="searchType == 'cn'">
+                AND p.cn LIKE '%' || #{searchWord} || '%'
+                </when>
+                <otherwise>
+                AND p.ttl LIKE '%' || #{searchWord} || '%'</otherwise>
+            </choose>
+        </if>
+    </select>
+
+    <!-- 게시글 단건 조회 -->
+    <select id="selectOneBoardFree" resultType="kr.or.ddit.domain.apt.board.free.vo.RsidBoardVO" parameterType="kr.or.ddit.domain.apt.board.free.vo.RsidBoardVO">
+        SELECT      /*kr.or.ddit.domain.apt.board.free.mapper.IResidentBoardMapper.selectOneBoardFree*/
+            p.post_no
+            ,p.board_no
+            ,p.ttl
+            ,p.cn
+            ,p.wrtr_id
+            ,m.user_nm AS wrtr_nm
+            ,p.prrt_cd
+            ,p.reg_dttm
+            ,p.mdf_dttm
+            ,p.inq_cnt
+            ,p.del_yn
+            ,p.atch_file_id
+            ,p.opn_yn
+        FROM apt_board_post p
+        LEFT JOIN member m ON p.wrtr_id = m.user_id
+        WHERE p.post_no = #{postNo}
+
+    </select>
+
+    <!-- 게시글 삭제(상태만 변경) -->
+    <update id="deleteBoardFree" parameterType="string">
+        UPDATE apt_board_post       /*kr.or.ddit.domain.apt.board.free.mapper.IResidentBoardMapper.deleteBoardFree*/
+        SET del_yn = 'Y'
+        WHERE post_no = #{postNo}
+    </update>
+
+    <!-- 게시글 수정 -->
+    <update id="updateBoardFree" parameterType="kr.or.ddit.domain.apt.board.free.vo.RsidBoardVO">
+        UPDATE apt_board_post       /*kr.or.ddit.domain.apt.board.free.mapper.IResidentBoardMapper.updateBoardFree*/
+        SET ttl = #{ttl}
+            ,cn = #{cn}
+            ,mdf_dttm = SYSDATE
+        WHERE post_no = #{postNo}
+    </update>
+
+    <!-- 게시글 조회수 증가 -->
+    <update id="updateInqCnt" parameterType="string">
+        UPDATE apt_board_post       /*kr.or.ddit.domain.apt.board.free.mapper.IResidentBoardMapper.updateInqCnt*/
+        SET inq_cnt = inq_cnt + 1
+        WHERE post_no = #{postNo}
+    </update>
+
+    <!-- 댓글 등록 -->
+    <insert id="insertBoardComment" parameterType="kr.or.ddit.domain.apt.board.free.vo.RsidBoardCommentVO">
+        <selectKey keyProperty="cmtNo" resultType="string" order="BEFORE">
+        SELECT seq_board_comment.nextval FROM dual
+        </selectKey>
+        INSERT INTO apt_board_comment (     /*kr.or.ddit.domain.apt.board.free.mapper.IResidentBoardMapper.insertBoardComment*/
+        cmt_no
+        ,post_no
+        ,cmt_group
+        ,cmt_cn
+        ,cmt_sort_ord
+        ,reg_dttm
+        ,del_yn
+        ,mdf_dttm
+        ,user_no
+        ) VALUES (
+        #{cmtNo}
+        ,#{postNo}
+        ,#{cmtNo}
+        ,#{cmtCn}
+        ,0
+        ,SYSDATE
+        ,'N'
+        ,SYSDATE
+        ,#{userNo}
+        )
+    </insert>
+
+    <!-- 대댓글(답글) 등록 -->
+    <insert id="insertSubComment" parameterType="kr.or.ddit.domain.apt.board.free.vo.RsidBoardCommentVO">
+        INSERT INTO apt_board_comment (     /*kr.or.ddit.domain.apt.board.free.mapper.IResidentBoardMapper.insertSubComment*/
+            cmt_no
+            ,post_no
+            ,cmt_group
+            ,cmt_cn
+            ,cmt_sort_ord
+            ,reg_dttm
+            ,del_yn
+            ,mdf_dttm
+            ,user_no
+        ) VALUES (
+            seq_board_comment.nextval
+            ,#{postNo}
+            ,(
+            SELECT cmt_group
+            FROM apt_board_comment
+            WHERE cmt_no = #{cmtNo})
+            ,#{cmtCn}
+            ,(
+            SELECT MAX(cmt_sort_ord)
+            FROM apt_board_comment
+            WHERE cmt_group = (
+            SELECT cmt_group
+            FROM apt_board_comment
+            WHERE cmt_no = #{cmtNo}
+                              )
+            ) + 1
+            ,SYSDATE
+            ,'N'
+            ,SYSDATE
+            ,#{userNo}
+            )
+    </insert>
+
+    <!-- 게시글 댓글 목록 조회 -->
+    <select id="boardFreeComment" parameterType="string" resultType="kr.or.ddit.domain.apt.board.free.vo.RsidBoardCommentVO">
+        SELECT              /*kr.or.ddit.domain.apt.board.free.mapper.IResidentBoardMapper.boardFreeComment*/
+             c.cmt_no
+             ,c.post_no
+             ,c.cmt_group
+             ,c.cmt_cn
+             ,c.cmt_sort_ord
+             ,c.reg_dttm
+             ,c.del_yn
+             ,c.mdf_dttm
+             ,m.user_no
+             ,m.user_id
+             ,m.user_nm
+        FROM apt_board_comment c
+        LEFT JOIN member m on c.user_no = m.user_no
+        WHERE c.post_no = #{postNo}
+          AND c.del_yn = 'N'
+        ORDER BY c.cmt_group ASC,
+                 c.cmt_sort_ord ASC
+    </select>
+
+    <!-- 파일업로드 -->
+    <select id="selectAttachFile" parameterType="string" resultType="kr.or.ddit.common.file.vo.AttachFileVO">
+        SELECT
+            file_group_no
+            ,file_og_name
+            ,file_save_uuid
+            ,file_path
+            ,file_ext
+            ,file_size
+            ,mime_type
+            ,reg_dt
+            ,mdf_dt
+            ,file_sort_order
+            ,down_cnt
+            ,google_id
+            ,cat
+        FROM attach_file
+        WHERE file_group_no = #{fileGroupNo}
+    </select>
+
+    <insert id="mergeFreeBoardInstance" parameterType="string">
+        /*
+         * MERGE란?
+         * → 있으면 INSERT 안 하고, 없으면 INSERT 하는 Oracle 문법.
+         *
+         * 왜 사용?
+         * → 글쓰기 버튼을 여러 번 눌러도 같은 게시판이 중복 생성되지 않게 하기 위해.
+         */
+        MERGE INTO APT_BOARD_INSTANCE B
+        USING (
+            SELECT
+                #{aptCmplexNo} || '_free' AS BOARD_NO,
+                #{aptCmplexNo}              AS APT_CMPLEX_NO,
+                'FREE'                    AS BOARD_TY_CD,
+                '자유게시판'                 AS BOARD_NM,
+                'Y'                         AS USE_YN
+            FROM DUAL
+        ) S
+        ON (
+            B.APT_CMPLEX_NO = S.APT_CMPLEX_NO
+                AND B.BOARD_TY_CD = S.BOARD_TY_CD
+            )
+        WHEN NOT MATCHED THEN
+            INSERT (
+                BOARD_NO,
+                APT_CMPLEX_NO,
+                BOARD_TY_CD,
+                BOARD_NM,
+                USE_YN
+            )
+            VALUES (
+                       S.BOARD_NO,
+                       S.APT_CMPLEX_NO,
+                       S.BOARD_TY_CD,
+                       S.BOARD_NM,
+                       S.USE_YN
+                   )
+    </insert>
+
+</mapper>
+
+
+
+
+
+
+

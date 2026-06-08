@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.common.file.mapper.IAttachFileMapper">
+
+    <!-- 첨부파일 공통 resultMap -->
+    <resultMap id="attachFileMap" type="kr.or.ddit.common.file.vo.AttachFileVO">
+        <result property="fileGroupNo"   column="file_group_no"/>
+        <result property="cat"           column="cat"/>
+        <result property="fileSaveUuid"  column="file_save_uuid"/>
+        <result property="fileOgName"    column="file_og_name"/>
+        <result property="filePath"      column="file_path"/>
+        <result property="fileExt"       column="file_ext"/>
+        <result property="fileSize"      column="file_size"/>
+        <result property="mimeType"      column="mime_type"/>
+        <result property="regDt"         column="reg_dt"/>
+        <result property="mdfDt"         column="mdf_dt"/>
+        <result property="fileSortOrder" column="file_sort_order"/>
+        <result property="downCnt"       column="down_cnt"/>
+        <result property="googleId"      column="google_id"/>
+    </resultMap>
+
+    <!-- 파일 업로드 정보 인서트  -->
+    <insert id="insertAttachFile" parameterType="kr.or.ddit.common.file.vo.AttachFileVO">
+        insert into attach_file ( /* kr.or.ddit.common.file.mapper.IAttachFileMapper.insertAttachFile */
+             FILE_GROUP_NO
+            , FILE_SAVE_UUID
+            , CAT
+            , FILE_OG_NAME
+            , FILE_PATH
+            , FILE_EXT
+            , FILE_SIZE
+            , MIME_TYPE
+            , REG_DT
+            , MDF_DT
+            , FILE_SORT_ORDER
+            , DOWN_CNT
+            , GOOGLE_ID
+        ) values (
+                  #{fileGroupNo}
+                 , #{fileSaveUuid}
+                 , #{cat}
+                 , #{fileOgName}
+                 , #{filePath}
+                 , #{fileExt}
+                 , #{fileSize}
+                 , #{mimeType}
+                 , sysdate
+                 , default
+                 , #{fileSortOrder}
+                 , default
+                 , #{googleId}
+                 )
+    </insert>
+
+    <delete id="deleteByFileGroupNo">
+        DELETE FROM attach_file /* kr.or.ddit.common.file.mapper.IAttachFileMapper.deleteByFileGroupNo */
+        WHERE file_group_no = #{fileGroupNo}
+    </delete>
+
+    <delete id="deleteOne">
+        DELETE FROM attach_file /* kr.or.ddit.common.file.mapper.IAttachFileMapper.deleteOne */
+        WHERE google_id = #{googleId}
+    </delete>
+
+    <select id="getSeqFileGroupNo" resultType="long">
+        SELECT seq_attach_file_group_no.nextval /* kr.or.ddit.common.file.mapper.IAttachFileMapper.getSeqFileGroupNo */
+        FROM dual
+    </select>
+
+    <!-- 파일 그룹코드 + uuid파일명 (복합키)로 파일 메타데이터 가져오기 -->
+    <select id="getAttachFile" parameterType="string" resultType="kr.or.ddit.common.file.vo.AttachFileVO">
+        select FILE_GROUP_NO    /* kr.or.ddit.common.file.mapper.IAttachFileMapper.getAttachFile */
+               , FILE_OG_NAME
+               , FILE_SAVE_UUID
+               , FILE_PATH
+               , FILE_EXT
+               , FILE_SIZE
+               , MIME_TYPE
+               , REG_DT
+               , MDF_DT
+               , FILE_SORT_ORDER
+               , DOWN_CNT
+               , GOOGLE_ID
+               , CAT
+            from attach_file
+        where file_group_no = to_number(#{fileGroupNo}) and file_save_uuid = #{fileSaveUuid}
+    </select>
+
+    <!--fileGroupNo로 파일 묶음 조회-->
+    <select id="selecAttachFileList" resultType="kr.or.ddit.common.file.vo.AttachFileVO">
+        select FILE_GROUP_NO    /* kr.or.ddit.common.file.mapper.IAttachFileMapper.selecAttachFileList */
+             , FILE_OG_NAME
+             , FILE_SAVE_UUID
+             , FILE_PATH
+             , FILE_EXT
+             , FILE_SIZE
+             , MIME_TYPE
+             , REG_DT
+             , MDF_DT
+             , FILE_SORT_ORDER
+             , DOWN_CNT
+             , GOOGLE_ID
+             , CAT
+        from ATTACH_FILE
+        where FILE_GROUP_NO = to_number(#{fileGroupNo})
+    </select>
+
+</mapper>

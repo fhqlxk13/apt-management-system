@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.member.mapper.IMemberMapper">
+
+    <resultMap type="kr.or.ddit.domain.member.vo.MemberVO" id="memberMap">
+        <id property="userNo" column="user_no"/>
+        <result property="userId" column="user_id" />
+        <result property="userPw" column="user_pw" />
+        <result property="userNm" column="user_nm" />
+        <result property="userRrno" column="user_rrno" />
+        <result property="userTelno" column="user_telno" />
+        <result property="userEml" column="user_eml" />
+        <result property="regDt" column="reg_dt" />
+        <result property="mdfDt" column="mdf_dt" />
+        <result property="userYn" column="user_yn" />
+        <result property="smsRcvYn" column="sms_rcv_yn" />
+        <result property="smsNtcRcvYn" column="sms_ntc_rcv_yn" />
+        <result property="smsCtrtRcvYn" column="sms_ctrt_rcv_yn" />
+        <result property="emlRcvYn" column="eml_rcv_yn" />
+        <result property="emlNtcRcvYn" column="eml_ntc_rcv_yn" />
+        <result property="emlCtrtRcvYn" column="eml_ctrt_rcv_yn" />
+        <result property="profFileId" column="prof_file_id" />
+        <collection property="authList" resultMap="authMap" />
+    </resultMap>
+
+    <resultMap type="kr.or.ddit.domain.member.vo.AuthVO" id="authMap">
+        <result property="userNo" column="user_no" />
+        <result property="auth" column="user_role_cd" />
+    </resultMap>
+
+    <select id="readByUserInfo" parameterType="string" resultMap="memberMap">
+        select m.USER_NO,
+               USER_ID,
+               USER_PW,
+               USER_NM,
+               USER_RRNO,
+               USER_TELNO,
+               USER_EML,
+               REG_DT,
+               mdf_DT,
+               USER_YN,
+               SMS_RCV_YN,
+               SMS_NTC_RCV_YN,
+               SMS_CTRT_RCV_YN,
+               EML_RCV_YN,
+               EML_NTC_RCV_YN,
+               EML_CTRT_RCV_YN,
+               PROF_FILE_ID,
+               a.user_role_cd
+        from member m
+                 left outer join auth a on(m.user_no = a.user_no)
+        where user_id = #{userId}
+    </select>
+
+    <insert id="joinMember" parameterType="kr.or.ddit.domain.member.vo.MemberVO">
+        <selectKey keyProperty="userNo" resultType="string" order="BEFORE">
+            select to_char(seq_member.nextval) from dual
+        </selectKey>
+        insert into member(
+            user_no, user_id, user_pw, user_nm, user_rrno, user_telno, user_eml,
+            reg_dt, mdf_dt,
+            user_yn,
+            sms_rcv_yn, sms_ntc_rcv_yn, sms_ctrt_rcv_yn,
+            eml_rcv_yn, eml_ntc_rcv_yn, eml_ctrt_rcv_yn,
+            prof_file_id
+        )values(
+            #{userNo}, #{userId}, #{userPw}, #{userNm}, #{userRrno}, #{userTelno}, #{userEml},
+            sysdate, default,
+            'Y',
+            #{smsRcvYn}, #{smsNtcRcvYn}, #{smsCtrtRcvYn},
+            #{emlRcvYn}, #{emlNtcRcvYn}, #{emlCtrtRcvYn},
+            #{profFileId}
+        )
+    </insert>
+
+    <select id="idCheck" parameterType="string" resultType="int">
+        select count(*) from member where user_id = #{userId}
+    </select>
+
+    <insert id="addAuth" parameterType="string">
+        insert into auth(user_no, user_role_cd)
+        values (
+            #{userNo}, 'ROLE_MEMBER'
+       )
+    </insert>
+
+    <update id="updateMember">
+        update member
+        <set>
+
+            <if test="userNm != null and userNm != ''">
+                user_nm = #{userNm},
+            </if>
+
+            <if test="userTelno != null">
+                user_telno = #{userTelno},
+            </if>
+
+            <if test="userEml != null">
+                user_eml = #{userEml},
+            </if>
+
+            <if test="profFileId != null and profFileId != ''">
+                prof_file_id = #{profFileId},
+            </if>
+
+            mdf_dt = sysdate
+
+        </set>
+        where user_no = #{userNo}
+    </update>
+    <select id="getMemberByUserNo" parameterType="string" resultMap="memberMap">
+        select m.USER_NO,
+               USER_ID,
+               USER_PW,
+               USER_NM,
+               USER_RRNO,
+               USER_TELNO,
+               USER_EML,
+               REG_DT,
+               mdf_DT,
+               USER_YN,
+               SMS_RCV_YN,
+               SMS_NTC_RCV_YN,
+               SMS_CTRT_RCV_YN,
+               EML_RCV_YN,
+               EML_NTC_RCV_YN,
+               EML_CTRT_RCV_YN,
+               PROF_FILE_ID,
+               a.user_role_cd
+        from member m
+                 left outer join auth a on (m.user_no = a.user_no)
+        where m.user_no = #{userNo}
+    </select>
+
+    <select id="getVhclList" resultType="kr.or.ddit.domain.member.resident.vo.RsidVhclVO">
+        SELECT *
+        FROM RSID_VHCL
+        WHERE USER_NO = #{userNo}
+    </select>
+
+    <update id="updateAlarm" parameterType="map">
+        update member
+        set
+            sms_rcv_yn = #{smsRcvYn},
+            sms_ntc_rcv_yn = #{smsNtcRcvYn},
+            sms_ctrt_rcv_yn = #{smsCtrtRcvYn},
+            mdf_dt = sysdate
+        where user_no = #{userNo}
+    </update>
+
+
+</mapper>

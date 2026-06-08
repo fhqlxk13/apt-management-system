@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.member.resident.mapper.IVhclMapper">
+
+    <insert id="insertVhcl">
+        INSERT INTO RSID_VHCL (
+              RSID_VHCL_NO
+            , VHCL_NM
+            , VHCL_NO
+            , USER_NO
+            , HO_NO
+            , VHCL_STTS_CD
+            , REG_DT
+            , VHCL_FILE_NO
+        )VALUES (
+              SEQ_RSID_VHCL.NEXTVAL
+            , #{vhclNm}
+            , #{vhclNo}
+            , #{userNo}
+            , #{hoNo}
+            , #{vhclSttsCd}
+            , SYSDATE
+            , #{vhclFileNo}
+        )
+
+
+    </insert>
+    <delete id="deleteVhcl">
+        DELETE FROM rsid_vhcl
+        WHERE   RSID_VHCL_NO = #{rsidVhclNo}
+        AND     USER_NO = #{userNo}
+    </delete>
+
+    <select id="selectMyVhclList"
+            parameterType="list"
+            resultType="kr.or.ddit.domain.member.resident.vo.RsidVhclVO">
+        SELECT      /*kr.or.ddit.domain.member.resident.mapper.IVhclMapper.selectMyVhclList*/
+        RSID_VHCL_NO
+        , VHCL_NM
+        , VHCL_NO
+        , USER_NO
+        , HO_NO
+        , VHCL_STTS_CD
+        , REG_DT
+        , VHCL_FILE_NO
+        FROM RSID_VHCL
+
+        WHERE HO_NO IN
+        <foreach collection="list"
+                 item="ho"
+                 open="("
+                 separator=","
+                 close=")">
+            #{ho}
+        </foreach>
+        ORDER BY
+        TO_NUMBER(REGEXP_SUBSTR(HO_NO, '[^_]+', 1, 2)),
+        TO_NUMBER(REGEXP_SUBSTR(HO_NO, '[^_]+', 1, 3)),
+        REG_DT DESC
+    </select>
+
+    <select id="selectMyRoomList" resultType="kr.or.ddit.common.webSocket.chat.vo.ChatRoomVO">
+        SELECT CR.CHAT_ROOM_NO
+               ,CR.CHAT_ROOM_NM
+               ,CM.MSG_CN   AS LAST_MSG
+               ,CM.REG_DTTM AS LAST_TIME
+               ,NVL(MC.MEMBER_CNT, 0) AS MEMBER_CNT
+
+               ,NVL((
+                       SELECT COUNT(*)
+                       FROM CHAT_MESSAGE M
+                       WHERE M.CHAT_ROOM_NO = CR.CHAT_ROOM_NO
+                         AND M.CHAT_MSG_NO > NVL((
+                                                                SELECT MR.LAST_READ_MSG_NO
+                                                                FROM CHAT_ROOM_READ MR
+                                                                WHERE MR.CHAT_ROOM_NO = CR.CHAT_ROOM_NO
+                                                                  AND MR.CHAT_MEMBER_ID = CRM.CHAT_MEMBER_ID
+                                                            ), 0)
+                   ), 0) AS UNREAD_CNT
+
+
+        FROM CHAT_ROOM CR
+                 INNER JOIN CHAT_ROOM_MEMBER CRM
+                            ON CR.CHAT_ROOM_NO = CRM.CHAT_ROOM_NO
+                 LEFT JOIN (
+                    SELECT CHAT_ROOM_NO, COUNT(*) AS MEMBER_CNT
+                    FROM CHAT_ROOM_MEMBER
+                    WHERE LEFT_DTTM IS NULL
+                    GROUP BY CHAT_ROOM_NO
+                ) MC ON CR.CHAT_ROOM_NO = MC.CHAT_ROOM_NO
+                 LEFT JOIN (
+            SELECT CHAT_ROOM_NO, MSG_CN, REG_DTTM
+            FROM (
+                     SELECT CHAT_ROOM_NO,
+                            MSG_CN,
+                            REG_DTTM,
+                            ROW_NUMBER() OVER (
+                       PARTITION BY CHAT_ROOM_NO
+                       ORDER BY REG_DTTM DESC
+                   ) AS RN
+                     FROM CHAT_MESSAGE
+                 )
+            WHERE RN = 1
+                ) CM ON CR.CHAT_ROOM_NO = CM.CHAT_ROOM_NO
+
+        WHERE CRM.USER_NO = #{userNo}
+          AND CR.APT_CMPLEX_NO = #{aptCmplexNo}
+          AND CRM.LEFT_DTTM IS NULL
+          AND CR.USE_YN = 'Y'
+
+        ORDER BY CM.REG_DTTM DESC
+    </select>
+
+    <select id="existsVhclNo" resultType="int">
+        SELECT  COUNT(1)
+        FROM    RSID_VHCL
+        WHERE   VHCL_NO = #{vhclNo}
+    </select>
+
+    <select id="countMyVhcl" resultType="int">
+        SELECT  COUNT(1)
+        FROM    rsid_vhcl
+        WHERE   ho_no = #{hoNo}
+    </select>
+
+    <select id="selectMyHoList"
+            resultType="java.lang.String">
+
+        SELECT HO_NO
+        FROM HSHLD_HEAD
+        WHERE USER_NO = #{userNo}
+          AND HO_NO LIKE #{aptCmplexNo} || '%'
+          AND INOUT_CD NOT IN ('OUT', 'MID')
+
+    </select>
+
+
+    <select id="countVhclByHoList" parameterType="list" resultType="int">
+        SELECT COUNT(*)
+        FROM RSID_VHCL
+        WHERE HO_NO IN
+        <foreach collection="hoList" item="ho" open="(" separator="," close=")">
+            #{ho}
+        </foreach>
+    </select>
+
+    <select id="selectFreePkgCnt" resultType="int">
+        SELECT FREE_PKG_CNT
+        FROM APT_COMPLEX
+        WHERE APT_CMPLEX_NO = #{aptCmplexNo}
+    </select>
+
+    <select id="selectByVhclNo" resultType="kr.or.ddit.domain.member.resident.vo.RsidVhclVO">
+        SELECT
+            user_no
+            ,ho_no
+        FROM
+            rsid_vhcl
+        WHERE
+            vhcl_no = #{vhclNo}
+    </select>
+
+    <select id="selectVhcl" resultType="kr.or.ddit.domain.member.resident.vo.RsidVhclVO">
+        SELECT
+            VHCL_FILE_NO
+            ,USER_NO
+        FROM
+            rsid_vhcl
+        WHERE
+            rsid_vhcl_no = #{rsidVhclNo}
+    </select>
+
+</mapper>

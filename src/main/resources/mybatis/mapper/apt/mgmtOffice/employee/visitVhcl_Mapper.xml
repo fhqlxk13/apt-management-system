@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.employee.mapper.VisitVhclMapper">
+
+    <!-- 방문차량 목록 -->
+    <select id="selectVisitVehicleList"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.employee.vo.VstVhclRsvtVO">
+
+        SELECT
+            V.VST_VHCL_RSVT_NO AS vstVhclRsvtNo,
+            V.VST_VHCL_TY_CD   AS vstVhclTyCd,
+            V.VST_VHCL_NO      AS vstVhclNo,
+            V.VSTR_NM          AS vstrNm,
+            V.VST_YMD          AS vstYmd,
+            V.STAY_HR          AS stayHr,
+            V.VST_STTS_CD      AS vstSttsCd,
+            V.REG_DT           AS regDt,
+            V.MDF_DT           AS mdfDt,
+            V.VST_PRPS_CN      AS vstPrpsCn,
+            V.USER_NO          AS userNo,
+            V.HO_NO            AS hoNo,
+
+            M.USER_NM          AS userNm,
+            AU.DONG_NM         AS dong,
+            AD.HO              AS ho
+
+        FROM VST_VHCL_RSVT V
+
+                 LEFT JOIN MEMBER M
+                           ON M.USER_NO = V.USER_NO
+
+                 LEFT JOIN APT_DETAIL AD
+                           ON AD.HO_NO = V.HO_NO
+
+                 LEFT JOIN APT_UNIT AU
+                           ON AU.DONG_NO = AD.DONG_NO
+
+        WHERE V.HO_NO LIKE #{aptCmplexNo} || '%'
+
+        ORDER BY V.REG_DT DESC
+
+    </select>
+
+    <!-- 방문차량 상세 -->
+    <select id="selectVisitVehicle"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.employee.vo.VstVhclRsvtVO">
+
+        SELECT
+            V.VST_VHCL_RSVT_NO AS vstVhclRsvtNo,
+            V.VST_VHCL_TY_CD   AS vstVhclTyCd,
+            V.VST_VHCL_NO      AS vstVhclNo,
+            V.VSTR_NM          AS vstrNm,
+            V.VST_YMD          AS vstYmd,
+            V.STAY_HR          AS stayHr,
+            V.VST_STTS_CD      AS vstSttsCd,
+            V.REG_DT           AS regDt,
+            V.MDF_DT           AS mdfDt,
+            V.VST_PRPS_CN      AS vstPrpsCn,
+            V.USER_NO          AS userNo,
+            V.HO_NO            AS hoNo,
+
+            M.USER_NM          AS userNm,
+            AU.DONG_NM         AS dong,
+            AD.HO              AS ho
+
+        FROM VST_VHCL_RSVT V
+
+                 LEFT JOIN MEMBER M
+                           ON M.USER_NO = V.USER_NO
+
+                 LEFT JOIN APT_DETAIL AD
+                           ON AD.HO_NO = V.HO_NO
+
+                 LEFT JOIN APT_UNIT AU
+                           ON AU.DONG_NO = AD.DONG_NO
+
+        WHERE V.VST_VHCL_RSVT_NO = #{vstVhclRsvtNo}
+
+    </select>
+
+    <!-- 방문차량 등록 -->
+    <insert id="insertVisitVehicle">
+
+        INSERT INTO VST_VHCL_RSVT
+        (
+            VST_VHCL_RSVT_NO,
+            VST_VHCL_TY_CD,
+            VST_VHCL_NO,
+            VSTR_NM,
+            VST_YMD,
+            STAY_HR,
+            VST_STTS_CD,
+            VST_PRPS_CN,
+            USER_NO,
+            HO_NO
+        )
+        VALUES
+            (
+                #{vstVhclRsvtNo},
+                #{vstVhclTyCd},
+                #{vstVhclNo},
+                #{vstrNm},
+                #{vstYmd},
+                #{stayHr},
+                #{vstSttsCd},
+                #{vstPrpsCn},
+                #{userNo},
+                #{hoNo}
+            )
+
+    </insert>
+
+    <!-- 방문차량 수정 -->
+    <update id="updateVisitVehicle">
+
+        UPDATE VST_VHCL_RSVT
+        SET
+            VST_VHCL_TY_CD = #{vstVhclTyCd},
+            VST_VHCL_NO = #{vstVhclNo},
+            VSTR_NM = #{vstrNm},
+            VST_YMD = #{vstYmd},
+            STAY_HR = #{stayHr},
+            VST_STTS_CD = #{vstSttsCd},
+            VST_PRPS_CN = #{vstPrpsCn},
+            USER_NO = #{userNo},
+            HO_NO = #{hoNo},
+            MDF_DT = SYSDATE
+
+        WHERE VST_VHCL_RSVT_NO = #{vstVhclRsvtNo}
+
+    </update>
+
+    <!-- 방문차량 삭제 -->
+    <delete id="deleteVisitVehicle">
+
+        DELETE
+        FROM VST_VHCL_RSVT
+        WHERE VST_VHCL_RSVT_NO = #{vstVhclRsvtNo}
+
+    </delete>
+
+</mapper>

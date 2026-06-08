@@ -1,0 +1,669 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.reservation.mapper.IPublicFacilityReservationMapper">
+
+    <!-- resultMap이란? DB 컬럼명과 Java 변수명을 연결하는 표입니다. -->
+    <resultMap id="reservationMap" type="kr.or.ddit.domain.apt.mgmtOffice.reservation.vo.PublicFacilityReservationVO">
+        <id property="rsvtNo" column="RSVT_NO"/>
+        <result property="cmnFacilityItemNo" column="CMN_FACILITY_ITEM_NO"/>
+        <result property="cmnFacilityNo" column="CMN_FACILITY_NO"/>
+        <result property="facilityNo" column="FACILITY_NO"/>
+        <result property="aptCmplexNo" column="APT_CMPLEX_NO"/>
+        <result property="userNo" column="USER_NO"/>
+        <result property="userId" column="USER_ID"/>
+        <result property="userNm" column="USER_NM"/>
+        <result property="hoNo" column="HO_NO"/>
+        <result property="dongNo" column="DONG_NO"/>
+        <result property="dongNm" column="DONG_NM"/>
+        <result property="ho" column="HO"/>
+        <result property="cmnFacilityNm" column="CMN_FACILITY_NM"/>
+        <result property="itemNm" column="ITEM_NM"/>
+        <result property="facilityTyCd" column="FACILITY_TY_CD"/>
+        <result property="facilityTyNm" column="FACILITY_TY_NM"/>
+        <result property="locCn" column="LOC_CN"/>
+        <result property="cmnFacilityRsvYn" column="CMN_FACILITY_RSV_YN"/>
+        <result property="cmnFacilityOprHr" column="CMN_FACILITY_OPR_HR"/>
+        <result property="cmnFacilityAmt" column="CMN_FACILITY_AMT"/>
+        <result property="cmnFacilitySttsCd" column="CMN_FACILITY_STTS_CD"/>
+        <result property="rsvtDt" column="RSVT_DT"/>
+        <result property="rsvtBgngDttm" column="RSVT_BGNG_DTTM"/>
+        <result property="rsvtEndDttm" column="RSVT_END_DTTM"/>
+        <result property="rsvtSttsCd" column="RSVT_STTS_CD"/>
+        <result property="rsvtSttsNm" column="RSVT_STTS_NM"/>
+        <result property="rejectReason" column="RJCT_RSN_CN"/>
+        <result property="purposeCn" column="USE_PRPS_CN"/>
+        <result property="usePeopleCnt" column="USE_PRSN_CNT"/>
+        <result property="regDt" column="REG_DT"/>
+        <result property="mdfDt" column="MDF_DT"/>
+        <result property="cmnFacilityCn" column="CMN_FACILITY_CN"/>
+        <result property="reservedYn" column="RESERVED_YN"/>
+        <result property="timeLabel" column="TIME_LABEL"/>
+    </resultMap>
+
+    <sql id="baseJoin">
+        FROM PUBLIC_FACILITY PF
+        JOIN FACILITY F ON F.FACILITY_NO = PF.FACILITY_NO
+        LEFT JOIN APT_UNIT AU ON AU.DONG_NO = F.DONG_NO AND AU.APT_CMPLEX_NO = F.APT_CMPLEX_NO
+        LEFT JOIN PUBLIC_ITEM PI ON PI.CMN_FACILITY_NO = PF.CMN_FACILITY_NO
+        LEFT JOIN COMMON_CODE CC ON CC.CODE_NO_CD = F.FACILITY_TY_CD AND CC.USE_YN = 'Y'
+    </sql>
+
+    <sql id="baseColumns">
+        PF.CMN_FACILITY_NO, PF.APT_CMPLEX_NO, PF.FACILITY_NO, PF.CMN_FACILITY_NM,
+        PF.CMN_FACILITY_CN, PF.CMN_FACILITY_AMT, PF.CMN_FACILITY_RSV_YN, PF.CMN_FACILITY_OPR_HR,
+        TO_CHAR(PF.REG_DT, 'YYYY.MM.DD') REG_DT, TO_CHAR(PF.MDF_DT, 'YYYY.MM.DD') MDF_DT,
+        F.FACILITY_TY_CD, NVL(CC.CODE_NAME, F.FACILITY_TY_CD) FACILITY_TY_NM,
+        F.DONG_NO, AU.DONG_NM, F.LOC_CN,
+        PI.CMN_FACILITY_ITEM_NO, PI.ITEM_NM, PI.CMN_FACILITY_STTS_CD
+    </sql>
+
+    <select id="selectAptCmplexNoByMgmtOfcNo" resultType="string">
+        SELECT APT_CMPLEX_NO FROM MGMT_OFFICE WHERE MGMT_OFC_NO = #{mgmtOfcNo} AND USE_YN = 'Y'
+    </select>
+
+    <select id="selectAptCmplexNoByResidentUserNo" resultType="string">
+        /*
+        * 로그인 입주민의 현재 거주 단지 조회
+        *
+        * ROWNUM만 사용하면 여러 세대가 있을 때 임의 단지가 잡힐 수 있습니다.
+        * 그래서 현재 거주 중인 세대 중 세대주 여부, 입주일 기준으로 1건만 선택합니다.
+        */
+        SELECT APT_CMPLEX_NO
+        FROM (
+        SELECT
+        AU.APT_CMPLEX_NO
+        FROM HSHLD_HEAD HH
+        JOIN APT_DETAIL AD
+        ON AD.HO_NO = HH.HO_NO
+        JOIN APT_UNIT AU
+        ON AU.DONG_NO = AD.DONG_NO
+        WHERE HH.USER_NO = #{userNo}
+        AND NVL(HH.INOUT_CD, 'IN') != 'OUT'
+        ORDER BY
+        CASE WHEN HH.HEAD_YN = 'Y' THEN 0 ELSE 1 END,
+        HH.MOVE_IN_DT DESC NULLS LAST,
+        HH.HO_NO
+        )
+        WHERE ROWNUM = 1
+    </select>
+
+    <select id="selectNextRsvtNo" resultType="string">
+        SELECT 'RSV' || LPAD(SEQ_FACILITY_HSTRY.NEXTVAL, 6, '0') FROM DUAL
+    </select>
+
+    <sql id="facilityWhere">
+        WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+        <if test="searchCmnFacilityNo != null and searchCmnFacilityNo != ''">AND PF.CMN_FACILITY_NO = #{searchCmnFacilityNo}</if>
+        <if test="searchDongNo != null and searchDongNo != ''">AND F.DONG_NO = #{searchDongNo}</if>
+        <if test="searchLocCn != null and searchLocCn != ''">AND F.LOC_CN LIKE '%' || #{searchLocCn} || '%'</if>
+        <if test="searchWord != null and searchWord != ''">
+            AND (PF.CMN_FACILITY_NM LIKE '%' || #{searchWord} || '%' OR PI.ITEM_NM LIKE '%' || #{searchWord} || '%')
+        </if>
+    </sql>
+
+    <select id="selectFacilityListCount" resultType="int">
+        SELECT COUNT(*) FROM (SELECT PF.CMN_FACILITY_NO, PI.CMN_FACILITY_ITEM_NO <include refid="baseJoin"/> <include refid="facilityWhere"/>)
+    </select>
+
+    <select id="selectFacilityList" resultMap="reservationMap">
+        SELECT * FROM (
+        SELECT ROWNUM RN, A.* FROM (
+        SELECT <include refid="baseColumns"/>
+        <include refid="baseJoin"/>
+        <include refid="facilityWhere"/>
+        ORDER BY PF.REG_DT DESC, PF.CMN_FACILITY_NO DESC
+        ) A WHERE ROWNUM &lt;= #{endRow}
+        ) WHERE RN &gt;= #{startRow}
+    </select>
+
+    <sql id="reservationJoin">
+        FROM FACILITY_HSTRY FH
+        JOIN PUBLIC_ITEM PI
+        ON PI.CMN_FACILITY_ITEM_NO = FH.CMN_FACILITY_ITEM_NO
+        JOIN PUBLIC_FACILITY PF
+        ON PF.CMN_FACILITY_NO = PI.CMN_FACILITY_NO
+        JOIN FACILITY F
+        ON F.FACILITY_NO = PF.FACILITY_NO
+        LEFT JOIN MEMBER M
+        ON M.USER_NO = FH.USER_NO
+
+        /*
+        * 예약자 세대정보는 사용자당 1건만 선택합니다.
+        * 왜? 한 사용자가 여러 호/여러 단지에 연결되어 있으면 JOIN 결과가 중복되기 때문입니다.
+        */
+        LEFT JOIN (
+        SELECT *
+        FROM (
+        SELECT
+        HH.USER_NO,
+        HH.HO_NO,
+        AD.HO,
+        AU.DONG_NO,
+        AU.DONG_NM,
+        AU.APT_CMPLEX_NO,
+        ROW_NUMBER() OVER (
+        PARTITION BY HH.USER_NO, AU.APT_CMPLEX_NO
+        ORDER BY
+        CASE WHEN HH.HEAD_YN = 'Y' THEN 0 ELSE 1 END,
+        HH.MOVE_IN_DT DESC NULLS LAST,
+        HH.HO_NO
+        ) AS RN
+        FROM HSHLD_HEAD HH
+        JOIN APT_DETAIL AD
+        ON AD.HO_NO = HH.HO_NO
+        JOIN APT_UNIT AU
+        ON AU.DONG_NO = AD.DONG_NO
+        WHERE NVL(HH.INOUT_CD, 'IN') != 'OUT'
+        )
+        WHERE RN = 1
+        ) RHH
+        ON RHH.USER_NO = FH.USER_NO
+        AND RHH.APT_CMPLEX_NO = PF.APT_CMPLEX_NO
+    </sql>
+
+    <sql id="reservationColumns">
+        FH.RSVT_NO, FH.CMN_FACILITY_ITEM_NO, PF.CMN_FACILITY_NO, PF.FACILITY_NO, PF.APT_CMPLEX_NO,
+        FH.USER_NO, M.USER_ID, M.USER_NM, RHH.HO_NO, RHH.HO, RHH.DONG_NO, RHH.DONG_NM,
+        PF.CMN_FACILITY_NM, PI.ITEM_NM, F.FACILITY_TY_CD, F.LOC_CN,
+        PI.CMN_FACILITY_STTS_CD,
+        TO_CHAR(FH.RSVT_DT, 'YYYY.MM.DD') RSVT_DT,
+        TO_CHAR(FH.RSVT_BGNG_DTTM, 'YYYY.MM.DD HH24:MI') RSVT_BGNG_DTTM,
+        TO_CHAR(FH.RSVT_END_DTTM, 'YYYY.MM.DD HH24:MI') RSVT_END_DTTM,
+        FH.RSVT_STTS_CD,
+        DECODE(
+        FH.RSVT_STTS_CD,
+        'PENDING','승인대기',
+        'APPROVED','승인완료',
+        'REJECTED','승인거절',
+        'CANCELLED','승인취소',
+        'EXPIRED','승인만료',
+        FH.RSVT_STTS_CD
+        ) RSVT_STTS_NM,
+        FH.USE_PRPS_CN,
+        FH.USE_PRSN_CNT,
+        FH.RJCT_RSN_CN,
+        CASE WHEN FH.RSVT_STTS_CD = 'APPROVED' AND FH.REG_DT = FH.MDF_DT THEN 'Y' ELSE 'N' END AUTO_APPROVE_YN,
+        TO_CHAR(FH.REG_DT, 'YYYY.MM.DD') REG_DT,
+        TO_CHAR(FH.MDF_DT, 'YYYY.MM.DD') MDF_DT
+    </sql>
+
+    <sql id="reservationWhere">
+        WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+
+        <if test="searchCmnFacilityNo != null and searchCmnFacilityNo != ''">
+            AND PF.CMN_FACILITY_NO = #{searchCmnFacilityNo}
+        </if>
+
+        <if test="searchItemNo != null and searchItemNo != ''">
+            AND PI.CMN_FACILITY_ITEM_NO = #{searchItemNo}
+        </if>
+
+        <if test="searchDongNm != null and searchDongNm != ''">
+            AND RHH.DONG_NM LIKE '%' || #{searchDongNm} || '%'
+        </if>
+
+        <if test="searchHo != null and searchHo != ''">
+            AND RHH.HO LIKE '%' || #{searchHo} || '%'
+        </if>
+
+        <if test="searchUserNm != null and searchUserNm != ''">
+            AND M.USER_NM LIKE '%' || #{searchUserNm} || '%'
+        </if>
+
+        <if test="searchStartDt != null and searchStartDt != ''">
+            AND FH.RSVT_BGNG_DTTM &gt;= TO_DATE(#{searchStartDt}, 'YYYY-MM-DD')
+        </if>
+
+        <if test="searchEndDt != null and searchEndDt != ''">
+            AND FH.RSVT_END_DTTM &lt; TO_DATE(#{searchEndDt}, 'YYYY-MM-DD') + 1
+        </if>
+
+        <if test="searchRsvtSttsCd != null and searchRsvtSttsCd != ''">
+            AND FH.RSVT_STTS_CD = #{searchRsvtSttsCd}
+        </if>
+    </sql>
+
+    <select id="selectApprovalListCount" resultType="int">
+        SELECT COUNT(*) <include refid="reservationJoin"/> <include refid="reservationWhere"/> AND FH.RSVT_STTS_CD = 'PENDING'
+    </select>
+
+    <select id="selectApprovalList" resultMap="reservationMap">
+        SELECT * FROM (SELECT ROWNUM RN, A.* FROM (
+        SELECT <include refid="reservationColumns"/>
+        <include refid="reservationJoin"/>
+        <include refid="reservationWhere"/> AND FH.RSVT_STTS_CD = 'PENDING'
+        ORDER BY FH.REG_DT DESC
+        ) A WHERE ROWNUM &lt;= #{endRow}) WHERE RN &gt;= #{startRow}
+    </select>
+
+    <select id="selectUseHistoryCount" resultType="int">
+        SELECT COUNT(*) <include refid="reservationJoin"/> <include refid="reservationWhere"/>
+    </select>
+
+    <select id="selectUseHistoryList" resultMap="reservationMap">
+        SELECT * FROM (SELECT ROWNUM RN, A.* FROM (
+        SELECT <include refid="reservationColumns"/>
+        <include refid="reservationJoin"/>
+        <include refid="reservationWhere"/>
+        ORDER BY FH.RSVT_BGNG_DTTM DESC
+        ) A WHERE ROWNUM &lt;= #{endRow}) WHERE RN &gt;= #{startRow}
+    </select>
+
+    <select id="selectResidentFacilityListCount" resultType="int">
+        SELECT COUNT(*) FROM (SELECT PF.CMN_FACILITY_NO, PI.CMN_FACILITY_ITEM_NO <include refid="baseJoin"/> <include refid="facilityWhere"/>
+        AND PF.CMN_FACILITY_RSV_YN = 'Y' AND NVL(PI.CMN_FACILITY_STTS_CD, 'OPEN') = 'OPEN')
+    </select>
+
+    <select id="selectResidentFacilityList" resultMap="reservationMap">
+        SELECT * FROM (SELECT ROWNUM RN, A.* FROM (
+        SELECT <include refid="baseColumns"/>
+        <include refid="baseJoin"/>
+        <include refid="facilityWhere"/>
+        AND PF.CMN_FACILITY_RSV_YN = 'Y' AND NVL(PI.CMN_FACILITY_STTS_CD, 'OPEN') = 'OPEN'
+        ORDER BY PF.CMN_FACILITY_NM, PI.ITEM_NM
+        ) A WHERE ROWNUM &lt;= #{endRow}) WHERE RN &gt;= #{startRow}
+    </select>
+
+    <select id="selectMyReservationCount" resultType="int">
+        SELECT COUNT(*) <include refid="reservationJoin"/> <include refid="reservationWhere"/> AND FH.USER_NO = #{userNo}
+    </select>
+
+    <select id="selectMyReservationList" resultMap="reservationMap">
+        SELECT * FROM (SELECT ROWNUM RN, A.* FROM (
+        SELECT <include refid="reservationColumns"/>
+        <include refid="reservationJoin"/>
+        <include refid="reservationWhere"/> AND FH.USER_NO = #{userNo}
+        ORDER BY FH.RSVT_BGNG_DTTM DESC
+        ) A WHERE ROWNUM &lt;= #{endRow}) WHERE RN &gt;= #{startRow}
+    </select>
+
+    <select id="selectMyReservationDetail" resultMap="reservationMap">
+        SELECT <include refid="reservationColumns"/>
+        <include refid="reservationJoin"/>
+        WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+        AND FH.USER_NO = #{userNo}
+        AND FH.RSVT_NO = #{rsvtNo}
+    </select>
+
+    <select id="selectDuplicateReservationCount" resultType="int">
+        SELECT COUNT(*)
+        FROM FACILITY_HSTRY
+        WHERE CMN_FACILITY_ITEM_NO = #{cmnFacilityItemNo}
+        AND RSVT_STTS_CD IN ('PENDING','APPROVED')
+        AND RSVT_BGNG_DTTM &lt; TO_DATE(#{rsvtEndDttm}, 'YYYY-MM-DD HH24:MI')
+        AND RSVT_END_DTTM &gt; TO_DATE(#{rsvtBgngDttm}, 'YYYY-MM-DD HH24:MI')
+    </select>
+
+    <!--
+        [추가] 시설 점검 이용제한 시간과 예약 시간이 겹치는지 조회
+
+        기준:
+        예약 대상 PUBLIC_ITEM → PUBLIC_FACILITY → FACILITY_NO 기준으로
+        FACILITY_CHECK_HSTRY의 이용제한 시간을 확인합니다.
+
+        시간 겹침 조건:
+        점검 제한 시작시간 &lt; 예약 종료시간
+        점검 제한 종료시간 &gt; 예약 시작시간
+    -->
+    <select id="selectFacilityCheckRestrictCount" resultType="int">
+        SELECT COUNT(*)
+        FROM FACILITY_CHECK_HSTRY FCH
+        JOIN PUBLIC_FACILITY PF
+        ON PF.FACILITY_NO = FCH.FACILITY_NO
+        JOIN PUBLIC_ITEM PI
+        ON PI.CMN_FACILITY_NO = PF.CMN_FACILITY_NO
+        WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+        AND PI.CMN_FACILITY_ITEM_NO = #{cmnFacilityItemNo}
+        AND NVL(FCH.USE_RESTRICT_YN, 'N') = 'Y'
+        AND FCH.USE_RESTRICT_BGNG_DT IS NOT NULL
+        AND FCH.USE_RESTRICT_END_DT IS NOT NULL
+        AND FCH.USE_RESTRICT_BGNG_DT &lt; TO_DATE(#{rsvtEndDttm}, 'YYYY-MM-DD HH24:MI')
+        AND FCH.USE_RESTRICT_END_DT &gt; TO_DATE(#{rsvtBgngDttm}, 'YYYY-MM-DD HH24:MI')
+    </select>
+
+    <select id="selectFacilityInfoByItemNo" resultMap="reservationMap">
+        SELECT
+        PF.CMN_FACILITY_NO,
+        PF.APT_CMPLEX_NO,
+        PF.CMN_FACILITY_NM,
+        PI.CMN_FACILITY_ITEM_NO,
+        PI.ITEM_NM,
+        PI.CMN_FACILITY_STTS_CD
+        FROM PUBLIC_ITEM PI
+        JOIN PUBLIC_FACILITY PF
+        ON PF.CMN_FACILITY_NO = PI.CMN_FACILITY_NO
+        WHERE PI.CMN_FACILITY_ITEM_NO = #{cmnFacilityItemNo}
+        AND PF.APT_CMPLEX_NO = #{aptCmplexNo}
+    </select>
+
+    <insert id="insertReservation">
+        INSERT INTO FACILITY_HSTRY (
+        RSVT_NO, CMN_FACILITY_ITEM_NO, RSVT_DT, RSVT_BGNG_DTTM, RSVT_END_DTTM,
+        RSVT_STTS_CD, REG_DT, MDF_DT, USER_NO, USE_PRPS_CN, USE_PRSN_CNT
+        ) VALUES (
+        #{rsvtNo}, #{cmnFacilityItemNo}, TO_DATE(#{rsvtDt}, 'YYYY-MM-DD'),
+        TO_DATE(#{rsvtBgngDttm}, 'YYYY-MM-DD HH24:MI'), TO_DATE(#{rsvtEndDttm}, 'YYYY-MM-DD HH24:MI'),
+        #{rsvtSttsCd}, SYSDATE, SYSDATE, #{userNo}, #{purposeCn}, #{usePeopleCnt}
+        )
+    </insert>
+
+    <update id="approveReservation">
+        UPDATE FACILITY_HSTRY SET RSVT_STTS_CD = 'APPROVED', MDF_DT = SYSDATE
+        WHERE RSVT_NO = #{rsvtNo}
+        AND RSVT_STTS_CD = 'PENDING'
+        AND CMN_FACILITY_ITEM_NO IN (
+        SELECT PI.CMN_FACILITY_ITEM_NO FROM PUBLIC_ITEM PI JOIN PUBLIC_FACILITY PF ON PF.CMN_FACILITY_NO = PI.CMN_FACILITY_NO
+        WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+        )
+    </update>
+
+    <update id="rejectReservation">
+        UPDATE FACILITY_HSTRY SET RSVT_STTS_CD = 'REJECTED', RJCT_RSN_CN = #{rejectReason}, MDF_DT = SYSDATE
+        WHERE RSVT_NO = #{rsvtNo}
+        AND RSVT_STTS_CD = 'PENDING'
+        AND CMN_FACILITY_ITEM_NO IN (
+        SELECT PI.CMN_FACILITY_ITEM_NO FROM PUBLIC_ITEM PI JOIN PUBLIC_FACILITY PF ON PF.CMN_FACILITY_NO = PI.CMN_FACILITY_NO
+        WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+        )
+    </update>
+
+    <update id="cancelReservation">
+        UPDATE FACILITY_HSTRY SET RSVT_STTS_CD = 'CANCELLED', MDF_DT = SYSDATE
+        WHERE RSVT_NO = #{rsvtNo}
+        AND USER_NO = #{userNo}
+        AND RSVT_STTS_CD IN ('PENDING','APPROVED')
+        AND RSVT_BGNG_DTTM > SYSDATE
+    </update>
+
+
+    <!--
+        입주민 - 선택한 공용시설의 세부 항목 목록
+
+        예:
+        단지독서실 선택 시 → 101번 좌석, 102번 좌석 ...
+    -->
+    <select id="selectResidentFacilityItemList" resultMap="reservationMap">
+        SELECT
+        PF.CMN_FACILITY_NO
+        , PF.APT_CMPLEX_NO
+        , PF.FACILITY_NO
+        , PF.CMN_FACILITY_NM
+        , PF.CMN_FACILITY_CN
+        , PF.CMN_FACILITY_AMT
+        , PF.CMN_FACILITY_RSV_YN
+        , PF.CMN_FACILITY_OPR_HR
+        , F.FACILITY_TY_CD
+        , F.DONG_NO
+        , AU.DONG_NM
+        , F.LOC_CN
+        , PI.CMN_FACILITY_ITEM_NO
+        , PI.ITEM_NM
+        , NVL(PI.CMN_FACILITY_STTS_CD, 'OPEN') AS CMN_FACILITY_STTS_CD
+        , 'N' AS RESERVED_YN
+        FROM PUBLIC_FACILITY PF
+        JOIN FACILITY F
+        ON F.FACILITY_NO = PF.FACILITY_NO
+        LEFT JOIN APT_UNIT AU
+        ON AU.DONG_NO = F.DONG_NO
+        AND AU.APT_CMPLEX_NO = F.APT_CMPLEX_NO
+        JOIN PUBLIC_ITEM PI
+        ON PI.CMN_FACILITY_NO = PF.CMN_FACILITY_NO
+        WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+        AND PF.CMN_FACILITY_NO = #{searchCmnFacilityNo}
+        AND PF.CMN_FACILITY_RSV_YN = 'Y'
+        AND F.USE_YN = 'Y'
+        /*
+        * OPEN, USE, REPAIR 모두 조회해야 화면에서 비활성화 처리가 가능함.
+        */
+        AND NVL(PI.CMN_FACILITY_STTS_CD, 'OPEN') IN ('OPEN', 'USE', 'REPAIR')
+        ORDER BY PI.ITEM_NM
+    </select>
+
+    <!--
+        입주민 - 선택한 날짜/시간에 이미 예약된 세부 항목 번호 조회
+
+        시간 겹침 조건:
+        기존 예약 시작시간 < 새 예약 종료시간
+        기존 예약 종료시간 > 새 예약 시작시간
+    -->
+    <select id="selectReservedItemNoList" resultType="string">
+        SELECT FH.CMN_FACILITY_ITEM_NO
+        FROM FACILITY_HSTRY FH
+        JOIN PUBLIC_ITEM PI
+        ON PI.CMN_FACILITY_ITEM_NO = FH.CMN_FACILITY_ITEM_NO
+        JOIN PUBLIC_FACILITY PF
+        ON PF.CMN_FACILITY_NO = PI.CMN_FACILITY_NO
+        WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+        AND PF.CMN_FACILITY_NO = #{searchCmnFacilityNo}
+        AND FH.RSVT_STTS_CD IN ('PENDING', 'APPROVED')
+        AND FH.RSVT_BGNG_DTTM &lt; TO_DATE(#{rsvtEndDttm}, 'YYYY-MM-DD HH24:MI')
+        AND FH.RSVT_END_DTTM &gt; TO_DATE(#{rsvtBgngDttm}, 'YYYY-MM-DD HH24:MI')
+    </select>
+
+    <select id="selectResidentFacilityGroupList" resultMap="reservationMap">
+        SELECT
+        PF.CMN_FACILITY_NO,
+        PF.APT_CMPLEX_NO,
+        PF.FACILITY_NO,
+        PF.CMN_FACILITY_NM,
+        PF.CMN_FACILITY_CN,
+        PF.CMN_FACILITY_AMT,
+        PF.CMN_FACILITY_RSV_YN,
+        PF.CMN_FACILITY_OPR_HR,
+        F.FACILITY_TY_CD,
+        F.DONG_NO,
+        AU.DONG_NM,
+        F.LOC_CN,
+        COUNT(PI.CMN_FACILITY_ITEM_NO) AS USE_PRSN_CNT
+        FROM PUBLIC_FACILITY PF
+        JOIN FACILITY F
+        ON F.FACILITY_NO = PF.FACILITY_NO
+        LEFT JOIN APT_UNIT AU
+        ON AU.DONG_NO = F.DONG_NO
+        AND AU.APT_CMPLEX_NO = F.APT_CMPLEX_NO
+        LEFT JOIN PUBLIC_ITEM PI
+        ON PI.CMN_FACILITY_NO = PF.CMN_FACILITY_NO
+        AND NVL(PI.CMN_FACILITY_STTS_CD, 'OPEN') = 'OPEN'
+        WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+        AND PF.CMN_FACILITY_RSV_YN = 'Y'
+        AND F.USE_YN = 'Y'
+        GROUP BY
+        PF.CMN_FACILITY_NO,
+        PF.APT_CMPLEX_NO,
+        PF.FACILITY_NO,
+        PF.CMN_FACILITY_NM,
+        PF.CMN_FACILITY_CN,
+        PF.CMN_FACILITY_AMT,
+        PF.CMN_FACILITY_RSV_YN,
+        PF.CMN_FACILITY_OPR_HR,
+        F.FACILITY_TY_CD,
+        F.DONG_NO,
+        AU.DONG_NM,
+        F.LOC_CN
+        ORDER BY F.DONG_NO, PF.CMN_FACILITY_NM
+    </select>
+
+    <select id="selectReservationTimeSlotList" resultMap="reservationMap">
+        /*
+        * CONNECT BY LEVEL
+        * Oracle에서 반복 행을 만드는 문법입니다.
+        * 여기서는 08:00~21:00까지 1시간 단위 시간표를 만듭니다.
+        */
+        WITH FAC AS (
+        SELECT
+        PF.CMN_FACILITY_OPR_HR,
+        REPLACE(REGEXP_SUBSTR(PF.CMN_FACILITY_OPR_HR, '[0-9]{2}:?[0-9]{2}', 1, 1), ':', '') AS ST_TM,
+        REPLACE(REGEXP_SUBSTR(PF.CMN_FACILITY_OPR_HR, '[0-9]{2}:?[0-9]{2}', 1, 2), ':', '') AS ED_TM
+        FROM PUBLIC_FACILITY PF
+        WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+        AND PF.CMN_FACILITY_NO = #{searchCmnFacilityNo}
+        ), TIME_SLOT AS (
+        SELECT
+        TO_DATE(#{searchStartDt} || ' ' || SUBSTR(ST_TM,1,2) || ':' || SUBSTR(ST_TM,3,2), 'YYYY-MM-DD HH24:MI') + ((LEVEL - 1) / 24) AS BGNG_DTTM,
+        TO_DATE(#{searchStartDt} || ' ' || SUBSTR(ST_TM,1,2) || ':' || SUBSTR(ST_TM,3,2), 'YYYY-MM-DD HH24:MI') + (LEVEL / 24) AS END_DTTM
+        FROM FAC
+        CONNECT BY LEVEL &lt;= ((TO_DATE(ED_TM, 'HH24MI') - TO_DATE(ST_TM, 'HH24MI')) * 24)
+        )
+        SELECT
+        TO_CHAR(TS.BGNG_DTTM, 'HH24:MI') || ' ~ ' || TO_CHAR(TS.END_DTTM, 'HH24:MI') AS TIME_LABEL,
+        TO_CHAR(TS.BGNG_DTTM, 'YYYY-MM-DD HH24:MI') AS RSVT_BGNG_DTTM,
+        TO_CHAR(TS.END_DTTM, 'YYYY-MM-DD HH24:MI') AS RSVT_END_DTTM,
+        FH.RSVT_NO,
+        #{searchItemNo} AS CMN_FACILITY_ITEM_NO,
+        M.USER_NM,
+        CASE
+        WHEN FH.RSVT_NO IS NOT NULL THEN 'Y'
+        <!--
+            [추가] 점검 이용제한 시간대는 화면에서 예약 불가 시간으로 표시합니다.
+            왜 추가? 입주민이 예약 버튼을 누르기 전에 점검중 시간을 알 수 있게 하기 위해 사용합니다.
+        -->
+        WHEN EXISTS (
+        SELECT 1
+        FROM FACILITY_CHECK_HSTRY FCH
+        JOIN PUBLIC_FACILITY TPF
+        ON TPF.FACILITY_NO = FCH.FACILITY_NO
+        WHERE TPF.APT_CMPLEX_NO = #{aptCmplexNo}
+        AND TPF.CMN_FACILITY_NO = #{searchCmnFacilityNo}
+        AND NVL(FCH.USE_RESTRICT_YN, 'N') = 'Y'
+        AND FCH.USE_RESTRICT_BGNG_DT IS NOT NULL
+        AND FCH.USE_RESTRICT_END_DT IS NOT NULL
+        AND FCH.USE_RESTRICT_BGNG_DT &lt; TS.END_DTTM
+        AND FCH.USE_RESTRICT_END_DT &gt; TS.BGNG_DTTM
+        ) THEN 'Y'
+        ELSE 'N'
+        END AS RESERVED_YN,
+        CASE
+        WHEN FH.RSVT_NO IS NOT NULL THEN '예약완료'
+        <!--
+            [추가] 점검 이용제한 시간대 표시 문구입니다.
+        -->
+        WHEN EXISTS (
+        SELECT 1
+        FROM FACILITY_CHECK_HSTRY FCH
+        JOIN PUBLIC_FACILITY TPF
+        ON TPF.FACILITY_NO = FCH.FACILITY_NO
+        WHERE TPF.APT_CMPLEX_NO = #{aptCmplexNo}
+        AND TPF.CMN_FACILITY_NO = #{searchCmnFacilityNo}
+        AND NVL(FCH.USE_RESTRICT_YN, 'N') = 'Y'
+        AND FCH.USE_RESTRICT_BGNG_DT IS NOT NULL
+        AND FCH.USE_RESTRICT_END_DT IS NOT NULL
+        AND FCH.USE_RESTRICT_BGNG_DT &lt; TS.END_DTTM
+        AND FCH.USE_RESTRICT_END_DT &gt; TS.BGNG_DTTM
+        ) THEN '점검중'
+        ELSE '예약가능'
+        END AS RSVT_STTS_NM
+        FROM TIME_SLOT TS
+        LEFT JOIN FACILITY_HSTRY FH
+        ON FH.CMN_FACILITY_ITEM_NO = #{searchItemNo}
+        AND FH.RSVT_STTS_CD IN ('PENDING', 'APPROVED')
+        AND FH.RSVT_BGNG_DTTM &lt; TS.END_DTTM
+        AND FH.RSVT_END_DTTM &gt; TS.BGNG_DTTM
+        LEFT JOIN MEMBER M
+        ON M.USER_NO = FH.USER_NO
+        ORDER BY TS.BGNG_DTTM
+    </select>
+
+    <update id="updateItemStatusRepair">
+        UPDATE PUBLIC_ITEM
+        SET CMN_FACILITY_STTS_CD = 'REPAIR'
+        WHERE CMN_FACILITY_ITEM_NO = #{cmnFacilityItemNo}
+    </update>
+
+    <update id="updateItemStatusUse">
+        UPDATE PUBLIC_ITEM
+        SET CMN_FACILITY_STTS_CD = 'USE'
+        WHERE CMN_FACILITY_ITEM_NO = (
+        SELECT CMN_FACILITY_ITEM_NO
+        FROM FACILITY_HSTRY
+        WHERE RSVT_NO = #{rsvtNo}
+        )
+    </update>
+
+    <update id="updateItemStatusOpenForExpired">
+        UPDATE PUBLIC_ITEM PI
+        SET PI.CMN_FACILITY_STTS_CD = 'OPEN'
+        WHERE PI.CMN_FACILITY_STTS_CD IN ('USE', 'REPAIR')
+        AND NOT EXISTS (
+        SELECT 1
+        FROM FACILITY_HSTRY FH
+        WHERE FH.CMN_FACILITY_ITEM_NO = PI.CMN_FACILITY_ITEM_NO
+        AND FH.RSVT_STTS_CD IN ('PENDING', 'APPROVED')
+        AND FH.RSVT_END_DTTM > SYSDATE
+        )
+    </update>
+
+    <!-- 예약내역 - 시설명 검색 셀렉트박스 쿼리   -->
+    <select id="selectHistoryFacilityFilterList" resultMap="reservationMap">
+        SELECT DISTINCT
+        PF.CMN_FACILITY_NO,
+        PF.CMN_FACILITY_NM
+        FROM PUBLIC_FACILITY PF
+        WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+        AND PF.CMN_FACILITY_RSV_YN = 'Y'
+        ORDER BY PF.CMN_FACILITY_NM
+    </select>
+
+    <!-- 예약내역 - 예약대상 검색 셀렉트박스 쿼리   -->
+    <select id="selectHistoryItemFilterList" resultMap="reservationMap">
+        SELECT DISTINCT
+        PI.CMN_FACILITY_ITEM_NO,
+        PI.ITEM_NM
+        FROM PUBLIC_ITEM PI
+        JOIN PUBLIC_FACILITY PF
+        ON PF.CMN_FACILITY_NO = PI.CMN_FACILITY_NO
+        WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+        AND PF.CMN_FACILITY_RSV_YN = 'Y'
+        ORDER BY PI.ITEM_NM
+    </select>
+
+    <!--
+    승인대기 예약 자동 만료 처리
+    예약 시작 시간이 지났는데 아직 PENDING이면 EXPIRED로 변경
+-->
+    <update id="expirePendingReservations">
+        UPDATE FACILITY_HSTRY
+        SET RSVT_STTS_CD = 'EXPIRED',
+        RJCT_RSN_CN = '관리자 승인 가능 시간이 초과되어 자동 취소되었습니다',
+        MDF_DT = SYSDATE
+        WHERE RSVT_STTS_CD = 'PENDING'
+        AND RSVT_BGNG_DTTM &lt;= SYSDATE
+        AND CMN_FACILITY_ITEM_NO IN (
+        SELECT PI.CMN_FACILITY_ITEM_NO
+        FROM PUBLIC_ITEM PI
+        JOIN PUBLIC_FACILITY PF
+        ON PF.CMN_FACILITY_NO = PI.CMN_FACILITY_NO
+        WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+        )
+    </update>
+
+    <!-- 단지관리자 - 예약승인 상세 조회 -->
+    <select id="selectManagerReservationDetail" resultMap="reservationMap">
+        SELECT <include refid="reservationColumns"/>
+        <include refid="reservationJoin"/>
+        WHERE PF.APT_CMPLEX_NO = #{aptCmplexNo}
+        AND FH.RSVT_NO = #{rsvtNo}
+    </select>
+
+    <!-- SMS 발송용 예약 상세 조회 -->
+    <select id="selectReservationSmsInfo"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.reservation.vo.PublicFacilityReservationVO">
+
+        SELECT
+        FH.RSVT_NO                 AS rsvtNo,
+        FH.USER_NO                 AS userNo,
+        PF.CMN_FACILITY_NM         AS cmnFacilityNm,
+        PF.APT_CMPLEX_NO           AS aptCmplexNo,
+        FH.RSVT_BGNG_DTTM          AS rsvtBgngDttm,
+        FH.RSVT_END_DTTM           AS rsvtEndDttm,
+        FH.RJCT_RSN_CN             AS rejectReason
+        FROM FACILITY_HSTRY FH
+        INNER JOIN PUBLIC_ITEM PI
+        ON FH.CMN_FACILITY_ITEM_NO = PI.CMN_FACILITY_ITEM_NO
+        INNER JOIN PUBLIC_FACILITY PF
+        ON PI.CMN_FACILITY_NO = PF.CMN_FACILITY_NO
+        WHERE FH.RSVT_NO = #{value}
+
+    </select>
+
+</mapper>

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.member.resident.mapper.IResidentMoveMapper">
+
+    <select id="selectHoList" parameterType="map" resultType="map">
+        SELECT ad.ho_no             /*kr.or.ddit.domain.member.resident.mapper.IResidentMoveMapper.selectHoList*/
+             , ad.ho
+             , au.dong_nm
+        FROM hshld_head hh
+                 INNER JOIN apt_detail ad ON hh.ho_no = ad.ho_no
+                 INNER JOIN apt_unit au ON ad.dong_no = au.dong_no
+        WHERE hh.user_no = #{userNo}
+          AND au.apt_cmplex_no = #{aptCmplexNo}
+          AND hh.INOUT_CD = 'WAIT'
+    </select>
+
+    <!-- aptCmplexNo로 MNG_NO 조회 -->
+    <select id="selectMngNo" parameterType="string" resultType="string">
+        SELECT m.user_no            /*kr.or.ddit.domain.member.resident.mapper.IResidentMoveMapper.selectMngNo*/
+        FROM manager m
+                 INNER JOIN mgmt_office mo ON m.mgmt_ofc_no = mo.mgmt_ofc_no
+        WHERE mo.apt_cmplex_no = #{aptCmplexNo}
+          AND ROWNUM = 1
+    </select>
+
+
+    <!-- 전출신고 INSERT -->
+    <insert id="insertMoveOut" parameterType="map">
+        <selectKey keyProperty="rqstNo" resultType="string" order="BEFORE">
+            SELECT SEQ_RESIDENT_RQST.nextval FROM dual
+        </selectKey>
+        INSERT INTO resident_rqst (         /*kr.or.ddit.domain.member.resident.mapper.IResidentMoveMapper.inserMoveOut*/
+        rqst_no
+        , apt_cmplex_no
+        , mvin_prd_dt
+        , mvout_prd_dt
+        , rcpt_dt
+        , rqst_ty_cd
+        , mvout_rsn_cn
+        , spcl_cn
+        , user_no
+        , ho_no
+        , mng_no
+        ) VALUES (
+        #{rqstNo}
+        , #{aptCmplexNo}
+        , SYSDATE
+        , TO_DATE(#{mvoutPrdDt}, 'YYYY-MM-DD')
+        , SYSDATE
+        , 'MOVE_OUT'
+        , #{mvoutRsnCn}
+        , #{spclCn}
+        , #{userNo}
+        , #{hoNo}
+        , #{mngNo}
+        )
+    </insert>
+    <insert id="insertMoveIn" parameterType="map">
+        <selectKey keyProperty="rqstNo" resultType="string" order="BEFORE">
+            SELECT SEQ_RESIDENT_RQST.nextval FROM dual
+        </selectKey>
+        INSERT INTO resident_rqst (                 /*kr.or.ddit.domain.member.resident.mapper.IResidentMoveMapper.insertMoveIn*/
+        rqst_no
+        , apt_cmplex_no
+        , mvin_prd_dt
+        , rcpt_dt
+        , rqst_ty_cd
+        , spcl_cn
+        , user_no
+        , ho_no
+        , mng_no
+        ) VALUES (
+        #{rqstNo}
+        , #{aptCmplexNo}
+        , TO_DATE(#{mvinPrdDt}, 'YYYY-MM-DD')
+        , SYSDATE
+        , 'MOVE_IN'
+        , #{spclCn}
+        , #{userNo}
+        , #{hoNo}
+        , #{mngNo}
+        )
+    </insert>
+
+    <!-- HSHLD_HEAD INOUT_CD UPDATE -->
+    <update id="updateInoutCd" parameterType="map">
+        UPDATE hshld_head           /*kr.or.ddit.domain.member.resident.mapper.IResidentMoveMapper.updateInoutCd*/
+        SET inout_cd = #{inoutCd}
+          , move_out_dt = SYSDATE
+        WHERE user_no = #{userNo}
+          AND ho_no = #{hoNo}
+    </update>
+
+</mapper>

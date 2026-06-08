@@ -1,0 +1,440 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.employee.mapper.IEmployeeMapper">
+
+    <!--
+        ================================================================
+        resultMap: DB 컬럼명과 Java 필드명의 연결 설정
+        DB는 user_no처럼 snake_case, Java는 userNo처럼 camelCase를 사용
+        resultMap은 DB 컬럼과 Java 필드를 직접 연결하는 역할
+        ================================================================
+    -->
+
+    <!-- manager + member 조인 결과 → ManagerVO 매핑 -->
+    <resultMap id="managerMap" type="kr.or.ddit.domain.member.manager.vo.ManagerVO">
+        <result property="userNo"     column="user_no"/>
+        <result property="mgmtOfcNo"  column="mgmt_ofc_no"/>
+        <result property="mngrDutyCd" column="mngr_duty_cd"/>
+        <result property="userId"     column="user_id"/>
+        <result property="userNm"     column="user_nm"/>
+        <result property="telno"      column="user_telno"/>
+        <result property="userEml"    column="user_eml"/>
+        <result property="userYn"     column="user_yn"/>
+        <result property="birthDate"  column="birth_date"/>
+    </resultMap>
+
+    <!-- mngr_rqst + manager 조인 결과 → MngrRqstVO 매핑 -->
+    <resultMap id="mngrRqstMap" type="kr.or.ddit.domain.apt.mgmtOffice.employee.vo.MngrRqstVO">
+        <result property="rqstNo"      column="rqst_no"/>
+        <result property="rqstLoginId" column="rqst_login_id"/>
+        <result property="rqstMngrNm"  column="rqst_mngr_nm"/>
+        <result property="rqstDutyCd"  column="rqst_duty_cd"/>
+        <result property="rqstDt"      column="rqst_dt"/>
+        <result property="aprvDt"      column="aprv_dt"/>
+        <result property="rqstSttsCd"  column="rqst_stts_cd"/>
+        <result property="aprvId"      column="aprv_id"/>
+        <result property="rjctRsnCn"   column="rjct_rsn_cn"/>
+        <result property="rmrkCn"      column="rmrk_cn"/>
+        <result property="userNo"      column="user_no"/>
+        <result property="mgmtOfcNo"   column="mgmt_ofc_no"/>
+    </resultMap>
+
+    <!-- member 조회 결과 → MemberSearchDTO 매핑 -->
+    <resultMap id="memberSearchMap" type="kr.or.ddit.domain.apt.mgmtOffice.employee.DTO.MemberSearchDTO">
+        <result property="userNo"    column="user_no"/>
+        <result property="userId"    column="user_id"/>
+        <result property="userNm"    column="user_nm"/>
+        <result property="userTelno" column="user_telno"/>
+        <result property="userEml"   column="user_eml"/>
+        <result property="birthDate" column="birth_date"/>
+        <result property="rqstSttsCd" column="rqst_stts_cd"/>
+    </resultMap>
+
+
+    <!--
+        ================================================================
+        관리사무소 범위 조건
+        URL에서 넘어온 mgmtOfcNo를 기준으로 조회/수정 범위를 제한
+        ADMIN은 선택한 사무소, MNGR은 본인 사무소 데이터만 다루도록 하는 DB 조회 최종 방어선
+        ================================================================
+    -->
+    <sql id="scopeManager">
+        AND mg.mgmt_ofc_no = #{mgmtOfcNo}
+    </sql>
+
+    <!--sql id="scopeRequestManager">
+        AND req_mg.mgmt_ofc_no = #{mgmtOfcNo}
+    </sql>-->
+
+    <sql id="scopeRequestOwner">
+        AND EXISTS (
+            SELECT 1
+            FROM manager mg
+            WHERE mg.user_no = mr.user_no
+            AND mg.mgmt_ofc_no = #{mgmtOfcNo}
+        )
+    </sql>
+
+
+    <!--
+        ================================================================
+        재직 직원 목록 조회 백업
+        정식 구조에서는 manager + member 기준 조회
+        지금은 승인 로직에서 MANAGER insert가 아직 완성되지 않아 임시 조회 사용
+        나중에 승인 로직 완성 후 아래 selectEmployeeListBackup 내용을
+        selectEmployeeList로 되돌리면 됨
+        ================================================================
+    -->
+    <select id="selectEmployeeListBackup" parameterType="map" resultMap="managerMap">
+        SELECT
+        mg.user_no
+        ,mg.mgmt_ofc_no
+        ,mg.mngr_duty_cd
+        ,m.user_id
+        ,m.user_nm
+        ,m.user_telno
+        ,m.user_eml
+        ,m.user_yn
+        ,SUBSTR(m.user_rrno, 1, 6) AS birth_date
+        FROM manager mg
+        INNER JOIN member m ON m.user_no = mg.user_no
+        <where>
+            1 = 1
+            <include refid="scopeManager"/>
+
+            <!-- 관리소장은 직원 목록 제외 대상 -->
+            AND mg.mngr_duty_cd != 'HEAD'
+
+            <!-- 이름/아이디/연락처 검색 조건 -->
+            <if test="keyword != null and keyword != ''">
+                AND (
+                m.user_nm LIKE '%' || #{keyword} || '%'
+                OR m.user_id LIKE '%' || #{keyword} || '%'
+                OR m.user_telno LIKE '%' || #{keyword} || '%'
+                )
+            </if>
+
+            <!-- 직무 필터 조건 -->
+            <if test="mngrDutyCd != null and mngrDutyCd != ''">
+                AND mg.mngr_duty_cd = #{mngrDutyCd}
+            </if>
+        </where>
+        ORDER BY m.user_nm
+    </select>
+
+
+    <select id="selectEmployeeList" parameterType="map" resultMap="managerMap">
+        SELECT
+        mg.user_no
+        ,mg.mgmt_ofc_no
+        ,mg.mngr_duty_cd
+        ,m.user_id
+        ,m.user_nm
+        ,m.user_telno
+        ,m.user_eml
+        ,m.user_yn
+        ,SUBSTR(m.user_rrno, 1, 6) AS birth_date
+        FROM manager mg
+        INNER JOIN member m ON m.user_no = mg.user_no
+        <where>
+            1 = 1
+            <include refid="scopeManager"/>
+
+            AND mg.mngr_duty_cd != 'HEAD'
+
+            <!-- 이름/아이디/연락처 검색 조건 -->
+            <if test="keyword != null and keyword != ''">
+                AND (
+                m.user_nm LIKE '%' || #{keyword} || '%'
+                OR m.user_id LIKE '%' || #{keyword} || '%'
+                OR m.user_telno LIKE '%' || #{keyword} || '%'
+                )
+            </if>
+
+            <!-- 직무 필터 조건 -->
+            <if test="mngrDutyCd != null and mngrDutyCd != ''">
+                AND mg.mngr_duty_cd = #{mngrDutyCd}
+            </if>
+        </where>
+        ORDER BY m.user_nm
+    </select>
+
+
+    <!--
+        ================================================================
+        재직 직원 상세 조회
+        userNo + mgmtOfcNo 조건으로 다른 관리사무소 직원 조회 방지
+        ================================================================
+    -->
+    <select id="selectEmployeeDetail" resultMap="managerMap">
+        SELECT
+        mg.user_no
+        ,mg.mgmt_ofc_no
+        ,mg.mngr_duty_cd
+        ,m.user_id
+        ,m.user_nm
+        ,m.user_telno
+        ,m.user_eml
+        ,m.user_yn
+        ,SUBSTR(m.user_rrno, 1, 6) AS birth_date
+        FROM manager mg
+        INNER JOIN member m ON m.user_no = mg.user_no
+        WHERE mg.user_no = #{userNo}
+        <include refid="scopeManager"/>
+    </select>
+
+
+    <!--
+        ================================================================
+        재직 직원 직무 수정
+        userNo + mgmtOfcNo 일치 + HEAD 제외
+        ================================================================
+    -->
+    <update id="updateEmployeeDuty" parameterType="kr.or.ddit.domain.member.manager.vo.ManagerVO">
+        UPDATE manager
+        SET mngr_duty_cd = #{mngrDutyCd}
+        WHERE user_no = #{userNo}
+          AND mgmt_ofc_no = #{mgmtOfcNo}
+          AND mngr_duty_cd != 'HEAD'
+    </update>
+
+
+    <!--
+        ================================================================
+        직원 계정 요청 목록 조회
+        mngr_rqst + manager 조인
+        요청을 올린 관리자의 소속 관리사무소 기준으로 요청 목록 범위 제한
+        ================================================================
+    -->
+    <select id="selectRequestList" parameterType="map" resultMap="mngrRqstMap">
+        SELECT
+        mr.rqst_no
+        ,mr.rqst_login_id
+        ,mr.rqst_mngr_nm
+        ,mr.rqst_duty_cd
+        ,TO_CHAR(mr.rqst_dt, 'YYYY-MM-DD') AS rqst_dt
+        ,TO_CHAR(mr.aprv_dt, 'YYYY-MM-DD') AS aprv_dt
+        ,mr.rqst_stts_cd
+        ,mr.aprv_id
+        ,mr.rjct_rsn_cn
+        ,mr.rmrk_cn
+        ,mr.user_no
+        ,mg.mgmt_ofc_no
+        FROM mngr_rqst mr
+        INNER JOIN manager mg ON mg.user_no = mr.user_no
+        <where>
+            1 = 1
+            <include refid="scopeManager"/>
+
+            <!-- 직원명/로그인 아이디 검색 조건 -->
+            <if test="keyword != null and keyword != ''">
+                AND (
+                mr.rqst_mngr_nm LIKE '%' || #{keyword} || '%'
+                OR mr.rqst_login_id LIKE '%' || #{keyword} || '%'
+                )
+            </if>
+
+            <!-- 직무 필터 조건 -->
+            <if test="rqstDutyCd != null and rqstDutyCd != ''">
+                AND mr.rqst_duty_cd = #{rqstDutyCd}
+            </if>
+
+            <!-- 상태 필터 조건 -->
+            <if test="rqstSttsCd != null and rqstSttsCd != ''">
+                AND mr.rqst_stts_cd = #{rqstSttsCd}
+            </if>
+
+            <!-- 요청일/처리일 기준 날짜 필터 -->
+            <if test="searchDate != null and searchDate != ''">
+                <choose>
+                    <when test="dateType == 'APRV'">
+                        AND mr.aprv_dt <![CDATA[>=]]> TO_DATE(#{searchDate}, 'YYYY-MM-DD')
+                        AND mr.aprv_dt <![CDATA[<]]> TO_DATE(#{searchDate}, 'YYYY-MM-DD') + 1
+                    </when>
+                    <when test="dateType == 'BOTH'">
+                        AND (
+                            (
+                                mr.rqst_dt <![CDATA[>=]]> TO_DATE(#{searchDate}, 'YYYY-MM-DD')
+                                AND mr.rqst_dt <![CDATA[<]]> TO_DATE(#{searchDate}, 'YYYY-MM-DD') + 1
+                            )
+                            OR
+                            (
+                                mr.aprv_dt <![CDATA[>=]]> TO_DATE(#{searchDate}, 'YYYY-MM-DD')
+                                AND mr.aprv_dt <![CDATA[<]]> TO_DATE(#{searchDate}, 'YYYY-MM-DD') + 1
+                            )
+                        )
+                    </when>
+                    <otherwise>
+                        AND mr.rqst_dt <![CDATA[>=]]> TO_DATE(#{searchDate}, 'YYYY-MM-DD')
+                        AND mr.rqst_dt <![CDATA[<]]> TO_DATE(#{searchDate}, 'YYYY-MM-DD') + 1
+                    </otherwise>
+                </choose>
+            </if>
+        </where>
+        ORDER BY mr.rqst_dt DESC
+    </select>
+
+
+    <!--
+        ================================================================
+        직원 계정 요청 상세 조회
+        rqstNo + mgmtOfcNo 조건으로 다른 사무소 요청 조회 방지
+        ================================================================
+    -->
+    <select id="selectRequestDetail" resultMap="mngrRqstMap">
+        SELECT
+        mr.rqst_no
+        ,mr.rqst_login_id
+        ,mr.rqst_mngr_nm
+        ,mr.rqst_duty_cd
+        ,TO_CHAR(mr.rqst_dt, 'YYYY-MM-DD') AS rqst_dt
+        ,TO_CHAR(mr.aprv_dt, 'YYYY-MM-DD') AS aprv_dt
+        ,mr.rqst_stts_cd
+        ,mr.aprv_id
+        ,mr.rjct_rsn_cn
+        ,mr.rmrk_cn
+        ,mr.user_no
+        ,mg.mgmt_ofc_no
+        FROM mngr_rqst mr
+        INNER JOIN manager mg ON mg.user_no = mr.user_no
+        WHERE mr.rqst_no = #{rqstNo}
+        <include refid="scopeManager"/>
+    </select>
+
+
+    <!--
+        ================================================================
+        직원 계정 요청 등록
+        selectKey로 INSERT 전 요청번호 채번
+        rqst_dt는 SYSDATE 입력
+        ================================================================
+    -->
+    <insert id="insertRequest" parameterType="kr.or.ddit.domain.apt.mgmtOffice.employee.vo.MngrRqstVO">
+        <selectKey keyProperty="rqstNo" resultType="String" order="BEFORE">
+            SELECT TO_CHAR(seq_manager_rqst.NEXTVAL) FROM dual
+        </selectKey>
+
+        INSERT INTO mngr_rqst (
+        rqst_no
+        ,rqst_login_id
+        ,rqst_mngr_nm
+        ,rqst_duty_cd
+        ,rqst_dt
+        ,rqst_stts_cd
+        ,rmrk_cn
+        ,user_no
+        ) VALUES (
+        #{rqstNo}
+        ,#{rqstLoginId}
+        ,#{rqstMngrNm}
+        ,#{rqstDutyCd}
+        ,SYSDATE
+        ,#{rqstSttsCd}
+        ,#{rmrkCn}
+        ,#{userNo}
+        )
+    </insert>
+
+
+    <!--
+        ================================================================
+        직원 계정 요청 수정
+        WAIT 상태 + 본 사무소 요청만 수정 가능
+        ================================================================
+    -->
+    <update id="updateRequest" parameterType="kr.or.ddit.domain.apt.mgmtOffice.employee.vo.MngrRqstVO">
+        UPDATE mngr_rqst mr
+        SET
+        mr.rqst_duty_cd = #{rqstDutyCd}
+        ,mr.rmrk_cn = #{rmrkCn}
+        WHERE mr.rqst_no = #{rqstNo}
+        AND mr.rqst_stts_cd = 'WAIT'
+        <include refid="scopeRequestOwner"/>
+    </update>
+
+
+    <!--
+        ================================================================
+        직원 계정 요청 취소
+        WAIT 상태 + 본 사무소 요청만 취소 가능
+        ================================================================
+    -->
+    <update id="cancelRequest" parameterType="kr.or.ddit.domain.apt.mgmtOffice.employee.vo.MngrRqstVO">
+        UPDATE mngr_rqst mr
+        SET
+        mr.rqst_stts_cd = #{rqstSttsCd}
+        ,mr.rmrk_cn = #{rmrkCn}
+        WHERE mr.rqst_no = #{rqstNo}
+        AND mr.rqst_stts_cd = 'WAIT'
+        <include refid="scopeRequestOwner"/>
+    </update>
+
+
+    <!--
+        ================================================================
+        직원 등록용 회원 검색
+        활성 회원 + ROLE_MEMBER 보유자
+        ROLE_MNGR 보유자와 WAIT 요청자는 제외
+        회원 검색은 직원 후보 검색이므로 관리사무소 범위 조건은 요청 등록 단계에서 처리
+        ================================================================
+    -->
+    <select id="selectMemberSearchList" resultMap="memberSearchMap">
+        SELECT
+        m.user_no
+        ,m.user_id
+        ,m.user_nm
+        ,m.user_telno
+        ,m.user_eml
+        ,SUBSTR(m.user_rrno, 1, 6) AS birth_date
+        ,CASE
+            WHEN EXISTS (
+                SELECT 1
+                FROM mngr_rqst mr
+                WHERE mr.rqst_login_id = m.user_id
+                AND mr.rqst_stts_cd = 'RJCT'
+            ) THEN 'RJCT'
+            ELSE NULL
+        END AS rqst_stts_cd
+        FROM member m
+        <where>
+            m.user_yn = 'Y'
+
+            <!-- 이름/아이디/연락처 검색 조건 -->
+            <if test="keyword != null and keyword != ''">
+                AND (
+                m.user_nm LIKE '%' || #{keyword} || '%'
+                OR m.user_id LIKE '%' || #{keyword} || '%'
+                OR m.user_telno LIKE '%' || #{keyword} || '%'
+                )
+            </if>
+
+            <!-- 일반 회원 권한 보유자만 검색 -->
+            AND EXISTS (
+            SELECT 1
+            FROM auth a
+            WHERE a.user_no = m.user_no
+            AND a.user_role_cd = 'ROLE_MEMBER'
+            )
+
+            <!-- 이미 직원 권한 보유자는 제외 -->
+            AND NOT EXISTS (
+            SELECT 1
+            FROM auth a
+            WHERE a.user_no = m.user_no
+            AND a.user_role_cd = 'ROLE_MNGR'
+            )
+
+            <!-- 승인대기 또는 승인완료 요청에 이미 올라간 회원은 재요청 대상에서 제외 -->
+            AND NOT EXISTS (
+            SELECT 1
+            FROM mngr_rqst mr
+            WHERE mr.rqst_login_id = m.user_id
+            AND mr.rqst_stts_cd IN ('WAIT', 'OK')
+            )
+        </where>
+        ORDER BY m.user_nm
+    </select>
+
+</mapper>

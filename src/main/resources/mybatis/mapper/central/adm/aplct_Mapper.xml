@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.central.admin.mapper.IAplctMapper">
+    <resultMap type="kr.or.ddit.domain.central.admin.dto.AplctDTO" id="aplctMap">
+        <id property="aplctNo" column="APLCT_NO"/>
+        <result property="annNo" column="ANN_NO"/>
+        <result property="userNo" column="USER_NO"/>
+        <result property="userId" column="USER_ID"/>
+        <result property="userNm" column="USER_NM"/>
+        <result property="hoTyNo" column="HO_TY_NO"/>
+        <result property="regDt" column="REG_DT"/>
+        <result property="mdfDt" column="MDF_DT"/>
+        <result property="aplctSttsCd" column="APLCT_STTS_CD"/>
+        <result property="aptCmplexNo" column="APT_CMPLEX_NO"/>
+        <result property="tyNm" column="TY_NM"/>
+        <result property="exclusiveSize" column="EXCLUSIVE_SIZE"/>
+        <result property="roomCnt" column="ROOM_CNT"/>
+        <result property="bathroomCnt" column="BATHROOM_CNT"/>
+        <result property="ttl" column="TTL"/>
+        <collection property="docList" resultMap="docMap"/>
+    </resultMap>
+
+    <resultMap id="docMap" type="kr.or.ddit.domain.central.admin.vo.SbmsnDocVO">
+        <id property="sbmsnDocNo" column="SBMSN_DOC_NO"/>
+        <result property="sbmsnDocTyCd" column="SBMSN_DOC_TY_CD"/>
+        <result property="regDt" column="DOC_REG_DT"/>
+        <result property="mdfcnDt" column="DOC_MDF_DT"/>
+        <result property="atchFileId" column="ATCH_FILE_ID"/>
+        <result property="aplctNo" column="APLCT_NO"/>
+        <association property="fileInfo" resultMap="kr.or.ddit.common.file.mapper.IAttachFileMapper.attachFileMap"/>
+    </resultMap>
+
+    <select id="selectAplctList" resultMap="aplctMap">
+        select /* kr.or.ddit.domain.central.admin.mapper.IAplctMapper.selectAplctList */
+            a.APLCT_NO
+             , a.ANN_NO
+             , a.USER_NO
+             , a.HO_TY_NO
+             , a.REG_DT
+             , a.MDF_DT
+             , a.APLCT_STTS_CD
+             , a.RJCT_RSN_CN
+             , b.TTL
+             , m.USER_ID
+             , m.USER_NM
+             , h.APT_CMPLEX_NO
+             , h.TY_NM
+             , h.EXCLUSIVE_SIZE
+             , h.ROOM_CNT
+             , h.BATHROOM_CNT
+             , d.SBMSN_DOC_NO
+             , d.SBMSN_DOC_TY_CD
+             , d.REG_DT   as DOC_REG_DT
+             , d.MDFCN_DT as DOC_MDF_DT
+             , d.ATCH_FILE_ID
+             , f.FILE_GROUP_NO
+             , f.FILE_OG_NAME
+             , f.FILE_SAVE_UUID
+             , f.FILE_PATH
+             , f.FILE_EXT
+             , f.FILE_SIZE
+             , f.GOOGLE_ID
+             , f.MIME_TYPE
+             , f.FILE_SORT_ORDER
+        from APLCT a
+                 inner join APT_HO_TY h on (a.HO_TY_NO = h.HO_TY_NO)
+                 inner join CENTER_ANN_BOARD_POST b on (b.ANN_NO = a.ANN_NO)
+                 inner join MEMBER m on (m.USER_NO = a.USER_NO)
+                 left outer join SBMSN_DOC d on (d.APLCT_NO = a.APLCT_NO)
+                 left outer join ATTACH_FILE f on (d.ATCH_FILE_ID = f.FILE_GROUP_NO)
+    </select>
+
+    <update id="updateAplctStatus" parameterType="java.util.List">
+        BEGIN
+        <foreach collection="updateList" item="item" separator=";">
+            update APLCT
+            set APLCT_STTS_CD = #{item.aplctSttsCd}
+                ,MDF_DT = SYSDATE
+                ,RJCT_RSN_CN = #{item.rjctRsnCn}
+            where APLCT_NO = #{item.aplctNo}
+        </foreach>
+        ; END;
+    </update>
+
+    <select id="getRentLstgNoByAplctNo" resultType="java.lang.String">
+        select /* kr.or.ddit.domain.central.admin.mapper.IAplctMapper.getRentLstgNoByAplctNo */
+               r.RENT_LSTG_NO
+          from APLCT A
+    inner join CENTER_ANN_BOARD_POST ANN on(A.ANN_NO = ANN.ANN_NO)
+    inner join RENT_LISTING R on(R.ANN_NO = ANN.ANN_NO)
+         where A.APLCT_NO = #{aplctNo}
+           and R.DEAL_STTS_CD = 'AVL'
+    </select>
+
+    <update id="updateDealSttsCdByRentLstgNo">
+        update RENT_LISTING set DEAL_STTS_CD = 'ING'
+        where RENT_LSTG_NO = #{rentLstgNo}
+    </update>
+</mapper>

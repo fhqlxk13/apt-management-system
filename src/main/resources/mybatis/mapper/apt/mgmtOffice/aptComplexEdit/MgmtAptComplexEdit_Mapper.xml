@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.main.mapper.IMgmtAptComplexEditMapper">
+
+    <update id="updateStructureRemoved">
+
+        UPDATE APT_DETAIL
+        SET HO_STTS_CD = 'STRUCT_REMOVED'
+        WHERE HO_NO = #{hoNo}
+
+    </update>
+
+    <update id="restoreStructureHo">
+        UPDATE APT_DETAIL
+        SET HO_STTS_CD = 'EMPTY'
+        WHERE HO_NO = #{hoNo}
+    </update>
+
+    <insert id="insertAptDetail">
+        INSERT INTO APT_DETAIL (
+            HO_NO
+            ,DONG_NO
+            ,FLOOR
+            ,HO
+            ,HO_STTS_CD
+        ) VALUES (
+             #{hoNo}
+             ,#{dongNo}
+             ,#{floor}
+             ,#{ho}
+             ,#{hoSttsCd}
+        )
+    </insert>
+
+    <!--현재 있는 세대 수 계산-->
+    <update id="recalculateTotalHousehold">
+
+        UPDATE APT_COMPLEX
+        SET UNIT_CNT = (
+            SELECT  COUNT(*)
+            FROM    APT_DETAIL
+            WHERE   APT_CMPLEX_NO = #{aptCmplexNo}
+              AND   HO_STTS_CD IN (
+                                 'LIVE',
+                                 'EMPTY'
+                                )
+        )
+        WHERE APT_CMPLEX_NO = #{aptCmplexNo}
+
+    </update>
+
+    <!--최대 층수 계산해서 update-->
+    <update id="recalculateMaxFloor">
+
+        UPDATE APT_COMPLEX
+        SET MAX_FLOOR = (
+            SELECT MAX(D.FLOOR)
+            FROM APT_DETAIL D
+                     JOIN APT_UNIT U
+                          ON D.DONG_NO = U.DONG_NO
+            WHERE U.APT_CMPLEX_NO = #{aptCmplexNo}
+              AND D.HO_STTS_CD != 'STRUCT_REMOVED'
+        )
+        WHERE APT_CMPLEX_NO = #{aptCmplexNo}
+
+    </update>
+
+    <update id="updateHoStatus">
+
+        UPDATE APT_DETAIL
+        SET HO_STTS_CD = #{hoSttsCd}
+        WHERE HO_NO IN
+
+        <foreach collection="hoNoList"
+                 item="hoNo"
+                 open="("
+                 separator=","
+                 close=")">
+            #{hoNo}
+        </foreach>
+
+    </update>
+
+    <update id="updateHoType"
+            parameterType="map">
+
+        UPDATE APT_DETAIL
+
+        SET HO_TY_NO = #{hoTyNo}
+
+        WHERE HO_NO IN
+
+        <foreach collection="hoNoList"
+                 item="hoNo"
+                 open="("
+                 separator=","
+                 close=")">
+            #{hoNo}
+        </foreach>
+
+    </update>
+    <update id="updateDongName">
+        UPDATE  APT_UNIT
+        SET     DONG_NM = #{dongNm}
+        WHERE   DONG_NO = #{dongNo}
+
+    </update>
+
+</mapper>

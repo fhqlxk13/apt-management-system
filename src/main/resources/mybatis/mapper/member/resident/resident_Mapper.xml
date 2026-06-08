@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.member.resident.mapper.IResidentMapper">
+
+    <resultMap id="residentMap" type="kr.or.ddit.domain.member.resident.vo.ResidentVO"
+                extends="kr.or.ddit.domain.member.mapper.IMemberMapper.memberMap">
+        <result property="inoutCd" column="inout_cd"/>
+        <result property="moveInDt" column="move_in_dt"/>
+        <result property="moveOutDt" column="move_out_dt"/>
+        <result property="headYn" column="head_yn"/>
+        <collection property="myAptList" resultMap="myAptMap"/>
+    </resultMap>
+
+    <resultMap id="myAptMap" type="kr.or.ddit.domain.member.resident.vo.MyAptVO">
+       <!--
+        테이블 3개를 조인했어도, 이 리스트의 한 항목을 결정짓는
+        <*최하위 유니크 키*>인 HO_NO를 <id>로 잡아야 중복 객체가 생성되지 않음
+       -->
+        <id column="ho_no"/>
+        <result property="aptCmplexNo" column="apt_cmplex_no"/>
+        <result property="aptCmplexNm" column="apt_cmplex_nm"/>
+        <result property="dongNm" column="dong_nm"/>
+        <result property="floor" column="floor"/>
+        <result property="ho" column="ho"/>
+        <result property="hoNo" column="ho_no"/>
+        <result property="sidoNm" column="sido_nm"/>
+        <result property="sigunguNm" column="sigungu_nm"/>
+        <result property="emdNm" column="emd_nm"/>
+        <result property="dorojuso" column="dorojuso"/>
+    </resultMap>
+
+
+    <!-- 시큐리티용 입주민 정보 -->
+    <select id="selectOneResidentInfo" parameterType="string" resultMap="residentMap">
+        SELECT M.USER_NO /* kr.or.ddit.domain.member.resident.mapper.iresidentmapper.selectoneresidentinfo */
+               ,RESI.HO_NO
+               ,RESI.INOUT_CD
+               ,RESI.MOVE_IN_DT
+               ,RESI.MOVE_OUT_DT
+               ,RESI.HEAD_YN
+               ,HO.DONG_NO
+               ,HO.HO
+               ,HO.HO_NO
+               ,HO.FLOOR
+               ,DONG.DONG_NM
+               ,DONG.APT_CMPLEX_NO
+               ,APT.APT_CMPLEX_NM
+               ,APT.SIDO_NM
+               ,APT.SIGUNGU_NM
+               ,APT.EMD_NM
+               ,APT.DOROJUSO
+        from MEMBER M
+                 inner join HSHLD_HEAD RESI on(M.USER_NO = RESI.USER_NO)
+                 inner join APT_DETAIL HO on(RESI.HO_NO = HO.HO_NO)
+                 inner join APT_UNIT DONG on(HO.DONG_NO = DONG.DONG_NO)
+                 inner join APT_COMPLEX APT on(DONG.APT_CMPLEX_NO = APT.APT_CMPLEX_NO)
+        where M.USER_NO = #{user_no} and RESI.INOUT_CD = 'LIVE'
+    </select>
+
+
+</mapper>

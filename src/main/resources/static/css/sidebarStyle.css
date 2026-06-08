@@ -1,0 +1,32 @@
+
+
+body {
+     font-family: 'Manrope', sans-serif;
+     background-color: #f8faf6;
+     color: #191c1a;
+ }
+
+.font-headline {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.side-nav-item {
+    display: block;
+    width: 100%;
+}
+
+.side-nav-item[open] summary .expand-icon {
+    transform: rotate(180deg);
+}
+
+.side-nav-item summary::-webkit-details-marker {
+    display: none;
+}
+
+.side-nav-item summary {
+    list-style: none;
+}

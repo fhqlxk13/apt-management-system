@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    공용시설 아이템 Mapper XML
+    - PUBLIC_ITEM 테이블 기준 공용시설 하위 자원 CRUD SQL
+    - PUBLIC_ITEM 테이블 컬럼: CMN_FACILITY_ITEM_NO, CMN_FACILITY_NO, ITEM_NM, CMN_FACILITY_STTS_CD
+-->
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.facility.publicFacility.mapper.IPublicItemMapper">
+
+    <!-- 전체 자원 목록 조회 (관리사무소 기준, 편의시설명 JOIN) -->
+    <select id="selectPublicItemListAll"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.facility.publicFacility.vo.PublicItemVO">
+        select
+            pi.cmn_facility_item_no
+             , pi.cmn_facility_no
+             , pi.item_nm
+             , pi.cmn_facility_stts_cd
+             , pf.cmn_facility_nm
+        from public_item pi
+                 inner join public_facility pf
+                            on pf.cmn_facility_no = pi.cmn_facility_no
+                 inner join facility f
+                            on f.facility_no = pf.facility_no
+                 inner join mgmt_office mo
+                            on mo.apt_cmplex_no = f.apt_cmplex_no
+        where mo.mgmt_ofc_no = #{mgmtOfcNo}
+        order by pi.cmn_facility_item_no desc
+    </select>
+
+    <!-- 공용아이템 목록 조회
+        - 특정 공용시설 번호에 연결된 하위 자원 목록 조회
+        - 아이템 번호 기준 내림차순 정렬
+    -->
+    <select id="selectPublicItemList"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.facility.publicFacility.vo.PublicItemVO">
+        select
+            cmn_facility_item_no
+             , cmn_facility_no
+             , item_nm
+             , cmn_facility_stts_cd
+        from public_item
+        where cmn_facility_no = #{cmnFacilityNo}
+        order by cmn_facility_item_no desc
+    </select>
+
+    <!--
+        공용아이템 상세 조회
+        - 공용시설 아이템 번호 기준 단건 조회
+        - 상세/수정 모달에서 공통 사용
+    -->
+    <select id="selectPublicItemDetail"
+            parameterType="string"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.facility.publicFacility.vo.PublicItemVO">
+        select
+            cmn_facility_item_no
+             , cmn_facility_no
+             , item_nm
+             , cmn_facility_stts_cd
+        from public_item
+        where cmn_facility_item_no = #{cmnFacilityItemNo}
+    </select>
+
+    <!--
+        공용아이템 등록
+        - 공용시설 아이템 번호는 시퀀스 기반 생성
+        - 상태값 미입력 시 OPEN 기본값 처리
+    -->
+    <insert id="insertPublicItem"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.facility.publicFacility.vo.PublicItemVO">
+        insert into public_item (
+                                  cmn_facility_item_no
+                                , cmn_facility_no
+                                , item_nm
+                                , cmn_facility_stts_cd
+        ) values (
+                   'ITEM' || lpad(seq_public_item.nextval, 4, '0')
+                 , #{cmnFacilityNo}
+                 , #{itemNm}
+                 , nvl(#{cmnFacilitySttsCd}, 'OPEN')
+                 )
+    </insert>
+
+    <!--
+        공용아이템 수정
+        - 아이템명, 상태 수정
+    -->
+    <update id="updatePublicItem"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.facility.publicFacility.vo.PublicItemVO">
+        update public_item
+        set
+            item_nm              = #{itemNm}
+          , cmn_facility_stts_cd = #{cmnFacilitySttsCd}
+        where cmn_facility_item_no = #{cmnFacilityItemNo}
+    </update>
+
+    <!-- 공용아이템 삭제 -->
+    <delete id="deletePublicItem" parameterType="string">
+        delete from public_item
+        where cmn_facility_item_no = #{value}
+    </delete>
+
+    <!-- 자원 목록 페이징 검색 조회 -->
+    <select id="selectPublicItemListPaging" parameterType="map"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.facility.publicFacility.vo.PublicItemVO">
+        select
+        pi.cmn_facility_item_no
+        , pi.cmn_facility_no
+        , pi.item_nm
+        , pi.cmn_facility_stts_cd
+        , pf.cmn_facility_nm
+        from public_item pi
+        inner join public_facility pf on pf.cmn_facility_no = pi.cmn_facility_no
+        inner join facility f on f.facility_no = pf.facility_no
+        inner join mgmt_office mo on mo.apt_cmplex_no = f.apt_cmplex_no
+        where mo.mgmt_ofc_no = #{mgmtOfcNo}
+        <if test="itemNo != null and itemNo != ''">
+            and pi.cmn_facility_item_no like 'ITEM' || #{itemNo} || '%'
+        </if>
+        <if test="facilityNo != null and facilityNo != ''">
+            and pi.cmn_facility_no like 'CMN' || #{facilityNo} || '%'
+        </if>
+        <if test="itemNm != null and itemNm != ''">
+            and pi.item_nm like '%' || #{itemNm} || '%'
+        </if>
+        <if test="sttsCd != null and sttsCd != '' and sttsCd != 'ALL'">
+            and pi.cmn_facility_stts_cd = #{sttsCd}
+        </if>
+        order by pi.cmn_facility_item_no desc
+        offset (#{page} - 1) * #{pageSize} rows
+        fetch next #{pageSize} rows only
+    </select>
+
+    <!-- 자원 목록 전체 건수 조회 (페이징용) -->
+    <select id="selectPublicItemListCount" parameterType="map" resultType="int">
+        select count(*)
+        from public_item pi
+        inner join public_facility pf on pf.cmn_facility_no = pi.cmn_facility_no
+        inner join facility f on f.facility_no = pf.facility_no
+        inner join mgmt_office mo on mo.apt_cmplex_no = f.apt_cmplex_no
+        where mo.mgmt_ofc_no = #{mgmtOfcNo}
+        <if test="itemNo != null and itemNo != ''">
+            and pi.cmn_facility_item_no like 'ITEM' || #{itemNo} || '%'
+        </if>
+        <if test="facilityNo != null and facilityNo != ''">
+            and pi.cmn_facility_no like 'CMN' || #{facilityNo} || '%'
+        </if>
+        <if test="itemNm != null and itemNm != ''">
+            and pi.item_nm like '%' || #{itemNm} || '%'
+        </if>
+        <if test="sttsCd != null and sttsCd != '' and sttsCd != 'ALL'">
+            and pi.cmn_facility_stts_cd = #{sttsCd}
+        </if>
+    </select>
+
+    <!-- 자동완성 - 자원 등록 모달 / 자원 탭 필터 공통 조회 -->
+    <select id="selectPublicItemSuggest" parameterType="map"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.facility.publicFacility.vo.PublicItemVO">
+
+        <choose>
+            <!--
+                PUBLIC_FACILITY
+                - 자원 등록 모달에서 상위 편의시설 검색
+                - PUBLIC_ITEM이 아직 없는 편의시설도 검색되어야 하므로 PUBLIC_FACILITY 기준 조회
+            -->
+            <when test="suggestType == 'PUBLIC_FACILITY'">
+                select *
+                from (
+                select
+                pf.cmn_facility_no
+                , pf.cmn_facility_nm
+                , pf.facility_no
+                , null as cmn_facility_item_no
+                , null as item_nm
+                , null as cmn_facility_stts_cd
+                from public_facility pf
+                inner join facility f
+                on f.facility_no = pf.facility_no
+                and f.apt_cmplex_no = pf.apt_cmplex_no
+                inner join mgmt_office mo
+                on mo.apt_cmplex_no = f.apt_cmplex_no
+                where mo.mgmt_ofc_no = #{mgmtOfcNo}
+                and pf.cmn_facility_no is not null
+                <if test="keyword != null and keyword != ''">
+                    and (
+                    lower(pf.cmn_facility_no) like '%' || lower(#{keyword}) || '%'
+                    or lower(pf.cmn_facility_nm) like '%' || lower(#{keyword}) || '%'
+                    )
+                </if>
+                order by pf.cmn_facility_no asc
+                )
+                where rownum &lt;= 10
+            </when>
+
+            <!--
+                ITEM_NO / FACILITY_NO / ITEM_NM
+                - 자원 탭 필터 자동완성
+                - 이미 등록된 PUBLIC_ITEM 기준 조회
+            -->
+            <otherwise>
+                select distinct
+                <choose>
+                    <when test="suggestType == 'ITEM_NO'">
+                        pi.cmn_facility_item_no
+                        , pi.item_nm
+                        , pi.cmn_facility_no
+                        , pf.cmn_facility_nm
+                        , pf.facility_no
+                        , pi.cmn_facility_stts_cd
+                    </when>
+
+                    <when test="suggestType == 'FACILITY_NO'">
+                        min(pi.cmn_facility_item_no) as cmn_facility_item_no
+                        , min(pi.item_nm) as item_nm
+                        , pi.cmn_facility_no
+                        , pf.cmn_facility_nm
+                        , pf.facility_no
+                        , min(pi.cmn_facility_stts_cd) as cmn_facility_stts_cd
+                    </when>
+
+                    <otherwise>
+                        pi.cmn_facility_item_no
+                        , pi.item_nm
+                        , pi.cmn_facility_no
+                        , pf.cmn_facility_nm
+                        , pf.facility_no
+                        , pi.cmn_facility_stts_cd
+                    </otherwise>
+                </choose>
+                from public_item pi
+                inner join public_facility pf
+                on pf.cmn_facility_no = pi.cmn_facility_no
+                inner join facility f
+                on f.facility_no = pf.facility_no
+                inner join mgmt_office mo
+                on mo.apt_cmplex_no = f.apt_cmplex_no
+                where mo.mgmt_ofc_no = #{mgmtOfcNo}
+                <choose>
+                    <when test="suggestType == 'ITEM_NO'">
+                        and pi.cmn_facility_item_no like 'ITEM' || #{keyword} || '%'
+                    </when>
+                    <when test="suggestType == 'FACILITY_NO'">
+                        and pi.cmn_facility_no like 'CMN' || #{keyword} || '%'
+                    </when>
+                    <otherwise>
+                        and pi.item_nm like '%' || #{keyword} || '%'
+                    </otherwise>
+                </choose>
+                <if test="suggestType == 'FACILITY_NO'">
+                    group by pi.cmn_facility_no, pf.cmn_facility_nm, pf.facility_no
+                </if>
+                order by 1
+                fetch first 10 rows only
+            </otherwise>
+        </choose>
+    </select>
+
+</mapper>

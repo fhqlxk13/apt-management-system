@@ -1,0 +1,385 @@
+/* 전체 상세 페이지 */
+.rent-detail-page {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 28px 20px 60px;
+    background: #f7f8f6;
+    color: #1f2933;
+}
+
+/* 상단 요약 */
+.detail-hero {
+    display: block;
+    grid-template-columns: 420px 1fr;
+    gap: 28px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    padding: 24px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+    margin-bottom: 28px;
+}
+
+/* 요약 텍스트 */
+.detail-summary {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.trade-badge {
+    display: inline-flex;
+    width: fit-content;
+    padding: 6px 13px;
+    border-radius: 999px;
+    background: #16a34a;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 14px;
+}
+
+.detail-title {
+    font-size: 28px;
+    font-weight: 800;
+    color: #111827;
+    margin: 0 0 10px;
+}
+
+.detail-price {
+    font-size: 32px;
+    font-weight: 900;
+    color: #0f7a3a;
+    margin-bottom: 12px;
+}
+
+.detail-address {
+    font-size: 15px;
+    color: #64748b;
+    margin-bottom: 24px;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+}
+
+.summary-grid div {
+    background: #f8fafc;
+    border: 1px solid #edf0f2;
+    border-radius: 12px;
+    padding: 14px 16px;
+}
+
+.summary-grid span {
+    display: block;
+    font-size: 13px;
+    color: #7b8794;
+    margin-bottom: 5px;
+}
+
+.summary-grid strong {
+    font-size: 16px;
+    color: #111827;
+}
+
+/* 공통 카드 */
+.detail-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.section-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #111827;
+    margin-bottom: 0;
+}
+
+.section-title-row h3 {
+    margin: 0;
+    font-size: 21px;
+    font-weight: 800;
+    color: #111827;
+}
+
+.small-link {
+    font-size: 13px;
+    color: #0f7a3a;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+/* 정보 테이블 */
+.info-table {
+    width: 100%;
+    border-top: 0;
+}
+
+.info-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 140px 1fr;
+    min-height: 54px;
+    border-bottom: 1px solid #edf0f2;
+}
+
+.info-row.full {
+    grid-template-columns: 140px 1fr;
+}
+
+.info-label {
+    display: flex;
+    align-items: center;
+    background: #f8fafc;
+    padding: 14px 16px;
+    color: #6b7280;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.info-value {
+    display: flex;
+    align-items: center;
+    padding: 14px 18px;
+    color: #111827;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.price-text {
+    font-weight: 800;
+    color: #0f7a3a;
+}
+
+.road-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 7px;
+    margin-right: 6px;
+    border: 1px solid #cbd5e1;
+    border-radius: 3px;
+    font-size: 12px;
+    color: #64748b;
+    background: #fff;
+}
+
+.muted {
+    color: #64748b;
+}
+
+/* 면적 탭 */
+.area-tabs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 18px 0;
+    border-bottom: 1px solid #edf0f2;
+    overflow-x: auto;
+}
+
+.area-tabs button {
+    border: 0;
+    background: transparent;
+    padding: 9px 14px;
+    border-radius: 8px;
+    color: #111827;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.area-tabs button.active {
+    background: #22c55e;
+    color: #fff;
+}
+
+/* 평면도 */
+.floor-plan-box {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 34px 0;
+    border-bottom: 1px solid #edf0f2;
+}
+
+.floor-plan-image {
+    max-width: 420px;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+/* 관리비 */
+.month-select {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 10px;
+    padding: 4px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #111827;
+    background: #fff;
+}
+
+.fee-list {
+    margin: 10px 0 0;
+    padding-left: 18px;
+    color: #64748b;
+    font-size: 14px;
+}
+
+.fee-list li {
+    margin-bottom: 4px;
+}
+
+/* 반응형 */
+@media (max-width: 900px) {
+    .detail-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-image-box {
+        height: 260px;
+    }
+}
+
+@media (max-width: 700px) {
+    .rent-detail-page {
+        padding: 18px 12px 40px;
+    }
+
+    .detail-card,
+    .detail-hero {
+        padding: 18px;
+        border-radius: 14px;
+    }
+
+    .detail-title {
+        font-size: 23px;
+    }
+
+    .detail-price {
+        font-size: 27px;
+    }
+
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .info-row,
+    .info-row.full {
+        grid-template-columns: 110px 1fr;
+    }
+
+    .info-row:not(.full) {
+        grid-template-columns: 110px 1fr;
+    }
+
+    .info-row:not(.full) .info-label:nth-of-type(2),
+    .info-row:not(.full) .info-value:nth-of-type(2) {
+        border-top: 1px solid #edf0f2;
+    }
+
+    .section-title-row {
+        align-items: flex-start;
+        gap: 8px;
+        flex-direction: column;
+    }
+}
+
+/* headerLayout 적용 시 본문 잘림 방지 */
+.page-layout {
+    display: flex;
+    min-height: calc(100vh - 68px);
+    padding-top: 68px; /* header 높이만큼 아래로 밀기 */
+    background: #f7f8f6;
+}
+
+/* sidebar가 fixed가 아니라 일반 include 구조일 때 */
+.page-content {
+    flex: 1;
+    min-width: 0;
+    padding: 0 32px 60px;
+}
+
+.rent-detail-layout {
+    display: flex;
+    min-height: 100vh;
+    background: #f7f8f6;
+}
+
+/* 본문 */
+.rent-detail-content {
+    flex: 1;
+    min-width: 0;
+    padding: 96px 32px 60px; /* 핵심: header 높이만큼 내려줌 */
+}
+
+/* 상세 페이지 자체 여백 */
+.rent-detail-page {
+    max-width: 1080px;
+    margin: 0 auto;
+}
+
+/* 상세페이지 상단 헤더 */
+.rent-detail-head {
+    margin-bottom: 26px;
+}
+
+/* 브레드크럼 */
+.rent-detail-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #94a3b8;
+}
+
+.rent-detail-breadcrumb a {
+    color: #94a3b8;
+    text-decoration: none;
+}
+
+.rent-detail-breadcrumb a:hover {
+    color: #0f766e;
+}
+
+.rent-detail-breadcrumb span {
+    color: #cbd5e1;
+    font-weight: 800;
+}
+
+.rent-detail-breadcrumb strong {
+    color: #006b3f;
+    font-weight: 900;
+}
+
+/* 페이지 제목 */
+.rent-detail-head h1 {
+    margin: 0 0 12px;
+    font-size: 38px;
+    line-height: 1.2;
+    font-weight: 900;
+    letter-spacing: -1.5px;
+    color: #020617;
+}
+
+/* 페이지 설명 */
+.rent-detail-head p {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #64748b;
+}

@@ -1,0 +1,493 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.facility.publicFacility.mapper.IPublicFacilityMapper">
+
+    <!--
+        ============================================================
+        공용시설 Mapper XML
+        - FACILITY + PUBLIC_FACILITY 기준 조회/등록/수정/삭제 SQL
+        - ATTACH_FILE 직접 처리는 기존 attachFile_Mapper.xml 사용
+        - SQL 스타일: 소문자 SQL, 뒤쪽 콤마 기준
+        - map-underscore-to-camel-case=true 기준으로 별칭 최소화
+        ============================================================
+    -->
+
+    <!-- 일반 시설자산 시설유형코드 목록 -->
+    <sql id="assetfacilitytypecodes">
+        'ELV',
+        'WTR',
+        'ELC',
+        'GAS',
+        'FIRE',
+        'SEC',
+        'ETC'
+    </sql>
+
+    <!--
+        편의시설로 취급하는 FACILITY_TY 코드 목록
+        - FACILITY_TY 공통코드 중 일반 시설자산 코드를 제외한 나머지를 편의시설로 판단한다.
+        - PUBLIC_FACILITY는 운영관리 등록 정보이므로, 이 테이블에 행이 없어도 편의시설 목록에는 보여야 한다.
+    -->
+    <sql id="publicfacilitytypecodes">
+        select cc.code_no_cd
+        from common_code cc
+        where cc.group_code_no = 'FACILITY_TY'
+          and nvl(cc.use_yn, 'Y') = 'Y'
+          and cc.code_no_cd not in (<include refid="assetfacilitytypecodes"/>)
+    </sql>
+
+    <!-- 관리사무소 번호로 현재 단지번호를 찾는 공통 조건 -->
+    <sql id="subqueryaptcmplexno">
+        (
+            select mo.apt_cmplex_no
+            from mgmt_office mo
+            where mo.mgmt_ofc_no = #{mgmtOfcNo}
+        )
+    </sql>
+
+    <!--
+        PUBLIC_ITEM 집계
+        - PUBLIC_FACILITY에 운영관리 등록된 행에만 붙는 하위 자원 집계이다.
+        - 미등록 편의시설은 cmn_facility_no가 없으므로 item_cnt/repair_cnt/close_cnt가 0으로 표시된다.
+        - 아이템 CRUD는 별도 publicFacilityItem_Mapper.xml에서 처리한다.
+    -->
+    <sql id="publicitemsummary">
+        select cmn_facility_no
+             , count(*) as item_cnt
+             , sum(case when cmn_facility_stts_cd = 'REPAIR' then 1 else 0 end) as repair_cnt
+             , sum(case when cmn_facility_stts_cd = 'CLOSE' then 1 else 0 end) as close_cnt
+        from public_item
+        group by cmn_facility_no
+    </sql>
+
+    <!--
+        관리사무소번호로 아파트단지번호 조회
+        - 공용시설 등록 시 FACILITY / PUBLIC_FACILITY의 APT_CMPLEX_NO 세팅용
+    -->
+    <select id="selectAptCmplexNoByMgmtOfcNo" parameterType="string" resultType="string">
+        select apt_cmplex_no
+        from mgmt_office
+        where mgmt_ofc_no = #{mgmtOfcNo}
+    </select>
+
+    <!--
+        신규 시설번호 생성
+        - 프로젝트 기존 시설자산 기준: FAC + LPAD(seq_facility.nextval, 4, '0')
+    -->
+    <select id="selectNextFacilityNo" resultType="string">
+        select 'FAC' || lpad(seq_facility.nextval, 4, '0')
+        from dual
+    </select>
+
+    <!--
+        신규 공용시설번호 생성
+        - DB 기준 SEQ_PUBLIC_FACILITY 사용
+    -->
+    <select id="selectNextCmnFacilityNo" resultType="string">
+        select 'CMN' || lpad(seq_public_facility.nextval, 4, '0')
+        from dual
+    </select>
+
+    <!--
+        운영관리 미등록 시설자산 후보 목록 조회
+        - FACILITY에는 등록되어 있으나 PUBLIC_FACILITY에는 아직 없는 편의시설 목록
+        - 공용시설 등록 화면의 시설자산 선택 모달에서 사용
+    -->
+    <select id="selectFacilityCandidateList" parameterType="string" resultType="kr.or.ddit.domain.apt.mgmtOffice.facility.vo.FacilityVO">
+        select f.facility_no
+        , f.facility_ty_cd
+        , f.instl_dt
+        , f.facility_nm
+        , f.apt_cmplex_no
+        , f.dong_no
+        , f.loc_cn
+        , nvl(f.use_yn, 'Y') as use_yn
+        , f.file_group_no
+        , cc.code_name as facility_ty_nm
+        , au.dong_nm
+        from facility f
+        left join common_code cc
+        on cc.group_code_no = 'FACILITY_TY'
+        and cc.code_no_cd = f.facility_ty_cd
+        left join apt_unit au
+        on au.dong_no = f.dong_no
+        where f.apt_cmplex_no = <include refid="subqueryaptcmplexno"/>
+        and nvl(f.use_yn, 'Y') = 'Y'
+        and f.facility_ty_cd in (<include refid="publicfacilitytypecodes"/>)
+        and not exists (
+        select 1
+        from public_facility pf
+        where pf.facility_no = f.facility_no
+        )
+        order by f.facility_nm asc
+    </select>
+
+    <!--
+        공용시설 필터 동 목록 조회
+        - 목록 필터의 동 select 구성용
+        - FACILITY 기준 편의시설 동만 조회한다.
+    -->
+    <select id="selectPublicFacilityDongOptionList" parameterType="string" resultType="kr.or.ddit.domain.apt.mgmtOffice.facility.publicFacility.vo.PublicFacilityVO">
+        select distinct f.dong_no
+        , au.dong_nm
+        from facility f
+        left join apt_unit au
+        on au.dong_no = f.dong_no
+        where f.apt_cmplex_no = <include refid="subqueryaptcmplexno"/>
+        and f.facility_ty_cd in (<include refid="publicfacilitytypecodes"/>)
+        and nvl(f.use_yn, 'Y') = 'Y'
+        and f.dong_no is not null
+        order by au.dong_nm asc
+    </select>
+
+    <!--
+        공용시설 필터 위치 목록 조회
+        - 동 선택 시 해당 동의 위치 select 구성용
+        - dongNo가 _COMMON_이면 DONG_NO가 없는 공용 위치만 조회한다.
+    -->
+    <select id="selectPublicFacilityLocationOptionList" parameterType="map" resultType="string">
+        select distinct f.loc_cn
+        from facility f
+        where f.apt_cmplex_no = <include refid="subqueryaptcmplexno"/>
+        and f.facility_ty_cd in (<include refid="publicfacilitytypecodes"/>)
+        and nvl(f.use_yn, 'Y') = 'Y'
+        and f.loc_cn is not null
+        <if test="dongNo != null and dongNo != '' and dongNo != '_COMMON_'">
+            and f.dong_no = #{dongNo}
+        </if>
+        <if test="dongNo != null and dongNo == '_COMMON_'">
+            and f.dong_no is null
+        </if>
+        order by f.loc_cn asc
+    </select>
+
+    <!--
+        공용시설명 자동완성 목록 조회
+        - 검색어 일부 입력 시 datalist / autocomplete 후보로 사용
+        - PUBLIC_FACILITY 운영명 우선, 없으면 FACILITY 시설명을 사용한다.
+    -->
+    <select id="selectPublicFacilityNameSuggestList" parameterType="map" resultType="string">
+        select cmn_facility_nm
+        from (
+        select distinct nvl(pf.cmn_facility_nm, f.facility_nm) as cmn_facility_nm
+        from facility f
+        left join public_facility pf
+        on pf.facility_no = f.facility_no
+        and pf.apt_cmplex_no = f.apt_cmplex_no
+        where f.apt_cmplex_no = <include refid="subqueryaptcmplexno"/>
+        and f.facility_ty_cd in (<include refid="publicfacilitytypecodes"/>)
+        and nvl(f.use_yn, 'Y') = 'Y'
+        and nvl(pf.cmn_facility_nm, f.facility_nm) is not null
+        <if test="keyword != null and keyword != ''">
+            and lower(nvl(pf.cmn_facility_nm, f.facility_nm)) like '%' || lower(#{keyword}) || '%'
+        </if>
+        order by cmn_facility_nm asc
+        )
+        where rownum &lt;= 10
+    </select>
+
+
+    <!--
+        공용시설 목록 조회
+        - 목록의 기준 테이블은 FACILITY이다.
+        - 편의시설 코드는 FACILITY_TY_CD로 판단하고, PUBLIC_FACILITY는 운영관리 등록 여부만 의미한다.
+        - 따라서 PUBLIC_FACILITY는 LEFT JOIN으로 붙여 운영관리 미등록 편의시설도 목록에 노출한다.
+        - oper_status = UNREGISTERED이면 아직 PUBLIC_FACILITY 운영관리 등록이 안 된 시설이다.
+    -->
+    <select id="selectPublicFacilityList" parameterType="map" resultType="kr.or.ddit.domain.apt.mgmtOffice.facility.publicFacility.vo.PublicFacilityVO">
+        select x.cmn_facility_no
+        , x.apt_cmplex_no
+        , x.facility_no
+        , x.cmn_facility_nm
+        , x.cmn_facility_cn
+        , x.cmn_facility_amt
+        , x.cmn_facility_rsv_yn
+        , x.cmn_facility_opr_hr
+        , x.reg_dt
+        , x.mdf_dt
+        , x.facility_nm
+        , x.facility_ty_cd
+        , x.facility_ty_nm
+        , x.instl_dt
+        , x.dong_no
+        , x.dong_nm
+        , x.loc_cn
+        , x.use_yn
+        , x.file_group_no
+        , x.item_cnt
+        , x.repair_cnt
+        , x.close_cnt
+        , x.oper_status
+        from (
+        select pf.cmn_facility_no
+        , f.apt_cmplex_no
+        , f.facility_no
+        , nvl(pf.cmn_facility_nm, f.facility_nm) as cmn_facility_nm
+        , pf.cmn_facility_cn
+        , pf.cmn_facility_amt
+        , pf.cmn_facility_rsv_yn
+        , pf.cmn_facility_opr_hr
+        , to_char(pf.reg_dt, 'YYYY-MM-DD') as reg_dt
+        , to_char(pf.mdf_dt, 'YYYY-MM-DD') as mdf_dt
+        , f.facility_nm
+        , f.facility_ty_cd
+        , cc.code_name as facility_ty_nm
+        , to_char(f.instl_dt, 'YYYY-MM-DD') as instl_dt
+        , f.dong_no
+        , au.dong_nm
+        , f.loc_cn
+        , nvl(f.use_yn, 'Y') as use_yn
+        , f.file_group_no
+        , nvl(pi.item_cnt, 0) as item_cnt
+        , nvl(pi.repair_cnt, 0) as repair_cnt
+        , nvl(pi.close_cnt, 0) as close_cnt
+        , case
+        when pf.cmn_facility_no is null then 'UNREGISTERED'
+        when nvl(pi.close_cnt, 0) > 0 then 'CLOSE_PART'
+        when nvl(pi.repair_cnt, 0) > 0 then 'REPAIR_PART'
+        else 'NORMAL'
+        end as oper_status
+        from facility f
+        left join public_facility pf
+        on pf.facility_no = f.facility_no
+        and pf.apt_cmplex_no = f.apt_cmplex_no
+        left join common_code cc
+        on cc.group_code_no = 'FACILITY_TY'
+        and cc.code_no_cd = f.facility_ty_cd
+        left join apt_unit au
+        on au.dong_no = f.dong_no
+        left join (
+        <include refid="publicitemsummary"/>
+        ) pi
+        on pi.cmn_facility_no = pf.cmn_facility_no
+        where f.apt_cmplex_no = <include refid="subqueryaptcmplexno"/>
+        and f.facility_ty_cd in (<include refid="publicfacilitytypecodes"/>)
+        and nvl(f.use_yn, 'Y') = 'Y'
+        ) x
+        <where>
+            <if test="keyword != null and keyword != ''">
+                and (
+                lower(x.cmn_facility_nm) like '%' || lower(#{keyword}) || '%'
+                or lower(x.facility_nm) like '%' || lower(#{keyword}) || '%'
+                or lower(x.loc_cn) like '%' || lower(#{keyword}) || '%'
+                or lower(x.cmn_facility_no) like '%' || lower(#{keyword}) || '%'
+                or lower(x.facility_no) like '%' || lower(#{keyword}) || '%'
+                )
+            </if>
+            <if test="facilityTyCd != null and facilityTyCd != ''">
+                and x.facility_ty_cd = #{facilityTyCd}
+            </if>
+            <if test="dongNo != null and dongNo != '' and dongNo != '_COMMON_'">
+                and x.dong_no = #{dongNo}
+            </if>
+            <if test="dongNo != null and dongNo == '_COMMON_'">
+                and x.dong_no is null
+            </if>
+            <if test="locCn != null and locCn != ''">
+                and x.loc_cn = #{locCn}
+            </if>
+            <if test="rsvYn != null and rsvYn != ''">
+                and x.cmn_facility_rsv_yn = #{rsvYn}
+            </if>
+            <if test="oprDay != null and oprDay != ''">
+                and (
+                x.cmn_facility_opr_hr like '%' || #{oprDay} || '%'
+                or (#{oprDay} in ('월', '화', '수', '목', '금') and x.cmn_facility_opr_hr like '%평일%')
+                or (#{oprDay} in ('토', '일') and x.cmn_facility_opr_hr like '%주말%')
+                or (#{oprDay} in ('월', '화', '수', '목', '금', '토', '일') and x.cmn_facility_opr_hr like '%매일%')
+                )
+            </if>
+            <if test="operStatus != null and operStatus != ''">
+                and x.oper_status = #{operStatus}
+            </if>
+        </where>
+        order by case when x.cmn_facility_no is null then 0 else 1 end
+        , x.cmn_facility_no desc nulls last
+        , x.reg_dt desc nulls last
+        , x.mdf_dt desc nulls last
+        , x.facility_nm asc
+    </select>
+
+    <!--
+        공용시설 상세 조회
+        - 상세 화면 및 수정 화면에서 사용
+        - 운영관리 등록된 PUBLIC_FACILITY만 조회한다.
+    -->
+    <select id="selectPublicFacilityDetail" parameterType="map" resultType="kr.or.ddit.domain.apt.mgmtOffice.facility.publicFacility.vo.PublicFacilityVO">
+        select pf.cmn_facility_no
+        , pf.apt_cmplex_no
+        , pf.facility_no
+        , pf.cmn_facility_nm
+        , pf.cmn_facility_cn
+        , pf.cmn_facility_amt
+        , pf.cmn_facility_rsv_yn
+        , pf.cmn_facility_opr_hr
+        , to_char(pf.reg_dt, 'YYYY-MM-DD') as reg_dt
+        , to_char(pf.mdf_dt, 'YYYY-MM-DD') as mdf_dt
+        , f.facility_nm
+        , f.facility_ty_cd
+        , cc.code_name as facility_ty_nm
+        , to_char(f.instl_dt, 'YYYY-MM-DD') as instl_dt
+        , f.dong_no
+        , au.dong_nm
+        , f.loc_cn
+        , nvl(f.use_yn, 'Y') as use_yn
+        , f.file_group_no
+        , nvl(pi.item_cnt, 0) as item_cnt
+        , nvl(pi.repair_cnt, 0) as repair_cnt
+        , nvl(pi.close_cnt, 0) as close_cnt
+        , case
+        when nvl(pi.close_cnt, 0) > 0 then 'CLOSE_PART'
+        when nvl(pi.repair_cnt, 0) > 0 then 'REPAIR_PART'
+        else 'NORMAL'
+        end as oper_status
+        from public_facility pf
+        inner join facility f
+        on f.facility_no = pf.facility_no
+        left join common_code cc
+        on cc.group_code_no = 'FACILITY_TY'
+        and cc.code_no_cd = f.facility_ty_cd
+        left join apt_unit au
+        on au.dong_no = f.dong_no
+        left join (
+        <include refid="publicitemsummary"/>
+        ) pi
+        on pi.cmn_facility_no = pf.cmn_facility_no
+        where pf.cmn_facility_no = #{cmnFacilityNo}
+        and pf.apt_cmplex_no = <include refid="subqueryaptcmplexno"/>
+    </select>
+
+    <!--
+        FACILITY 신규 등록
+        - 공용시설 등록 화면 NEW 모드에서 사용
+    -->
+    <insert id="insertFacility" parameterType="map">
+        insert into facility (
+                               facility_no
+                             , facility_ty_cd
+                             , instl_dt
+                             , facility_nm
+                             , apt_cmplex_no
+                             , dong_no
+                             , loc_cn
+                             , use_yn
+                             , file_group_no
+        ) values (
+                   #{facilityNo}
+                 , #{facilityTyCd}
+                 , sysdate
+                 , #{facilityNm}
+                 , #{aptCmplexNo}
+                 , #{dongNo}
+                 , #{locCn}
+                 , nvl(#{useYn}, 'Y')
+                 , #{fileGroupNo}
+                 )
+    </insert>
+
+    <!--
+        선택된 시설자산이 이미 공용시설 운영관리에 등록되어 있는지 확인
+    -->
+    <select id="selectPublicFacilityExistsByFacilityNo" parameterType="string" resultType="int">
+        select count(*)
+        from public_facility
+        where facility_no = #{facilityNo}
+    </select>
+
+    <!--
+        PUBLIC_FACILITY 신규 등록
+        - EXISTING / NEW 모드 공통
+    -->
+    <insert id="insertPublicFacility" parameterType="map">
+        insert into public_facility (
+                                      cmn_facility_no
+                                    , apt_cmplex_no
+                                    , facility_no
+                                    , cmn_facility_nm
+                                    , cmn_facility_cn
+                                    , cmn_facility_amt
+                                    , cmn_facility_rsv_yn
+                                    , cmn_facility_opr_hr
+                                    , reg_dt
+                                    , mdf_dt
+        ) values (
+                   #{cmnFacilityNo}
+                 , #{aptCmplexNo}
+                 , #{facilityNo}
+                 , #{cmnFacilityNm}
+                 , #{cmnFacilityCn}
+                 , nvl(#{cmnFacilityAmt}, 0)
+                 , #{cmnFacilityRsvYn}
+                 , #{cmnFacilityOprHr}
+                 , sysdate
+                 , null
+                 )
+    </insert>
+
+    <!--
+        PUBLIC_FACILITY 운영정보 수정
+        - 공용시설 수정 화면 저장 처리
+    -->
+    <update id="updatePublicFacility" parameterType="kr.or.ddit.domain.apt.mgmtOffice.facility.publicFacility.dto.PublicFacilityFormDTO">
+        update public_facility
+        set cmn_facility_nm = #{cmnFacilityNm}
+        , cmn_facility_cn = #{cmnFacilityCn}
+        , cmn_facility_amt = nvl(#{cmnFacilityAmt}, 0)
+        , cmn_facility_rsv_yn = #{cmnFacilityRsvYn}
+        , cmn_facility_opr_hr = #{cmnFacilityOprHr}
+        , mdf_dt = sysdate
+        where cmn_facility_no = #{cmnFacilityNo}
+        and apt_cmplex_no = <include refid="subqueryaptcmplexno"/>
+    </update>
+
+    <!--
+        PUBLIC_FACILITY 삭제
+        - 1차 구현은 운영관리 연결 데이터 삭제 기준
+    -->
+    <delete id="deletePublicFacility" parameterType="map">
+        delete from public_facility
+        where cmn_facility_no = #{cmnFacilityNo}
+        and apt_cmplex_no = <include refid="subqueryaptcmplexno"/>
+    </delete>
+
+    <!--
+        시설 사진 저장용 FACILITY 단건 조회
+        - Google Drive 폴더 경로 생성용
+        - FACILITY.FILE_GROUP_NO 확인용
+    -->
+    <select id="selectFacilityForFile" parameterType="string" resultType="kr.or.ddit.domain.apt.mgmtOffice.facility.vo.FacilityVO">
+        select facility_no
+             , facility_ty_cd
+             , instl_dt
+             , facility_nm
+             , apt_cmplex_no
+             , dong_no
+             , loc_cn
+             , use_yn
+             , file_group_no
+        from facility
+        where facility_no = #{facilityNo}
+    </select>
+
+    <!--
+        시설 파일그룹번호 조회
+        - 사진 저장/삭제 시 기존 FILE_GROUP_NO 확인용
+    -->
+    <select id="selectFacilityFileGroupNo" parameterType="string" resultType="long">
+        select file_group_no
+        from facility
+        where facility_no = #{facilityNo}
+    </select>
+
+    <!--
+        시설 파일그룹번호 수정
+        - 기존 시설자산에 FILE_GROUP_NO가 없을 때 최초 1회 연결
+        - NEW 모드에서 insert 시 file_group_no를 넣지 못한 경우에도 보조적으로 사용 가능
+    -->
+    <update id="updateFacilityFileGroupNo">
+        update facility
+        set file_group_no = #{fileGroupNo}
+        where facility_no = #{facilityNo}
+    </update>
+
+</mapper>

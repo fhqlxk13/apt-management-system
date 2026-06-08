@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.member.resident.mapper.IResidentBillMapper">
+
+    <resultMap id="billMap" type="kr.or.ddit.domain.apt.mgmtOffice.bill.vo.BillVO">
+        <id property="billNo" column="BILL_NO"/>
+        <result property="hoNo" column="HO_NO"/>
+        <result property="billYm" column="BILL_YM"/>
+        <result property="billPblancDt" column="BILL_PBLANC_DT"/>
+        <result property="billTotAmt" column="BILL_TOT_AMT"/>
+        <result property="dueDt" column="DUE_DT"/>
+        <result property="pymtSttsCd" column="PYMT_STTS_CD"/>
+        <result property="pymtDt" column="PYMT_DT"/>
+        <result property="pymtAmt" column="PYMT_AMT"/>
+        <result property="lateFeeRt" column="LATE_FEE_RT"/>
+        <result property="lateFeeAmt" column="LATE_FEE_AMT"/>
+
+        <result property="aptCmplexNo" column="APT_CMPLEX_NO"/>
+        <result property="dongNo" column="DONG_NO"/>
+        <result property="dongNm" column="DONG_NM"/>
+        <result property="ho" column="HO"/>
+        <result property="displayDongHo" column="DISPLAY_DONG_HO"/>
+
+        <result property="pymtSttsNm" column="PYMT_STTS_NM"/>
+        <result property="pymtSttsContent" column="PYMT_STTS_CONTENT"/>
+    </resultMap>
+
+    <resultMap id="billDetailMap" type="kr.or.ddit.domain.apt.mgmtOffice.bill.vo.BillDetailVO">
+        <id property="billDetailNo" column="BILL_DETAIL_NO"/>
+        <result property="billNo" column="BILL_NO"/>
+        <result property="billItemCd" column="BILL_ITEM_CD"/>
+        <result property="billItemAmt" column="BILL_ITEM_AMT"/>
+        <result property="atchFileId" column="ATCH_FILE_ID"/>
+        <result property="billItemNm" column="BILL_ITEM_NM"/>
+        <result property="billItemContent" column="BILL_ITEM_CONTENT"/>
+    </resultMap>
+
+    <!-- 로그인 사용자의 세대 목록 조회 -->
+    <select id="selectMyHouseList" resultMap="billMap">
+        SELECT
+            H.HO_NO,
+            U.APT_CMPLEX_NO,
+            U.DONG_NO,
+            U.DONG_NM,
+            H.HO,
+            U.DONG_NM || '동 ' || H.HO || '호' AS DISPLAY_DONG_HO
+        FROM HSHLD_HEAD HH
+                 JOIN APT_DETAIL H
+                      ON HH.HO_NO = H.HO_NO
+                 JOIN APT_UNIT U
+                      ON H.DONG_NO = U.DONG_NO
+        WHERE HH.USER_NO = #{userNo}
+        ORDER BY U.DONG_NM, H.HO
+    </select>
+
+    <!-- 내 관리비 목록 조회 -->
+    <select id="selectMyBillList"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.bill.vo.BillVO"
+            resultMap="billMap">
+
+        SELECT
+        B.BILL_NO,
+        B.HO_NO,
+        B.BILL_YM,
+        B.BILL_PBLANC_DT,
+        B.BILL_TOT_AMT,
+        B.DUE_DT,
+        B.PYMT_STTS_CD,
+        B.PYMT_DT,
+        B.PYMT_AMT,
+        B.LATE_FEE_RT,
+        B.LATE_FEE_AMT,
+
+        U.APT_CMPLEX_NO,
+        U.DONG_NO,
+        U.DONG_NM,
+        H.HO,
+        U.DONG_NM || '동 ' || H.HO || '호' AS DISPLAY_DONG_HO,
+
+        C.CODE_NAME AS PYMT_STTS_NM,
+        C.CODE_CONTENT AS PYMT_STTS_CONTENT
+
+        FROM BILL B
+        JOIN APT_DETAIL H
+        ON B.HO_NO = H.HO_NO
+        JOIN APT_UNIT U
+        ON H.DONG_NO = U.DONG_NO
+        JOIN HSHLD_HEAD HH
+        ON HH.HO_NO = B.HO_NO
+        LEFT JOIN COMMON_CODE C
+        ON C.GROUP_CODE_NO = 'PAY_ST'
+        AND C.CODE_NO_CD = B.PYMT_STTS_CD
+        AND C.USE_YN = 'Y'
+        WHERE HH.USER_NO = #{userNo}
+        AND B.HO_NO = #{hoNo}
+
+        <if test="billYm != null and billYm != ''">
+            AND B.BILL_YM = #{billYm}
+        </if>
+
+        ORDER BY B.BILL_YM DESC
+
+    </select>
+
+    <!-- 내 관리비 상세 마스터 조회 -->
+    <select id="selectMyBillDetail" resultMap="billMap">
+        SELECT
+            B.BILL_NO,
+            B.HO_NO,
+            B.BILL_YM,
+            B.BILL_PBLANC_DT,
+            B.BILL_TOT_AMT,
+            B.DUE_DT,
+            B.PYMT_STTS_CD,
+            B.PYMT_DT,
+            B.PYMT_AMT,
+            B.LATE_FEE_RT,
+            B.LATE_FEE_AMT,
+
+            U.APT_CMPLEX_NO,
+            U.DONG_NO,
+            U.DONG_NM,
+            H.HO,
+            U.DONG_NM || '동 ' || H.HO || '호' AS DISPLAY_DONG_HO,
+
+            C.CODE_NAME AS PYMT_STTS_NM,
+            C.CODE_CONTENT AS PYMT_STTS_CONTENT
+
+        FROM BILL B
+                 JOIN APT_DETAIL H
+                      ON B.HO_NO = H.HO_NO
+                 JOIN APT_UNIT U
+                      ON H.DONG_NO = U.DONG_NO
+                 JOIN HSHLD_HEAD HH
+                      ON HH.HO_NO = B.HO_NO
+                 LEFT JOIN COMMON_CODE C
+                           ON C.GROUP_CODE_NO = 'PAY_ST'
+                               AND C.CODE_NO_CD = B.PYMT_STTS_CD
+                               AND C.USE_YN = 'Y'
+        WHERE HH.USER_NO = #{userNo}
+          AND B.BILL_NO = #{billNo}
+    </select>
+
+    <!--
+    선택 세대의 연도별 관리비 고지서 목록 조회
+
+    예:
+    hoNo = A12127003_7_1901
+    billYear = 2026
+
+    결과:
+    202605, 202604, 202603, 202602 ... 최신월 순서
+-->
+    <select id="selectYearBillList" resultMap="billMap">
+        SELECT
+            B.BILL_NO,
+            B.HO_NO,
+            B.BILL_YM,
+            B.BILL_PBLANC_DT,
+            B.BILL_TOT_AMT,
+            B.DUE_DT,
+            B.PYMT_STTS_CD,
+            B.PYMT_DT,
+            B.PYMT_AMT,
+            B.LATE_FEE_RT,
+            B.LATE_FEE_AMT,
+
+            H.DONG_NO,
+            H.HO,
+            U.DONG_NM,
+            U.APT_CMPLEX_NO,
+            U.DONG_NM || '동 ' || H.HO || '호' AS DISPLAY_DONG_HO,
+
+            C.CODE_NAME AS PYMT_STTS_NM,
+            C.CODE_CONTENT AS PYMT_STTS_CONTENT
+
+        FROM BILL B
+                 JOIN APT_DETAIL H
+                      ON B.HO_NO = H.HO_NO
+                 JOIN APT_UNIT U
+                      ON H.DONG_NO = U.DONG_NO
+                 LEFT JOIN COMMON_CODE C
+                           ON C.GROUP_CODE_NO = 'PAY_ST'
+                               AND C.CODE_NO_CD = B.PYMT_STTS_CD
+                               AND C.USE_YN = 'Y'
+
+        WHERE B.HO_NO = #{hoNo}
+          AND SUBSTR(B.BILL_YM, 1, 4) = #{billYear}
+
+        ORDER BY B.BILL_YM DESC
+    </select>
+
+    <!-- 관리비 상세 항목 조회 -->
+    <select id="selectBillDetailList"
+            parameterType="string"
+            resultMap="billDetailMap">
+
+        SELECT
+            BD.BILL_DETAIL_NO,
+            BD.BILL_NO,
+            BD.BILL_ITEM_CD,
+            BD.BILL_ITEM_AMT,
+            BD.ATCH_FILE_ID,
+
+            C.CODE_NAME AS BILL_ITEM_NM,
+            C.CODE_CONTENT AS BILL_ITEM_CONTENT
+
+        FROM BILL_DETAIL BD
+                 LEFT JOIN COMMON_CODE C
+                           ON C.GROUP_CODE_NO = 'EXPN_CD'
+                               AND C.CODE_NO_CD = BD.BILL_ITEM_CD
+                               AND C.USE_YN = 'Y'
+        WHERE BD.BILL_NO = #{billNo}
+        ORDER BY C.SORT_ORDER, BD.BILL_ITEM_CD
+
+    </select>
+
+</mapper>

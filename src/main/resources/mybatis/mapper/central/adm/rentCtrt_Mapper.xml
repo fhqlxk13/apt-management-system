@@ -1,0 +1,410 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.central.rentCtrt.mapper.IRentCtrtMapper">
+    <!-- 계약 시퀀스 키 생성 -->
+    <select id="getNextRentCtrtSeq" resultType="java.lang.String">
+        select SEQ_RENT_CTRT.nextval
+        from DUAL
+    </select>
+
+    <!-- 가계약 인서트 -->
+    <insert id="insertRentCtrt" parameterType="java.util.List">
+        insert into RENT_CTRT ( /* kr.or.ddit.domain.central.rentCtrt.mapper.IRentCtrtMapper.insertRentCtrt */
+        RENT_CTRT_NO
+        , USER_NO
+        , REG_DT
+        , CTRT_STTS_CD
+        , RENT_LSTG_NO
+        , DPST_AMT
+        , MTHLY_RENT_AMT
+        , SBMSN_DOC_NO
+        , MVIN_DT
+        )
+        <foreach collection="param" item="map" separator="UNION ALL">
+            select
+            #{map.rentCtrtNo}
+            , A.USER_NO
+            , sysdate
+            , 'PENDING'
+            , #{map.rentLstgNo}
+            , R.DPST_AMT
+            , R.MTHLY_RENT_AMT
+            , DOC.SBMSN_DOC_NO
+            , ANN.MVIN_PRD_DT
+            from APLCT A
+            inner join APT_HO_TY HT on(A.HO_TY_NO = HT.HO_TY_NO)
+            inner join APT_DETAIL H on(HT.HO_TY_NO = H.HO_TY_NO)
+            inner join RENT_LISTING R on(H.HO_NO = R.HO_NO)
+            left outer join SBMSN_DOC DOC on(DOC.APLCT_NO = A.APLCT_NO)
+            inner join CENTER_ANN_BOARD_POST ANN on(A.ANN_NO = ANN.ANN_NO)
+            where A.APLCT_NO = #{map.aplctNo}
+            and ROWNUM = 1
+        </foreach>
+    </insert>
+
+    <!-- 담당자 배정 인서트 -->
+    <insert id="insertCtrtMgr">
+        INSERT INTO CTRT_MGR (
+        CTRT_MGR_NO
+        , USER_NO
+        , MGR_ASGN_DT
+        , CHG_YN
+        , RENT_CTRT_NO
+        )
+        SELECT SEQ_CTRT_MGR.nextval, T.* FROM (
+        <foreach collection="param" item="map" separator="UNION ALL">
+            SELECT
+            #{manager} AS USER_NO
+            , sysdate AS MGR_ASGN_DT
+            , 'N' AS CHG_YN
+            , #{map.rentCtrtNo} AS RENT_CTRT_NO
+            FROM DUAL
+        </foreach>
+        ) T
+    </insert>
+
+    <!--가계약 완료 후 입주민에 입주대기로 insert-->
+    <insert id="insertHshldHead">
+        INSERT INTO HSHLD_HEAD (
+            USER_NO, HO_NO, INOUT_CD
+        ) VALUES (
+            #{USER_NO},#{HO_NO},'WAIT'
+        )
+    </insert>
+
+    <!-- 계약 조회 -->
+    <select id="selectCtrt" resultType="java.util.Map">
+        select *
+        from (select A.*, ROWNUM as RNUM
+              from (select /* kr.or.ddit.domain.central.rentCtrt.mapper.IRentCtrtMapper.selectCtrt */
+                        C.RENT_CTRT_NO
+                         , U.USER_ID
+                         , C.USER_NO
+                         , U.USER_NM
+                         , A.APT_CMPLEX_NO
+                         , A.APT_CMPLEX_NM
+                         , C.CTRT_APRV_DT
+                         , C.MVIN_DT
+                         , C.MVOUT_DT
+                         , L.RENT_TYPE_CD
+                         , C.DPST_AMT
+                         , C.MTHLY_RENT_AMT
+                         , C.CTRT_STTS_CD
+                         , M.USER_NO  as CTRT_MGR_USER_NO
+                         , U2.USER_ID as CTRT_MGR_USER_ID
+                         , U2.USER_NM as CTRT_MGR_USER_NM
+                    from RENT_CTRT C
+                             inner join CTRT_MGR M on (C.RENT_CTRT_NO = M.RENT_CTRT_NO)
+                             inner join RENT_LISTING L on (C.RENT_LSTG_NO = L.RENT_LSTG_NO)
+                             inner join APT_DETAIL H on (H.HO_NO = L.HO_NO)
+                             inner join APT_UNIT D on (D.DONG_NO = H.DONG_NO)
+                             inner join APT_COMPLEX A on (A.APT_CMPLEX_NO = D.APT_CMPLEX_NO)
+                             inner join MEMBER U on (C.USER_NO = U.USER_NO)
+                             inner join MEMBER U2 on (M.USER_NO = U2.USER_NO)
+                        and M.CHG_YN = 'N'
+                    order by C.RENT_CTRT_NO desc) A
+              where ROWNUM &lt;= #{endRow})
+        where RNUM &gt;= #{startRow}
+    </select>
+
+    <!-- 계약데이터 총 갯수-->
+    <select id="selectCtrtCount" resultType="java.lang.Integer">
+        select COUNT(*) /* kr.or.ddit.domain.central.rentCtrt.mapper.IRentCtrtMapper.selectCtrtCount */
+        from RENT_CTRT C
+                 inner join CTRT_MGR M on (C.RENT_CTRT_NO = M.RENT_CTRT_NO)
+        where M.USER_NO = #{userNo}
+    </select>
+
+    <select id="selectCtrtDashboard" resultType="java.util.Map">
+        select /* kr.or.ddit.domain.central.rentCtrt.mapper.IRentCtrtMapper.selectCtrtCount */
+            count(*)                                                    as "totalCnt"
+             , count(case when CTRT_STTS_CD = 'PENDING' then 1 end)     as "pendingCnt"
+             , count(case when CTRT_STTS_CD = 'EXPIRED' then 1 end)     as "expiredCnt"
+             , count(case when CTRT_STTS_CD = 'APPROVED' then 1 end)    as "approvedCnt"
+             , count(case when CTRT_STTS_CD = 'TERMINATED' then 1 end)  as "terminatedCnt"
+             , count(case when CTRT_STTS_CD = 'REJECT' then 1 end)      as "rejectCnt"
+             , count(case when CTRT_STTS_CD = 'CANCEL' then 1 end)      as "cancelCnt"
+             , count(case
+                         when CTRT_STTS_CD = 'APPROVED'
+                             and <![CDATA[trunc(MVIN_DT) <= trunc(sysdate)]]>
+                             and <![CDATA[trunc(MVOUT_DT) >= trunc(sysdate)]]>
+                             and <![CDATA[trunc(MVOUT_DT) <= trunc(sysdate + 30)]]> then 1 end) as "urgentCnt"
+             , nvl(
+                round(
+                        case
+                            when sum(case
+                                         when CTRT_STTS_CD = 'APPROVED' and
+                                              trunc(CTRT_APRV_DT, 'MM') = trunc(add_months(sysdate, -1), 'MM') then 1
+                                         else 0 end) = 0
+                                then 100
+                            else (
+                                sum(case
+                                        when CTRT_STTS_CD = 'APPROVED' and
+                                             trunc(CTRT_APRV_DT, 'MM') = trunc(sysdate, 'MM') then 1
+                                        else 0 end)
+                                    -
+                                sum(case
+                                        when CTRT_STTS_CD = 'APPROVED' and
+                                             trunc(CTRT_APRV_DT, 'MM') = trunc(add_months(sysdate, -1), 'MM') then 1
+                                        else 0 end)
+                                    / nullif(sum(case
+                                                     when CTRT_STTS_CD = 'APPROVED' and trunc(CTRT_APRV_DT, 'MM') =
+                                                                                        trunc(add_months(sysdate, -1), 'MM')
+                                                         then 1 else 0 end), 0) * 100
+                                ) end, 2), 0) as "increaseRate"
+        from RENT_CTRT
+    </select>
+
+    <select id="getUserNo" resultType="java.lang.String">
+        SELECT USER_NO
+        FROM APLCT
+        WHERE APLCT_NO = #{aplctNo}
+    </select>
+
+    <select id="selectOneCtrtDetail" resultType="java.util.Map">
+        select
+            C.RENT_CTRT_NO
+             , C.CTRT_STTS_CD
+             , C.RENT_LSTG_NO
+             , M.USER_ID
+             , C.USER_NO
+             , M.USER_NM
+             , B.APT_CMPLEX_NO
+             , A.APT_CMPLEX_NM
+             , HT.TY_NM
+             , HT.EXCLUSIVE_SIZE
+             , L.HO_NO
+             , L.RENT_TYPE_CD
+             , C.DPST_AMT
+             , C.CTRT_AMT
+             , C.MID_PAY_AMT
+             , C.BAL_AMT
+             , C.MTHLY_RENT_AMT
+             , C.MVIN_DT
+             , C.MVOUT_DT
+             , C.MVOUT_CMPL_DT
+             , C.RENTOR_NM
+             , C.RENTOR_TELNO
+             , C.AGNT_NM
+             , C.AGNT_TELNO
+             , TO_CHAR(C.SPCL_STPLTN_CN) as SPCL_STPLTN_CN
+             , C.SBMSN_DOC_NO
+             , D.ATCH_FILE_ID
+             , C.CTRT_APRV_DT
+             , L.RCRT_LSTG_STTS_CD
+             , CM.CTRT_MGR_NO
+             , CM.USER_NO as CTRT_MGR_USER_NO
+             , M2.USER_NM as CTRT_MGR_USER_NM
+             , CM.MGR_ASGN_DT
+             , CM.CHG_YN
+        from RENT_CTRT C
+                 left outer join MEMBER M on (M.USER_NO = C.USER_NO)
+                 left outer join RENT_LISTING L on (L.RENT_LSTG_NO = C.RENT_LSTG_NO)
+                 left outer join CTRT_MGR CM on (CM.RENT_CTRT_NO = C.RENT_CTRT_NO)
+                 left outer join MEMBER M2 on (M2.USER_NO = CM.USER_NO)
+                 left outer join CENTER_ANN_BOARD_POST B on (B.ANN_NO = L.ANN_NO)
+                 left outer join SBMSN_DOC D on (D.SBMSN_DOC_NO = C.SBMSN_DOC_NO)
+                 left outer join APT_DETAIL AD on (L.HO_NO = AD.HO_NO)
+                 left outer join APT_HO_TY HT on (HT.HO_TY_NO = AD.HO_TY_NO)
+                 left outer join APT_COMPLEX A on (A.APT_CMPLEX_NO = B.APT_CMPLEX_NO)
+        where C.RENT_CTRT_NO = #{rentCtrtNo}
+    </select>
+
+    <update id="updateCtrt" parameterType="map">
+        update RENT_CTRT
+        <set>
+            <if test="detail.CTRT_STTS_CD != null and detail.CTRT_STTS_CD != ''">
+                CTRT_STTS_CD = #{detail.CTRT_STTS_CD},
+                <if test="detail.CTRT_STTS_CD == 'APPROVED'">
+                    CTRT_APRV_DT = sysdate,
+                </if>
+            </if>
+
+            <if test="detail.DPST_AMT != null and detail.DPST_AMT != ''">DPST_AMT = #{detail.DPST_AMT},</if>
+            <if test="detail.CTRT_AMT != null and detail.CTRT_AMT != ''">CTRT_AMT = #{detail.CTRT_AMT},</if>
+            <if test="detail.MID_PAY_AMT != null and detail.MID_PAY_AMT != ''">MID_PAY_AMT = #{detail.MID_PAY_AMT},</if>
+            <if test="detail.BAL_AMT != null and detail.BAL_AMT != ''">BAL_AMT = #{detail.BAL_AMT},</if>
+            <if test="detail.MTHLY_RENT_AMT != null and detail.MTHLY_RENT_AMT != ''">MTHLY_RENT_AMT =
+                #{detail.MTHLY_RENT_AMT},
+            </if>
+            <if test="detail.MVIN_DT != null and detail.MVIN_DT != ''">
+                MVIN_DT = TO_DATE(SUBSTR(#{detail.MVIN_DT}, 1, 10), 'YYYY-MM-DD'),
+            </if>
+            <if test="detail.MVOUT_DT != null and detail.MVOUT_DT != ''">
+                MVOUT_DT = TO_DATE(SUBSTR(#{detail.MVOUT_DT}, 1, 10), 'YYYY-MM-DD'),
+            </if>
+            <if test="detail.MVOUT_CMPL_DT != null and detail.MVOUT_CMPL_DT != ''">
+                MVOUT_CMPL_DT = TO_DATE(SUBSTR(#{detail.MVOUT_CMPL_DT}, 1, 10), 'YYYY-MM-DD'),
+            </if>
+            <if test="detail.SPCL_STPLTN_CN != null and detail.SPCL_STPLTN_CN != ''">SPCL_STPLTN_CN =
+                #{detail.SPCL_STPLTN_CN,jdbcType=CLOB},
+            </if>
+            <if test="detail.AGNT_NM != null and detail.AGNT_NM != ''">AGNT_NM =
+                #{detail.AGNT_NM},
+            </if>
+            <if test="detail.AGNT_TELNO != null and detail.AGNT_TELNO != ''">AGNT_TELNO =
+                #{detail.AGNT_TELNO},
+            </if>
+        </set>
+        where RENT_CTRT_NO = #{rentCtrtNo}
+    </update>
+
+    <select id="selectContractsCount" parameterType="map" resultType="int">
+        SELECT COUNT(*)
+        FROM RENT_CTRT C
+        INNER JOIN CTRT_MGR M ON (C.RENT_CTRT_NO = M.RENT_CTRT_NO)
+        INNER JOIN RENT_LISTING L ON (C.RENT_LSTG_NO = L.RENT_LSTG_NO)
+        INNER JOIN APT_DETAIL H ON (H.HO_NO = L.HO_NO)
+        INNER JOIN APT_UNIT D ON (D.DONG_NO = H.DONG_NO)
+        INNER JOIN APT_COMPLEX A ON (A.APT_CMPLEX_NO = D.APT_CMPLEX_NO)
+        left outer join MEMBER U2 ON (M.USER_NO = U2.USER_NO)
+        left outer join MEMBER U ON (C.USER_NO = U.USER_NO)
+        <where>
+            AND M.CHG_YN = 'N'
+            AND M.USER_NO = #{userNo}
+            <if test="ctrtNo != null and ctrtNo != ''">AND C.RENT_CTRT_NO LIKE '%' || #{ctrtNo} || '%'</if>
+            <if test="aptNm != null and aptNm != ''">
+                AND (A.APT_CMPLEX_NM LIKE '%' || #{aptNm} || '%' OR A.APT_CMPLEX_NO LIKE '%' || #{aptNm} || '%')
+            </if>
+            <if test="aprvStartDt != null and aprvStartDt != ''">
+                AND TRUNC(C.CTRT_APRV_DT) >= TO_DATE(#{aprvStartDt}, 'YYYY-MM-DD')
+            </if>
+            <if test="aprvEndDt != null and aprvEndDt != ''">
+                AND TRUNC(C.CTRT_APRV_DT) <![CDATA[ <= ]]> TO_DATE(#{aprvEndDt}, 'YYYY-MM-DD')
+            </if>
+            <if test="status != null and status != 'ALL' and status != ''">AND C.CTRT_STTS_CD = #{status}</if>
+            <if test="manager != null and manager != ''">AND U2.USER_NM LIKE '%' || #{manager} || '%'</if>
+            <if test="manager != null and manager != ''">
+                AND (U2.USER_NM LIKE '%' || #{manager} || '%'
+                OR U2.USER_ID LIKE '%' || #{manager} || '%'
+                OR U2.USER_NO LIKE '%' || #{manager} || '%')
+            </if>
+            <if test="startDt != null and startDt != ''">AND C.MVIN_DT >= TO_DATE(#{startDt}, 'YYYY-MM-DD')</if>
+            <if test="endDt != null and endDt != ''">AND C.MVOUT_DT <![CDATA[ <= ]]> TO_DATE(#{endDt}, 'YYYY-MM-DD')
+            </if>
+            <if test="minRent != null and minRent != ''">
+                AND (C.DPST_AMT >= TO_NUMBER(#{minRent}) OR C.MTHLY_RENT_AMT >= TO_NUMBER(#{minRent}))
+            </if>
+            <if test="maxRent != null and maxRent != ''">
+                AND (C.DPST_AMT <![CDATA[ <= ]]> TO_NUMBER(#{maxRent}) OR C.MTHLY_RENT_AMT <![CDATA[ <= ]]>
+                TO_NUMBER(#{maxRent}))
+            </if>
+            <if test="userSearch != null and userSearch != ''">
+                AND (U.USER_NM LIKE '%' || #{userSearch} || '%' OR U.USER_ID LIKE '%' || #{userSearch} || '%')
+            </if>
+            <if test="userNo != null and userNo != ''">
+                AND M.USER_NO = #{userNo}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectContracts" parameterType="map" resultType="map">
+        SELECT * FROM (
+        SELECT B.*, ROWNUM AS RNUM FROM (
+        SELECT /* kr.or.ddit.domain.central.rentCtrt.mapper.IRentCtrtMapper.selectContracts */
+        C.RENT_CTRT_NO, U.USER_ID, C.USER_NO, U.USER_NM, A.APT_CMPLEX_NO,
+        A.APT_CMPLEX_NM, C.CTRT_APRV_DT, C.MVIN_DT, C.MVOUT_DT,
+        L.RENT_TYPE_CD, C.DPST_AMT, C.MTHLY_RENT_AMT, C.CTRT_STTS_CD,
+        M.USER_NO AS CTRT_MGR_USER_NO, U2.USER_ID AS CTRT_MGR_USER_ID, U2.USER_NM AS CTRT_MGR_USER_NM
+        FROM RENT_CTRT C
+        INNER JOIN CTRT_MGR M ON C.RENT_CTRT_NO = M.RENT_CTRT_NO
+        INNER JOIN RENT_LISTING L ON C.RENT_LSTG_NO = L.RENT_LSTG_NO
+        INNER JOIN APT_DETAIL H ON H.HO_NO = L.HO_NO
+        INNER JOIN APT_UNIT D ON D.DONG_NO = H.DONG_NO
+        INNER JOIN APT_COMPLEX A ON A.APT_CMPLEX_NO = D.APT_CMPLEX_NO
+        LEFT OUTER JOIN MEMBER U ON C.USER_NO = U.USER_NO
+        LEFT OUTER JOIN MEMBER U2 ON M.USER_NO = U2.USER_NO
+        <where>
+            M.CHG_YN = 'N' AND M.USER_NO = #{userNo}
+            <if test="ctrtNo != null and ctrtNo != ''">AND C.RENT_CTRT_NO LIKE '%' || #{ctrtNo} || '%'</if>
+            <if test="aptNm != null and aptNm != ''">
+                AND (A.APT_CMPLEX_NM LIKE '%' || #{aptNm} || '%' OR A.APT_CMPLEX_NO LIKE '%' || #{aptNm} || '%')
+            </if>
+            <if test="aprvStartDt != null and aprvStartDt != ''">AND TRUNC(C.CTRT_APRV_DT) >= TO_DATE(#{aprvStartDt}, 'YYYY-MM-DD')</if>
+            <if test="aprvEndDt != null and aprvEndDt != ''">AND TRUNC(C.CTRT_APRV_DT) <![CDATA[ <= ]]> TO_DATE(#{aprvEndDt}, 'YYYY-MM-DD')</if>
+            <if test="status != null and status != 'ALL' and status != ''">AND C.CTRT_STTS_CD = #{status}</if>
+            <if test="manager != null and manager != ''">
+                AND (U2.USER_NM LIKE '%' || #{manager} || '%'
+                OR U2.USER_ID LIKE '%' || #{manager} || '%'
+                OR U2.USER_NO LIKE '%' || #{manager} || '%')
+            </if>
+            <if test="startDt != null and startDt != ''">AND C.MVIN_DT >= TO_DATE(#{startDt}, 'YYYY-MM-DD')</if>
+            <if test="endDt != null and endDt != ''">AND C.MVOUT_DT <![CDATA[ <= ]]> TO_DATE(#{endDt}, 'YYYY-MM-DD')</if>
+            <if test="minRent != null and minRent != ''">AND (C.DPST_AMT >= TO_NUMBER(#{minRent}) OR C.MTHLY_RENT_AMT >= TO_NUMBER(#{minRent}))</if>
+            <if test="maxRent != null and maxRent != ''">AND (C.DPST_AMT <![CDATA[ <= ]]> TO_NUMBER(#{maxRent}) OR C.MTHLY_RENT_AMT <![CDATA[ <= ]]> TO_NUMBER(#{maxRent}))</if>
+            <if test="userSearch != null and userSearch != ''">
+                AND (U.USER_NM LIKE '%' || #{userSearch} || '%' OR U.USER_ID LIKE '%' || #{userSearch} || '%')
+            </if>
+            <if test="userNo != null and userNo != ''">
+                AND M.USER_NO = #{userNo}
+            </if>
+        </where>
+        ORDER BY C.RENT_CTRT_NO DESC
+        ) B WHERE ROWNUM <![CDATA[ <= ]]> #{endRow}
+        ) WHERE RNUM >= #{startRow}
+    </select>
+
+    <select id="selectCtrtXls" parameterType="map" resultType="map">
+        SELECT /* kr.or.ddit.domain.central.rentCtrt.mapper.IRentCtrtMapper.selectContracts */
+        C.RENT_CTRT_NO, U.USER_ID, C.USER_NO, U.USER_NM, A.APT_CMPLEX_NO,
+        A.APT_CMPLEX_NM, C.CTRT_APRV_DT, C.MVIN_DT, C.MVOUT_DT,
+        L.RENT_TYPE_CD, C.DPST_AMT, C.MTHLY_RENT_AMT, C.CTRT_STTS_CD,
+        M.USER_NO AS CTRT_MGR_USER_NO, U2.USER_ID AS CTRT_MGR_USER_ID, U2.USER_NM AS CTRT_MGR_USER_NM
+        FROM RENT_CTRT C
+        INNER JOIN CTRT_MGR M ON C.RENT_CTRT_NO = M.RENT_CTRT_NO
+        INNER JOIN RENT_LISTING L ON C.RENT_LSTG_NO = L.RENT_LSTG_NO
+        INNER JOIN APT_DETAIL H ON H.HO_NO = L.HO_NO
+        INNER JOIN APT_UNIT D ON D.DONG_NO = H.DONG_NO
+        INNER JOIN APT_COMPLEX A ON A.APT_CMPLEX_NO = D.APT_CMPLEX_NO
+        LEFT OUTER JOIN MEMBER U ON C.USER_NO = U.USER_NO
+        LEFT OUTER JOIN MEMBER U2 ON M.USER_NO = U2.USER_NO
+        <where>
+            M.CHG_YN = 'N'
+            <if test="userNo != null and userNo != ''">
+                AND M.USER_NO = #{userNo}
+            </if>
+            <if test="ctrtNo != null and ctrtNo != ''">AND C.RENT_CTRT_NO LIKE '%' || #{ctrtNo} || '%'</if>
+            <if test="aptNm != null and aptNm != ''">
+                AND (A.APT_CMPLEX_NM LIKE '%' || #{aptNm} || '%' OR A.APT_CMPLEX_NO LIKE '%' || #{aptNm} || '%')
+            </if>
+            <if test="aprvStartDt != null and aprvStartDt != ''">AND TRUNC(C.CTRT_APRV_DT) >= TO_DATE(#{aprvStartDt},
+                'YYYY-MM-DD')
+            </if>
+            <if test="aprvEndDt != null and aprvEndDt != ''">AND TRUNC(C.CTRT_APRV_DT) <![CDATA[ <= ]]>
+                TO_DATE(#{aprvEndDt}, 'YYYY-MM-DD')
+            </if>
+            <if test="status != null and status != 'ALL' and status != ''">AND C.CTRT_STTS_CD = #{status}</if>
+            <if test="manager != null and manager != ''">
+                AND (U2.USER_NM LIKE '%' || #{manager} || '%'
+                OR U2.USER_ID LIKE '%' || #{manager} || '%'
+                OR U2.USER_NO LIKE '%' || #{manager} || '%')
+            </if>
+            <if test="startDt != null and startDt != ''">AND C.MVIN_DT >= TO_DATE(#{startDt}, 'YYYY-MM-DD')</if>
+            <if test="endDt != null and endDt != ''">AND C.MVOUT_DT <![CDATA[ <= ]]> TO_DATE(#{endDt}, 'YYYY-MM-DD')
+            </if>
+            <if test="minRent != null and minRent != ''">AND (C.DPST_AMT >= TO_NUMBER(#{minRent}) OR C.MTHLY_RENT_AMT >=
+                TO_NUMBER(#{minRent}))
+            </if>
+            <if test="maxRent != null and maxRent != ''">AND (C.DPST_AMT <![CDATA[ <= ]]> TO_NUMBER(#{maxRent}) OR
+                C.MTHLY_RENT_AMT <![CDATA[ <= ]]> TO_NUMBER(#{maxRent}))
+            </if>
+            <if test="userSearch != null and userSearch != ''">
+                AND (U.USER_NM LIKE '%' || #{userSearch} || '%' OR U.USER_ID LIKE '%' || #{userSearch} || '%')
+            </if>
+            <if test="userNo != null and userNo != ''">
+                AND M.USER_NO = #{userNo}
+            </if>
+        </where>
+        ORDER BY C.RENT_CTRT_NO DESC
+    </select>
+
+    <select id="selectAptCmplexNo" resultType="java.lang.String">
+        SELECT AU.APT_CMPLEX_NO
+        FROM RENT_LISTING RL
+        INNER JOIN APT_DETAIL AD
+                ON RL.HO_NO = AD.HO_NO
+        INNER JOIN APT_UNIT AU
+                ON AD.DONG_NO = AU.DONG_NO
+        WHERE RL.RENT_LSTG_NO = #{rentLstgNo}
+    </select>
+</mapper>

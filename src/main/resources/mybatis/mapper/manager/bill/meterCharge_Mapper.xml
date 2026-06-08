@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.bill.mapper.IMeterChargeMapper">
+
+    <resultMap id="meterChargeMap"
+               type="kr.or.ddit.domain.apt.mgmtOffice.bill.vo.MeterChargeVO">
+        <result property="hoNo" column="HO_NO"/>
+        <result property="dongNo" column="DONG_NO"/>
+        <result property="dongNm" column="DONG_NM"/>
+        <result property="ho" column="HO"/>
+        <result property="displayDongHo" column="DISPLAY_DONG_HO"/>
+
+        <result property="meterHstryNo" column="METER_HSTRY_NO"/>
+        <result property="facilityNo" column="FACILITY_NO"/>
+        <result property="utilityProviderNo" column="UTILITY_PROVIDER_NO"/>
+        <result property="meterDt" column="METER_DT"/>
+        <result property="preVal" column="PRE_VAL"/>
+        <result property="currVal" column="CURR_VAL"/>
+        <result property="usageVal" column="USAGE_VAL"/>
+        <result property="meterCn" column="METER_CN"/>
+        <result property="meterRsltCd" column="METER_RSLT_CD"/>
+
+        <result property="billItemCd" column="BILL_ITEM_CD"/>
+        <result property="billItemNm" column="BILL_ITEM_NM"/>
+
+        <result property="rowCount" column="ROW_COUNT"/>
+        <result property="enteredCount" column="ENTERED_COUNT"/>
+    </resultMap>
+
+    <!--
+        검침 계산 공통 원본
+        - 모든 조회 메서드는 PaginationInfoVO.searchVO를 검색조건으로 받습니다.
+        - 검색조건: aptCmplexNo, billYm, billItemCd, keyword
+    -->
+    <sql id="meterChargeBaseCte">
+        WITH TARGET_METER AS (
+            SELECT
+                X.HO_NO,
+                X.DONG_NO,
+                X.DONG_NM,
+                X.HO,
+                X.DISPLAY_DONG_HO,
+                X.FACILITY_NO,
+                X.UTILITY_PROVIDER_NO,
+                X.BILL_ITEM_CD,
+                X.BILL_ITEM_NM
+            FROM (
+                SELECT
+                M.HO_NO,
+                U.DONG_NO,
+                U.DONG_NM,
+                H.HO,
+                U.DONG_NM || '동 ' || H.HO || '호' AS DISPLAY_DONG_HO,
+                M.FACILITY_NO,
+                M.UTILITY_PROVIDER_NO,
+                F.FACILITY_TY_CD AS BILL_ITEM_CD,
+                CASE F.FACILITY_TY_CD
+                    WHEN 'ELC' THEN '전기요금'
+                    WHEN 'WTR' THEN '수도요금'
+                    WHEN 'GAS' THEN '가스요금'
+                    END AS BILL_ITEM_NM,
+                /* 수정: 과거/현재 공급업체가 함께 있어도 세대 + 항목 기준으로 선택월 우선 1건만 화면 대상으로 사용 */
+                ROW_NUMBER() OVER (
+                    PARTITION BY M.HO_NO, F.FACILITY_TY_CD
+                    ORDER BY
+                        CASE
+                            WHEN M.METER_DT &gt;= TO_DATE(#{searchVO.billYm} || '01', 'YYYYMMDD')
+                             AND M.METER_DT &lt; ADD_MONTHS(TO_DATE(#{searchVO.billYm} || '01', 'YYYYMMDD'), 1)
+                            THEN 0
+                            ELSE 1
+                        END,
+                        M.METER_DT DESC,
+                        M.METER_HSTRY_NO DESC
+                ) AS RN
+            FROM METER_HSTRY M
+                     JOIN FACILITY F
+                          ON M.FACILITY_NO = F.FACILITY_NO
+                     JOIN APT_DETAIL H
+                          ON M.HO_NO = H.HO_NO
+                     JOIN APT_UNIT U
+                          ON H.DONG_NO = U.DONG_NO
+                     JOIN UTILITY_PROVIDER UP
+                          ON M.UTILITY_PROVIDER_NO = UP.UTILITY_PROVIDER_NO
+                              AND UP.APT_CMPLEX_NO = U.APT_CMPLEX_NO
+            WHERE U.APT_CMPLEX_NO = #{searchVO.aptCmplexNo}
+              AND F.FACILITY_TY_CD IN ('ELC', 'WTR', 'GAS')
+            ) X
+            WHERE X.RN = 1
+        ),
+             PREV_METER AS (
+                 SELECT
+                     M.HO_NO,
+                     M.FACILITY_NO,
+                     M.UTILITY_PROVIDER_NO,
+                     M.CURR_VAL,
+                     ROW_NUMBER() OVER (
+                    PARTITION BY M.HO_NO, M.FACILITY_NO, M.UTILITY_PROVIDER_NO
+                    ORDER BY M.METER_DT DESC, M.METER_HSTRY_NO DESC
+                ) AS RN
+                 FROM METER_HSTRY M
+                          JOIN TARGET_METER T
+                               ON M.HO_NO = T.HO_NO
+                                   AND M.FACILITY_NO = T.FACILITY_NO
+                                   AND M.UTILITY_PROVIDER_NO = T.UTILITY_PROVIDER_NO
+                 WHERE M.METER_DT &lt; TO_DATE(#{searchVO.billYm} || '01', 'YYYYMMDD')
+             ),
+             CURR_METER AS (
+                 SELECT
+                     M.METER_HSTRY_NO,
+                     M.HO_NO,
+                     M.FACILITY_NO,
+                     M.UTILITY_PROVIDER_NO,
+                     M.METER_DT,
+                     M.CURR_VAL,
+                     M.METER_CN,
+                     M.METER_RSLT_CD,
+                     ROW_NUMBER() OVER (
+                    PARTITION BY M.HO_NO, M.FACILITY_NO, M.UTILITY_PROVIDER_NO
+                    ORDER BY M.METER_DT DESC, M.METER_HSTRY_NO DESC
+                ) AS RN
+                 FROM METER_HSTRY M
+                          JOIN TARGET_METER T
+                               ON M.HO_NO = T.HO_NO
+                                   AND M.FACILITY_NO = T.FACILITY_NO
+                                   AND M.UTILITY_PROVIDER_NO = T.UTILITY_PROVIDER_NO
+                 WHERE M.METER_DT &gt;= TO_DATE(#{searchVO.billYm} || '01', 'YYYYMMDD')
+                   AND M.METER_DT &lt; ADD_MONTHS(TO_DATE(#{searchVO.billYm} || '01', 'YYYYMMDD'), 1)
+             ),
+             METER_BASE AS (
+                 SELECT
+                     T.HO_NO,
+                     T.DONG_NO,
+                     T.DONG_NM,
+                     T.HO,
+                     T.DISPLAY_DONG_HO,
+                     C.METER_HSTRY_NO,
+                     T.FACILITY_NO,
+                     T.UTILITY_PROVIDER_NO,
+                     C.METER_DT,
+                     NVL(P.CURR_VAL, 0) AS PRE_VAL,
+                     C.CURR_VAL,
+                     CASE
+                         WHEN C.CURR_VAL IS NULL THEN NULL
+                         ELSE C.CURR_VAL - NVL(P.CURR_VAL, 0)
+                         END AS USAGE_VAL,
+                     C.METER_CN,
+                     C.METER_RSLT_CD,
+                     T.BILL_ITEM_CD,
+                     T.BILL_ITEM_NM
+                 FROM TARGET_METER T
+                          LEFT JOIN PREV_METER P
+                                    ON T.HO_NO = P.HO_NO
+                                        AND T.FACILITY_NO = P.FACILITY_NO
+                                        AND T.UTILITY_PROVIDER_NO = P.UTILITY_PROVIDER_NO
+                                        AND P.RN = 1
+                          LEFT JOIN CURR_METER C
+                                    ON T.HO_NO = C.HO_NO
+                                        AND T.FACILITY_NO = C.FACILITY_NO
+                                        AND T.UTILITY_PROVIDER_NO = C.UTILITY_PROVIDER_NO
+                                        AND C.RN = 1
+             )
+    </sql>
+
+    <sql id="meterChargeSearchWhere">
+        WHERE 1 = 1
+        <if test="searchVO.keyword != null and searchVO.keyword != ''">
+            AND (
+            B.DISPLAY_DONG_HO LIKE '%' || #{searchVO.keyword} || '%'
+            OR B.DONG_NM LIKE '%' || #{searchVO.keyword} || '%'
+            OR B.HO LIKE '%' || #{searchVO.keyword} || '%'
+            )
+        </if>
+    </sql>
+
+    <!-- 관리비 부과 및 저장 검증에서 사용하는 전체 원본 목록 -->
+    <select id="selectMeterChargeList"
+            parameterType="kr.or.ddit.common.model.PaginationInfoVO"
+            resultMap="meterChargeMap">
+        <include refid="meterChargeBaseCte"/>
+        SELECT B.*
+        FROM METER_BASE B
+        <include refid="meterChargeSearchWhere"/>
+        ORDER BY B.DONG_NM, B.HO, B.BILL_ITEM_CD
+    </select>
+
+    <!-- 화면 페이징 전체 건수 -->
+    <select id="selectMeterChargeCount" parameterType="kr.or.ddit.common.model.PaginationInfoVO" resultType="int">
+        <include refid="meterChargeBaseCte"/>
+        SELECT COUNT(DISTINCT B.HO_NO)
+        FROM METER_BASE B
+        WHERE 1 = 1
+        <if test="searchVO.keyword != null and searchVO.keyword != ''">
+            AND (
+            B.DISPLAY_DONG_HO LIKE '%' || #{searchVO.keyword} || '%'
+            OR B.DONG_NM LIKE '%' || #{searchVO.keyword} || '%'
+            OR B.HO LIKE '%' || #{searchVO.keyword} || '%'
+            )
+        </if>
+    </select>
+
+    <!-- 화면의 현재 페이지 목록 -->
+    <select id="selectMeterChargePagingList" parameterType="kr.or.ddit.common.model.PaginationInfoVO" resultMap="meterChargeMap">
+        <include refid="meterChargeBaseCte"/>
+        SELECT *
+        FROM (
+        SELECT
+        B.*,
+        DENSE_RANK() OVER (
+        ORDER BY B.DONG_NM, B.HO, B.HO_NO
+        ) AS HOUSE_RN
+        FROM METER_BASE B
+        WHERE 1 = 1
+
+        <if test="searchVO.keyword != null and searchVO.keyword != ''">
+            AND (
+            B.DISPLAY_DONG_HO LIKE '%' || #{searchVO.keyword} || '%'
+            OR B.DONG_NM LIKE '%' || #{searchVO.keyword} || '%'
+            OR B.HO LIKE '%' || #{searchVO.keyword} || '%'
+            )
+        </if>
+        )
+        WHERE HOUSE_RN BETWEEN #{startRow} AND #{endRow}
+        ORDER BY
+        HOUSE_RN,
+        CASE BILL_ITEM_CD
+        WHEN 'ELC' THEN 1
+        WHEN 'WTR' THEN 2
+        WHEN 'GAS' THEN 3
+        ELSE 4
+        END
+    </select>
+
+    <!-- 요약 카드는 페이지가 아니라 검색조건 전체 결과 기준으로 계산 -->
+    <select id="selectMeterChargeSummary"
+            parameterType="kr.or.ddit.common.model.PaginationInfoVO"
+            resultMap="meterChargeMap">
+        <include refid="meterChargeBaseCte"/>
+        SELECT
+        B.BILL_ITEM_CD,
+        MAX(B.BILL_ITEM_NM) AS BILL_ITEM_NM,
+        SUM(NVL(B.USAGE_VAL, 0)) AS USAGE_VAL,
+        COUNT(*) AS ROW_COUNT,
+        SUM(CASE WHEN B.CURR_VAL IS NOT NULL THEN 1 ELSE 0 END) AS ENTERED_COUNT
+        FROM METER_BASE B
+        <include refid="meterChargeSearchWhere"/>
+        GROUP BY B.BILL_ITEM_CD
+    </select>
+
+    <insert id="mergeMeterHistory">
+        MERGE INTO METER_HSTRY T
+            USING (
+                SELECT
+                    #{meter.hoNo} AS HO_NO,
+                    #{meter.utilityProviderNo} AS UTILITY_PROVIDER_NO,
+                    #{meter.facilityNo} AS FACILITY_NO,
+                    LAST_DAY(TO_DATE(#{billYm} || '01', 'YYYYMMDD')) AS METER_DT,
+                    #{meter.preVal} AS PRE_VAL,
+                    #{meter.currVal} AS CURR_VAL,
+                    #{meter.meterCn} AS METER_CN,
+                    #{meter.meterRsltCd} AS METER_RSLT_CD
+                FROM DUAL
+            ) S
+            ON (
+                T.HO_NO = S.HO_NO
+                    AND T.FACILITY_NO = S.FACILITY_NO
+                    AND T.UTILITY_PROVIDER_NO = S.UTILITY_PROVIDER_NO
+                    AND TO_CHAR(T.METER_DT, 'YYYYMM') = #{billYm}
+                )
+            WHEN MATCHED THEN
+                UPDATE SET
+                    T.PRE_VAL = S.PRE_VAL,
+                    T.CURR_VAL = S.CURR_VAL,
+                    T.METER_CN = S.METER_CN,
+                    T.METER_RSLT_CD = S.METER_RSLT_CD,
+                    T.MDF_DT = SYSDATE
+            WHEN NOT MATCHED THEN
+                INSERT (
+                        METER_HSTRY_NO,
+                        HO_NO,
+                        UTILITY_PROVIDER_NO,
+                        FACILITY_NO,
+                        METER_DT,
+                        PRE_VAL,
+                        CURR_VAL,
+                        METER_CN,
+                        METER_RSLT_CD,
+                        REG_DT,
+                        MDF_DT
+                    )
+                    VALUES (
+                               'MH' || TO_CHAR(SYSDATE, 'YYMMDD')
+                                   || LPAD(SEQ_METER_HSTRY.NEXTVAL, 7, '0'),
+                               S.HO_NO,
+                               S.UTILITY_PROVIDER_NO,
+                               S.FACILITY_NO,
+                               S.METER_DT,
+                               S.PRE_VAL,
+                               S.CURR_VAL,
+                               S.METER_CN,
+                               S.METER_RSLT_CD,
+                               SYSDATE,
+                               SYSDATE
+                           )
+    </insert>
+</mapper>

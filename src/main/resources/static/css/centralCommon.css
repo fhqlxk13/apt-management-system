@@ -1,0 +1,1502 @@
+/*
+  centralCommon.css — 중앙관리 시스템 공통 UI 컴포넌트
+
+  로딩 순서 (JSP <head> 필수 준수):
+    1. centralAside.css   ← 토큰(변수)/리셋/body/사이드바
+    2. centralHeader.css  ← topbar/main-wrap/브레드크럼
+    3. centralCommon.css  ← 여기 (공통 컴포넌트)
+    4. 페이지 전용 <style> 또는 pages/xxx.css
+
+  네이밍 규칙:
+    컴포넌트  → .c-{이름}  or  .c-{이름}--{변형}
+    레이아웃  → .l-{이름}
+    상태      → .is-{상태}
+    절대 금지 → 이 파일에 특정 페이지 전용 스타일 추가
+
+  포함 범위:
+    - 토큰 확장 (green/orange/yellow/shadow-md/breakpoint)
+    - 페이지 헤더
+    - 버튼 시스템 (기본/primary/danger/sm/lg)
+    - 탭 컴포넌트
+    - 카드 컴포넌트
+    - 폼 컴포넌트 (label/input/select/textarea/filter-row)
+    - 범위 슬라이더 (range)
+    - 테이블 컴포넌트
+    - 뱃지 (계약유형/상태)
+    - 상태 표시 (도트+텍스트 인라인)
+    - KPI 요약 카드
+    - 페이지네이션
+    - 드롭다운 메뉴 (컨텍스트/케밥)
+    - 로딩 스피너 (인라인/오버레이)
+    - 툴팁 방향 확장 (우측/하단)
+    - 모달
+    - 토스트
+    - 빈 상태 (empty state)
+    - 레이아웃 유틸
+*/
+
+/* ================================================
+   EXTENDED TOKENS
+   centralAside.css :root에 없는 추가 토큰만 선언
+   ================================================ */
+:root {
+  --green:      #16a34a;
+  --green-bg:   rgba(22, 163, 74, 0.08);
+  --orange:     #f97316;
+  --orange-bg:  rgba(249, 115, 22, 0.08);
+  /*--yellow:     #d97706;*/
+  /*--yellow-bg:  rgba(217, 119, 6, 0.08);*/
+  --yellow:     #f59e0b;
+  --yellow-bg:  #fef3c7;
+  --red-bg:     rgba(220, 38, 38, 0.08);
+  --blue-bg:    rgba(59, 130, 246, 0.08);
+  --shadow-md:  0 4px 16px rgba(0, 0, 0, 0.10), 0 1px 4px rgba(0, 0, 0, 0.06);
+
+  /* Breakpoints — @media (max-width: var(--bp-*)) 패턴으로 사용
+     업무화면 최소 지원 너비: 1024px (데스크톱 고정) */
+  --bp-sm:   640px;
+  --bp-md:   768px;
+  --bp-lg:  1024px;
+  --bp-xl:  1280px;
+}
+
+/* ================================================
+   PAGE HEADER
+   구조: .page-header > (.page-header__left + .page-header__right)
+   ================================================ */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 7px;
+}
+.page-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+.page-subtitle {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.page-header__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding-top: 3px;
+  flex-wrap: wrap; /* 좁은 화면에서 버튼/메타 줄바꿈 */
+}
+/* 헤더 우측의 기준일/갱신 시각 같은 메타 텍스트 */
+.page-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+/*.chip-row {*/
+/*  display: flex;*/
+/*  gap: 8px;*/
+/*  flex-wrap: wrap;*/
+/*  margin-top: 14px;*/
+/*}*/
+
+/*.chip {*/
+/*  padding: 6px 12px;*/
+/*  border-radius: 999px;*/
+/*  font-size: 12px;*/
+/*  font-weight: 700;*/
+/*  background: rgba(255,255,255,.18);*/
+/*  color: #fff;*/
+/*}*/
+
+.page-header > div:first-child {
+  padding-left: 4px;
+}
+
+.chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+
+  background: #f3f4f6;   /* 👉 요청한 연한 회색 */
+  color: #6b7280;        /* 차분한 그레이 */
+
+  border: 1px solid #e5e7eb;
+
+  transition: all 0.2s ease;
+}
+
+.chip-row {
+  margin-top: 4px;     /* 👉 위쪽 간격 줄임 (subtitle과 가까워짐) */
+  margin-bottom: 16px; /* 👉 아래 카드랑 안겹치게 띄움 */
+  padding-left: 4px;
+}
+
+.chip:hover {
+  background: #e5e7eb;   /* hover 시 살짝 진하게 */
+  color: #374151;        /* 진한 회색 */
+}
+
+/* ================================================
+   TEXT OVERFLOW SAFETY
+   - 긴 텍스트가 레이아웃을 밀어내지 않도록 기본 안전장치
+   ================================================ */
+.c-table th,
+.c-table td {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.page-meta .material-symbols-rounded { font-size: 13px; }
+
+/* ================================================
+   BUTTONS
+   기본형(.c-btn)은 내보내기/조회 같은 '중립 액션'
+   주요 액션은 --primary, 위험 액션만 --danger 사용
+   그 외 색깔 버튼(초록/노랑 등)은 사용 금지
+
+   .c-btn
+   .c-btn.c-btn--primary
+   .c-btn.c-btn--danger
+   .c-btn.c-btn--ghost    (border만 있는 투명 배경)
+   .c-btn.c-btn--sm
+   .c-btn.c-btn--lg
+   ================================================ */
+.c-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--card);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  letter-spacing: -0.01em;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.c-btn:hover {
+  background: var(--gray-soft);
+  color: var(--text-primary);
+}
+.c-btn .material-symbols-rounded {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+/* Primary: 핵심 저장/확인 액션 */
+.c-btn--primary {
+  /* 주요 액션도 흰색+테두리 톤으로 통일 */
+  background: var(--card);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+.c-btn--primary:hover {
+  background: var(--gray-soft);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+/* Danger: 삭제·강제처리·차단 등 되돌릴 수 없는 액션 전용 */
+.c-btn--danger {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+.c-btn--danger:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  color: #fff;
+}
+
+/* Ghost: 보조 액션 (취소, 닫기, 초기화 등) */
+.c-btn--ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+.c-btn--ghost:hover {
+  background: var(--gray-soft);
+  color: var(--text-primary);
+}
+
+/* Small */
+.c-btn--sm {
+  height: 28px;
+  padding: 0 12px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+.c-btn--sm .material-symbols-rounded { font-size: 14px; }
+
+/* Large */
+.c-btn--lg {
+  height: 40px;
+  padding: 0 20px;
+  font-size: 14px;
+}
+.c-btn--lg .material-symbols-rounded { font-size: 18px; }
+
+/* Disabled 공통 */
+.c-btn:disabled,
+.c-btn.is-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* ================================================
+   TAB BAR
+   하단 경계선형 탭 (statistics.jsp 기준으로 전체 통일)
+   구조: .c-tab-bar > .c-tab-btn(.is-active)
+
+   pill형/박스형 탭은 사용 금지 — 이 스타일로 통일
+   ================================================ */
+.c-tab-bar {
+  display: flex;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 20px;
+}
+.c-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 18px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.c-tab-btn .material-symbols-rounded { font-size: 15px; }
+.c-tab-btn:hover { color: var(--text-primary); }
+.c-tab-btn.is-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ================================================
+   CARD
+   구조: .c-card > { .c-card__header, .c-card__body, .c-card__footer }
+   .c-card--divide : 헤더에 하단 구분선이 생기는 변형 (테이블/리스트 카드용)
+   ================================================ */
+.c-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 카드 헤더: 좌(타이틀+서브) + 우(액션/컨트롤) */
+.c-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px 0;
+  margin-bottom: 14px;
+}
+/* 헤더 하단 구분선이 필요한 카드 */
+.c-card--divide .c-card__header {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+}
+.c-card__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+.c-card__sub {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 3px;
+  line-height: 1.4;
+}
+/* 헤더 우측 버튼/셀렉트 그룹 */
+.c-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.c-card__body {
+  padding: 0 22px 20px;
+}
+.c-card--divide .c-card__body {
+  padding-top: 16px;
+}
+.c-card__footer {
+  padding: 12px 22px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ================================================
+   FORM COMPONENTS
+   구조: .c-field > { .c-label, .c-input/.c-select/.c-textarea }
+   ================================================ */
+.c-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.c-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.c-label .req {
+  color: var(--red);
+  margin-left: 2px;
+}
+
+.c-input,
+.c-select,
+.c-textarea {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--card);
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  letter-spacing: -0.01em;
+}
+.c-textarea {
+  height: auto;
+  padding: 10px 12px;
+  resize: vertical;
+  line-height: 1.5;
+}
+.c-input:focus,
+.c-select:focus,
+.c-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.10);
+}
+.c-input::placeholder,
+.c-textarea::placeholder {
+  color: var(--text-tertiary);
+}
+/* select 화살표 커스텀 */
+.c-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 30px;
+  cursor: pointer;
+}
+
+/* 필터 행 — 여러 필드를 가로로 나열할 때 */
+.c-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+/* ================================================
+   TABLE
+   구조: .c-table-wrap > table.c-table > thead/tbody
+   ================================================ */
+.c-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--r-sm);
+}
+.c-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.c-table thead tr {
+  background: var(--gray-soft);
+  border-bottom: 2px solid var(--border);
+}
+.c-table th {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+  text-align: left;
+  white-space: nowrap;
+}
+.c-table td {
+  padding: 11px 14px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.c-table tbody tr:last-child td { border-bottom: none; }
+.c-table tbody tr:hover td { background: #f8f9fb; }
+/* 보조 텍스트 셀 */
+.c-table td.muted {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+/* 테이블 빈 상태 (tbody에 직접 사용) */
+.c-table__empty td {
+  padding: 48px 0;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  border: none;
+}
+
+/* ================================================
+   BADGE
+   .c-badge.c-badge--{variant}
+   계약 유형: jeonse / wolse
+   처리 상태: active / pending / danger / neutral
+   ================================================ */
+.c-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+/* 계약 유형 */
+.c-badge--jeonse  { background: var(--blue-bg);   color: var(--accent);  }
+.c-badge--wolse   { background: var(--orange-bg);  color: var(--orange);  }
+/* 처리 상태 */
+.c-badge--active  { background: var(--green-bg);   color: var(--green);   }
+.c-badge--pending { background: var(--yellow-bg);  color: var(--yellow);  }
+.c-badge--danger  { background: var(--red-bg);     color: var(--red);     }
+.c-badge--neutral { background: var(--gray-soft);  color: var(--text-secondary); }
+
+/* ================================================
+   KPI / SUMMARY CARD
+   구조: .c-kpi-grid(--2/--3) > .c-kpi-card
+         > { .c-kpi-card__label, .c-kpi-card__value, .c-kpi-card__delta }
+   ================================================ */
+.c-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.c-kpi-grid--3 { grid-template-columns: repeat(3, 1fr); }
+.c-kpi-grid--2 { grid-template-columns: repeat(2, 1fr); }
+
+.c-kpi-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.c-kpi-card__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.c-kpi-card__label .material-symbols-rounded { font-size: 14px; }
+.c-kpi-card__value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+.c-kpi-card__value .unit {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  margin-left: 3px;
+}
+.c-kpi-card__delta {
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.c-kpi-card__delta .material-symbols-rounded { font-size: 14px; }
+.c-kpi-card__delta.up   { color: var(--green); }
+.c-kpi-card__delta.down { color: var(--red);   }
+
+/* ================================================
+   MODAL
+   구조: .c-modal-overlay > .c-modal(.c-modal--sm/.c-modal--lg)
+         > { .c-modal__header, .c-modal__body, .c-modal__footer }
+   .c-modal-overlay.is-hidden 으로 토글
+   ================================================ */
+.c-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 24px;
+}
+.c-modal-overlay.is-hidden { display: none; }
+
+.c-modal {
+  background: var(--card);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-md);
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.c-modal--sm { max-width: 400px; }
+.c-modal--lg { max-width: 800px; }
+
+.c-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.c-modal__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.c-modal__close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: var(--gray-soft);
+  border-radius: 7px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: background 0.1s;
+}
+.c-modal__close:hover {
+  background: var(--border);
+  color: var(--text-primary);
+}
+.c-modal__close .material-symbols-rounded { font-size: 17px; }
+
+.c-modal__body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+.c-modal__footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ================================================
+   TOAST
+   구조: .c-toast-wrap(fixed) > .c-toast.c-toast--{variant}
+   JS에서 동적으로 추가/제거
+   ================================================ */
+.c-toast-wrap {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 300;
+  pointer-events: none;
+}
+.c-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--text-primary);
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-md);
+  font-size: 13px;
+  line-height: 1.4;
+  min-width: 240px;
+  max-width: 360px;
+  pointer-events: auto;
+}
+.c-toast .material-symbols-rounded { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+.c-toast__msg { flex: 1; }
+
+.c-toast--success { background: var(--green);  }
+.c-toast--danger  { background: var(--red);    }
+.c-toast--warning { background: var(--yellow); }
+.c-toast--info    { background: var(--accent); }
+
+/* ================================================
+   EMPTY STATE
+   데이터 없음 / 조회 결과 없음 화면
+   ================================================ */
+.c-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 24px;
+  text-align: center;
+  gap: 10px;
+}
+.c-empty .material-symbols-rounded {
+  font-size: 44px;
+  color: var(--border);
+}
+.c-empty__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.c-empty__sub {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: -4px;
+  line-height: 1.5;
+}
+
+/* ================================================
+   LAYOUT UTILS
+   특정 컴포넌트 내부가 아닌, 페이지 그리드/간격에만 사용
+   ================================================ */
+.l-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.l-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.l-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.l-stack  { display: flex; flex-direction: column; gap: 14px; }
+.l-row    { display: flex; align-items: center; gap: 10px; }
+.l-row--between { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.l-spacer { flex: 1; }
+
+/* 마진 유틸 */
+.mb-0  { margin-bottom: 0;    }
+.mb-8  { margin-bottom: 8px;  }
+.mb-14 { margin-bottom: 14px; }
+.mb-20 { margin-bottom: 20px; }
+.mb-24 { margin-bottom: 24px; }
+
+/* ================================================
+   STATUS — 인라인 상태 표시 (도트 + 텍스트)
+   .c-badge와 달리 "현재 진행 상태"를 텍스트로 읽힐 때 사용
+   예: 민원 처리중, 계약 완료, 검토 반려 등
+
+   구조: <span class="c-status c-status--pending">
+           <span class="c-status__dot"></span>처리중
+         </span>
+   ================================================ */
+.c-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.c-status__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.c-status--active  { color: var(--green);          }
+.c-status--active  .c-status__dot { background: var(--green);  }
+.c-status--pending { color: var(--yellow);         }
+.c-status--pending .c-status__dot { background: var(--yellow); }
+.c-status--danger  { color: var(--red);            }
+.c-status--danger  .c-status__dot { background: var(--red);    }
+.c-status--neutral { color: var(--text-secondary); }
+.c-status--neutral .c-status__dot { background: var(--text-tertiary); }
+
+/* ================================================
+   RANGE SLIDER — 범위 필터용 슬라이더
+   CSS만 공통화, 듀얼 레인지 JS 로직은 페이지 전용 유지
+
+   구조: .c-range-wrap > input[type="range"].c-range
+                       > .c-range-labels > (span × 2)
+   ================================================ */
+.c-range-wrap {
+  position: relative;
+  padding: 4px 0 2px;
+}
+input[type="range"].c-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+/* 채워진 트랙은 JS로 인라인 background-image 덮어씀 */
+input[type="range"].c-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--accent);
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+}
+input[type="range"].c-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--accent);
+  border-radius: 50%;
+  border: 2px solid #fff;
+  cursor: pointer;
+}
+.c-range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 6px;
+}
+/* 현재 선택값 표시 (선택적 사용) */
+.c-range-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  text-align: center;
+  margin-top: 4px;
+}
+
+/* ================================================
+   PAGINATION
+   구조: .c-pagination > { .c-pagination__btn(.is-active/.is-disabled),
+                            .c-pagination__sep }
+   이전/다음은 Material Icon + .c-pagination__btn 조합
+   ================================================ */
+.c-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 16px 0 4px;
+}
+.c-pagination--mini {
+  gap: 2px;
+  padding: 8px 0 0;
+}
+.c-pagination--mini .c-pagination__btn {
+  min-width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 12px;
+  padding: 0 4px;
+}
+.c-pagination--mini .c-pagination__btn .material-symbols-rounded { font-size: 18px; }
+.c-pagination--mini .c-pagination__btn.is-active {
+  background: var(--gray-soft);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+.c-pagination__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--card);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.c-pagination__btn:hover {
+  background: var(--gray-soft);
+  color: var(--text-primary);
+}
+.c-pagination__btn.is-active {
+  background: var(--gray-soft);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+.c-pagination__btn.is-disabled,
+.c-pagination__btn:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+.c-pagination__btn .material-symbols-rounded { font-size: 16px; }
+/* 생략 구분자 (…) */
+.c-pagination__sep {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  padding: 0 4px;
+  user-select: none;
+}
+
+/* ================================================
+   DROPDOWN MENU — 컨텍스트/케밥(⋮) 팝업 메뉴
+   select 엘리먼트가 아닌, 버튼 클릭으로 열리는 메뉴
+
+   구조: .c-dropdown > { trigger버튼, .c-dropdown__menu }
+   .c-dropdown__menu.is-hidden 으로 JS 토글
+   ================================================ */
+.c-dropdown {
+  position: relative;
+  display: inline-flex;
+}
+.c-dropdown__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 168px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-md);
+  z-index: 150;
+  overflow: hidden;
+  padding: 4px 0;
+}
+.c-dropdown__menu.is-hidden { display: none; }
+/* 좌측 정렬이 필요할 때 */
+.c-dropdown__menu--left { right: auto; left: 0; }
+
+.c-dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+  white-space: nowrap;
+}
+.c-dropdown__item:hover { background: var(--gray-soft); }
+.c-dropdown__item .material-symbols-rounded {
+  font-size: 16px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+/* 위험 액션 아이템 */
+.c-dropdown__item--danger { color: var(--red); }
+.c-dropdown__item--danger .material-symbols-rounded { color: var(--red); }
+.c-dropdown__item--danger:hover { background: var(--red-bg); }
+
+.c-dropdown__sep {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+.c-dropdown__label {
+  padding: 7px 14px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ================================================
+   LOADING SPINNER
+   인라인: 버튼 내부, 카드 우측 등 작은 공간
+   오버레이: 카드/섹션/페이지 전체 로딩 차단
+
+   오버레이 사용 시 부모 요소에 position: relative 필요
+   ================================================ */
+@keyframes c-spin {
+  to { transform: rotate(360deg); }
+}
+.c-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: c-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+.c-spinner--sm { width: 14px; height: 14px; }
+.c-spinner--lg { width: 28px; height: 28px; border-width: 3px; }
+
+/* 카드/섹션 위에 반투명으로 덮는 오버레이 */
+.c-spinner-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.80);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  z-index: 10;
+  border-radius: inherit;
+}
+.c-spinner-overlay.is-hidden { display: none; }
+.c-spinner-overlay .c-spinner-overlay__msg {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* ================================================
+   TOOLTIP 방향 확장
+   centralAside.css의 [data-tooltip] 은 기본 위(↑) 방향
+   여기서는 우측/하단 방향 변형만 추가
+
+   위: data-tooltip="텍스트"          (centralAside.css 기본)
+   우: data-tooltip-right="텍스트"
+   아래: data-tooltip-bottom="텍스트"
+   ================================================ */
+[data-tooltip-right],
+[data-tooltip-bottom] {
+  position: relative;
+}
+
+/* 우측 툴팁 */
+[data-tooltip-right]::after {
+  content: attr(data-tooltip-right);
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--text-primary);
+  color: #fff;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 99;
+}
+[data-tooltip-right]:hover::after { opacity: 1; }
+
+/* 하단 툴팁 */
+[data-tooltip-bottom]::after {
+  content: attr(data-tooltip-bottom);
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 6px);
+  transform: translateX(-50%);
+  background: var(--text-primary);
+  color: #fff;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 99;
+}
+[data-tooltip-bottom]:hover::after { opacity: 1; }
+
+/* ================================================
+   TAB PANEL — 탭 컨텐츠 표시/숨김
+   사용: <div class="tab-panel"> / <div class="tab-panel is-active">
+   ================================================ */
+.tab-panel { display: none; }
+.tab-panel.is-active { display: block; }
+
+/* ================================================
+   REQUIRED MARK — 필수 입력 표시
+   사용: <span class="req">*</span>
+   ================================================ */
+.req { color: var(--accent); margin-left: 2px; }
+
+/* ================================================
+   FORM VALIDATION — 입력 오류 표시
+   .is-error: c-input, c-select, c-textarea에 추가
+   .err-msg: 필드 하단 오류 문구
+   ================================================ */
+.is-error { border-color: var(--red) !important; }
+.err-msg {
+  font-size: 11px;
+  color: var(--red);
+  margin-top: 4px;
+  min-height: 14px;
+  line-height: 1.4;
+}
+
+/* ================================================
+   RADIO BUTTON GROUP — 토글 형태 라디오 선택
+   구조: .c-radio-group > label.c-radio-btn > input[type="radio"]
+   ================================================ */
+.c-radio-group { display: flex; gap: 6px; }
+.c-radio-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  user-select: none;
+}
+.c-radio-btn input { display: none; }
+.c-radio-btn:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--blue-bg);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* ================================================
+   DUAL RANGE SLIDER — 최소/최대 범위 필터 슬라이더
+   구조: .c-dual-range > .c-rng-track > .c-rng-fill
+                       > input[type="range"] × 2
+         .c-rng-labels > span × 2
+   (c-range는 단일 슬라이더용, c-dual-range는 범위용)
+   ================================================ */
+.c-dual-range {
+  position: relative;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.c-rng-track {
+  position: absolute;
+  left: 8px; right: 8px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+}
+.c-rng-fill {
+  position: absolute;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+}
+.c-dual-range > input[type="range"] {
+  position: absolute;
+  width: 100%; height: 22px;
+  background: none;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+  top: 0; left: 0; margin: 0;
+}
+.c-dual-range > input[type="range"]::-webkit-slider-runnable-track { background: none; }
+.c-dual-range > input[type="range"]::-webkit-slider-thumb {
+  width: 16px; height: 16px;
+  background: #fff;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  -webkit-appearance: none;
+  pointer-events: all;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(59, 130, 246, 0.25);
+}
+.c-dual-range > input[type="range"]::-moz-range-track { background: none; height: 4px; }
+.c-dual-range > input[type="range"]::-moz-range-thumb {
+  width: 12px; height: 12px;
+  background: #fff;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  pointer-events: all;
+  cursor: pointer;
+}
+.c-rng-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* ================================================
+   PROGRESS BAR — 수치/점유율 표시 바
+   구조: .c-progress > .c-progress__fill
+   ================================================ */
+.c-progress {
+  height: 8px;
+  background: var(--gray-soft);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.c-progress__fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent), var(--green));
+  transition: width 0.4s ease;
+}
+/* 단색 변형 */
+.c-progress__fill--accent { background: var(--accent); }
+.c-progress__fill--green  { background: var(--green); }
+.c-progress__fill--red    { background: var(--red); }
+
+/* ================================================
+   MAP LEGEND — 색상 범례 (지도/그리드 범례에서 공통 사용)
+   구조: .c-legend > .c-legend__item > .c-legend__dot + span
+   ================================================ */
+.c-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.c-legend__item { display: flex; align-items: center; gap: 6px; }
+.c-legend__dot {
+  width: 10px; height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* ================================================
+   INFO GRID — 상세 정보 그리드 (슬라이드오버, 상세 패널)
+   구조: .c-info-grid > .c-info-field(.c-info-field--full)
+   ================================================ */
+.c-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+}
+.c-info-field { display: flex; flex-direction: column; gap: 3px; }
+.c-info-field--full { grid-column: 1 / -1; }
+.c-info-field__label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  letter-spacing: 0.02em;
+}
+.c-info-field__val {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+/* 라벨+값 블록 스타일 (배경 있는 버전) */
+.c-info-block {
+  background: var(--gray-soft);
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.c-info-block .c-info-field__label { margin-bottom: 3px; }
+
+/* ================================================
+   SLIDEOVER — 화면 우측에서 나오는 패널 (계약/민원 상세)
+   구조: .c-so-overlay + .c-slideover > .c-so__head + .c-so__body
+   열기: .open 클래스 토글
+   ================================================ */
+.c-so-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.40);
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.c-so-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.c-slideover {
+  position: fixed;
+  top: 0; right: 0;
+  height: 100vh;
+  width: 480px;
+  background: var(--card);
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+  transform: translateX(100%);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.c-slideover.open { transform: translateX(0); }
+.c-so__head {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.c-so__head h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.c-so__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.c-so__section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.c-so__section-title .material-symbols-rounded { font-size: 15px; color: var(--accent); }
+.c-so__footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.c-so__footer .c-btn { flex: 1; }
+
+/* ================================================
+   STEP LIST — 절차/단계 안내 목록
+   구조: .c-step-list > .c-step-item > .c-step-num + .c-step-text
+   ================================================ */
+.c-step-list { display: flex; flex-direction: column; gap: 12px; }
+.c-step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--gray-soft);
+}
+.c-step-num {
+  width: 28px; height: 28px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.c-step-text strong { display: block; font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+.c-step-text span { font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+
+/* ================================================
+   FILE UPLOAD ZONE — 드래그앤드롭 파일 업로드
+   구조: .c-drop-zone > input[type="file"](hidden)
+                       + .c-dz__icon + .c-dz__title + .c-dz__sub
+                       + .c-dz__preview > .c-dz__chip × n
+   ================================================ */
+.c-drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--r-md);
+  padding: 28px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: var(--gray-soft);
+  text-align: center;
+}
+
+/* ================================================
+   FILE ROW / SIMPLE UPLOAD — 계약/민원 상세/등록에서 공통으로 쓰는 간단 파일 행
+   - 테이블/모달 내부의 "파일명 + 버튼" 형태
+   ================================================ */
+.file-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--gray-soft);
+  border-radius: var(--r-sm);
+}
+.file-row + .file-row { margin-top: 6px; }
+.file-name {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+}
+.file-upload-row { display: flex; align-items: center; gap: 12px; }
+.file-label {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  background: var(--gray-soft);
+  white-space: nowrap;
+}
+.file-label:hover { background: var(--border); }
+.file-label input[type="file"] { display: none; }
+.file-fname { font-size: 12px; color: var(--text-tertiary); }
+.form-err { font-size: 11px; color: var(--red); min-height: 14px; }
+.req { color: var(--red); }
+.c-drop-zone:hover,
+.c-drop-zone.drag-over {
+  border-color: var(--accent);
+  background: var(--blue-bg);
+}
+.c-drop-zone input[type="file"] { display: none; }
+.c-dz__icon { font-size: 32px; color: var(--text-tertiary); }
+.c-dz__title { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.c-dz__sub   { font-size: 11px; color: var(--text-tertiary); }
+.c-dz__preview {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 6px;
+}
+.c-dz__chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--blue-bg);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+}
+.c-dz__chip__remove {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  transition: color 0.12s;
+}
+.c-dz__chip__remove:hover { color: var(--red); }
+
+/* 파일 선택 버튼 형태 (단순 버전) */
+.c-file-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.c-file-label:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ================================================
+   UPLOAD TYPE CHIP — 파일 종류 선택 라디오 칩
+   구조: .c-upload-cat-row > label.c-upload-cat > input[type="radio"]
+   ================================================ */
+.c-upload-cat-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.c-upload-cat {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--gray-soft);
+  cursor: pointer;
+  transition: 0.15s;
+  user-select: none;
+}
+.c-upload-cat input { display: none; }
+.c-upload-cat:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--blue-bg);
+  color: var(--accent);
+  font-weight: 700;
+}
+.c-upload-cat .material-symbols-rounded { font-size: 14px; }
+
+/* ================================================
+   TABULAR NUMBERS UTILITY
+   ================================================ */
+.td-num  { font-variant-numeric: tabular-nums; font-weight: 500; }
+.td-dash { color: var(--text-tertiary); }

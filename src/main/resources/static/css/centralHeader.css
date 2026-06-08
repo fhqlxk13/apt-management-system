@@ -1,0 +1,90 @@
+/*
+  centralHeader.css
+
+  - 이 파일에 넣는 것
+    - 중앙관리 레이아웃의 상단 헤더(topbar) UI 전용 스타일
+    - 헤더와 같이 움직이는 메인 래퍼(.main-wrap, .main-content) 레이아웃
+
+  - 이 파일에 넣지 않는 것
+    - 전역 토큰/리셋/body 기본 → centralAside.css(현재는 그쪽에 있음)
+    - 사이드바(aside) UI → centralAside.css
+    - 페이지 전용 스타일 → pages/*.css (추후)
+*/
+
+/* ================================================
+   LAYOUT WRAPPER
+   - 헤더 아래 메인 영역 레이아웃 컨테이너
+   ================================================ */
+.main-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.main-content {
+  flex: 1;
+  padding: 28px;
+  overflow-y: auto;
+}
+
+/* ================================================
+   TOPBAR / HEADER
+   - 브레드크럼, 우측 액션 버튼(알림/설정)
+   - 버튼 hover / 알림 dot
+   ================================================ */
+.topbar {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.bc-current {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.topbar-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--card);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  position: relative;
+  transition: 0.15s;
+}
+.topbar-icon-btn:hover {
+  background: var(--gray-soft);
+  color: var(--text-primary);
+}
+.topbar-icon-btn .dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  background: var(--red);
+  border-radius: 50%;
+  border: 1.5px solid white;
+}

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.member.admin.mapper.IAdmMapper">
+    <resultMap id="admMap" type="kr.or.ddit.domain.member.admin.vo.AdmVO"
+               extends="kr.or.ddit.domain.member.mapper.IMemberMapper.memberMap">
+        <result property="deptNm" column="dept_nm"/>
+        <result property="pstnNm" column="pstn_nm"/>
+    </resultMap>
+
+    <select id="selectOneAdmInfo" parameterType="string" resultMap="admMap">
+        select DEPT_NM
+             , PSTN_NM
+        from ADM
+        where USER_NO = #{user_no}
+    </select>
+
+</mapper>

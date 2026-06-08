@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.central.board.mapper.INoticeMapper">
+
+
+
+    <select id="selectNoticeList" resultType="kr.or.ddit.domain.central.board.vo.NoticeVO">
+        SELECT
+            ANN_NO,
+            BOARD_NO,
+            TTL,
+            CN,
+            WRTR_ID,
+            TOP_FXD_YN,
+            PBLANC_BGNG_DT,
+            PBLANC_END_DT,
+            RCRT_BGNG_DT,
+            RCRT_END_DT,
+            REG_DTTM,
+            MDF_DTTM,
+            INQ_CNT,
+            DEL_YN,
+            ATCH_FILE_ID
+        FROM NOTICE
+        WHERE DEL_YN = 'N'
+        ORDER BY TO_NUMBER(SUBSTR(ANN_NO,4)) ASC
+    </select>
+
+
+
+    <select id="selectNoticeDetail"
+            resultType="kr.or.ddit.domain.central.board.vo.NoticeVO">
+        SELECT *
+        FROM NOTICE
+        WHERE ANN_NO = #{annNo}
+    </select>
+
+
+
+    <select id="selectNoticeListPaging"
+            parameterType="kr.or.ddit.common.model.PaginationInfoVO"
+            resultType="kr.or.ddit.domain.central.board.vo.NoticeVO">
+
+        SELECT *
+        FROM (
+                 SELECT ROWNUM rnum, A.*
+                 FROM (
+                          SELECT
+                              ANN_NO,
+                              BOARD_NO,
+                              TTL,
+                              CN,
+                              WRTR_ID,
+                              TOP_FXD_YN,
+                              PBLANC_BGNG_DT,
+                              PBLANC_END_DT,
+                              RCRT_BGNG_DT,
+                              RCRT_END_DT,
+                              REG_DTTM,
+                              MDF_DTTM,
+                              INQ_CNT,
+                              DEL_YN,
+                              ATCH_FILE_ID
+                          FROM NOTICE
+                          WHERE DEL_YN = 'N'
+                          ORDER BY TO_NUMBER(SUBSTR(ANN_NO,4)) ASC
+                      ) A
+                 WHERE ROWNUM <![CDATA[ <= ]]> #{endRow}
+             )
+        WHERE rnum <![CDATA[ >= ]]> #{startRow}
+
+    </select>
+
+    <select id="getTotalCount" resultType="int">
+        SELECT COUNT(*)
+        FROM NOTICE
+        WHERE DEL_YN = 'N'
+    </select>
+
+    <update id="incrementInqCnt">
+        UPDATE NOTICE
+        SET INQ_CNT = INQ_CNT + 1
+        WHERE ANN_NO = #{annNo}
+    </update>
+
+</mapper>

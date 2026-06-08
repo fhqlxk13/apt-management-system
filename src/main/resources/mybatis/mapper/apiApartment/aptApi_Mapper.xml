@@ -1,0 +1,481 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.apiApartment.mapper.IAptApiMapper">
+
+    <select id="selectLawdCdList" resultType="string">
+
+        SELECT LAWD_CD
+        FROM LAW_DONG
+
+        WHERE SIDO_NM = #{sido}
+        AND SIGUNGU_NM = #{sigungu}
+        <if test="emd != null and emd != ''">
+            AND DONG_NM = #{emd}
+        </if>
+        AND RI_NM IS NULL
+    </select>
+
+    <insert id="insertAptBatch">
+        INSERT ALL
+        <foreach collection="list" item="item">
+            INTO APT_COMPLEX (
+            APT_CMPLEX_NO, APT_CMPLEX_NM, BJD_CD, SIDO_NM, SIGUNGU_NM, EMD_NM,
+            LAT_VAL, LON_VAL, UNIT_CNT, BLD_YR, CNSCO_NM, HEAT_TY,
+            PKG_CNT, MAX_FLOOR, DONG_CNT, DOROJUSO, CC_CNT
+            ) VALUES (
+            #{item.aptCmplexNo}, #{item.aptCmplexNm}, #{item.bjdCd},
+            #{item.sidoNm}, #{item.sigunguNm}, #{item.emdNm},
+            #{item.latVal}, #{item.lonVal}, #{item.unitCnt},
+            #{item.bldYr}, #{item.cnscoNm}, #{item.heatTy},
+            #{item.pkgCnt}, #{item.maxFloor}, #{item.dongCnt},
+            #{item.dorojuso}, #{item.ccCnt}
+            )
+        </foreach>
+        SELECT 1 FROM DUAL
+    </insert>
+
+    <insert id="insertInfraOne">
+        INSERT INTO APT_INFRA (INFRA_NO,
+                               INFRA_NM,
+                               CATEGORY_CD,
+                               APT_CMPLEX_NO)
+        VALUES (SEQ_APT_INFRA.NEXTVAL,
+                #{infraNm},
+                #{categoryCd},
+                #{aptCmplexNo})
+    </insert>
+
+    <insert id="insertMgmtOfficeBatch">
+        INSERT ALL
+        <foreach collection="list" item="item">
+            INTO MGMT_OFFICE(
+            MGMT_OFC_NO, APT_CMPLEX_NO, MGMT_OFC_NM,
+            MGMT_OFC_TELNO, MGMT_OFC_BANK_CD,
+            MGMT_OFC_ACNT_HLDR_NM, MGMT_OFC_ACNT_NO, REG_DT
+            ) VALUES (
+            #{item.mgmtOfcNo},
+            #{item.aptCmplexNo},
+            #{item.mgmtOfcNm},
+            #{item.mgmtOfcTelno},
+            #{item.mgmtOfcBankCd},
+            #{item.mgmtOfcAcntHldrNm},
+            #{item.mgmtOfcAcntNo},
+            SYSDATE
+            )
+        </foreach>
+        SELECT 1 FROM DUAL
+    </insert>
+
+    <insert id="insertMemberBatch">
+        INSERT ALL
+        <foreach collection="list" item="item">
+            INTO MEMBER(
+            USER_NO, USER_ID, USER_PW, USER_NM, USER_RRNO, USER_TELNO
+            ) VALUES (
+            #{item.userNo},
+            #{item.userId},
+            #{item.userPw},
+            #{item.userNm},
+            #{item.userRrno},
+            #{item.userTelno}
+            )
+        </foreach>
+        SELECT 1 FROM DUAL
+    </insert>
+
+    <insert id="insertManagerBatch">
+        INSERT ALL
+        <foreach collection="list" item="item">
+            INTO MANAGER(
+            USER_NO, MGMT_OFC_NO, MNGR_DUTY_CD
+            ) VALUES (
+            #{item.userNo},
+            #{item.mgmtOfcNo},
+            #{item.mngrDutyCd}
+            )
+        </foreach>
+        SELECT 1 FROM DUAL
+    </insert>
+
+    <insert id="insertAptUnitBatch">
+        INSERT ALL
+        <foreach collection="list" item="item">
+            INTO APT_UNIT(
+            DONG_NO, DONG_NM, FLOOR, UNIT_CNT, APT_CMPLEX_NO
+            ) VALUES (
+            #{item.dongNo},
+            #{item.dongNm},
+            #{item.maxFloor},
+            #{item.unitCnt},
+            #{item.aptCmplexNo}
+            )
+        </foreach>
+        SELECT 1 FROM DUAL
+    </insert>
+
+    <insert id="insertAptDetailBatch">
+        INSERT ALL
+        <foreach collection="list" item="item">
+
+            INTO APT_DETAIL(
+            HO_NO,
+            FLOOR,
+            HO_TY_NO,
+            DONG_NO,
+            HO,
+            HO_STTS_CD
+            ) VALUES (
+            #{item.hoNo},
+            #{item.floor},
+            #{item.hoTyNo},
+            #{item.dongNo},
+            #{item.ho},
+            'EMPTY'
+            )
+
+        </foreach>
+        SELECT 1 FROM DUAL
+    </insert>
+
+    <insert id="insertAuthBatch">
+        INSERT ALL
+        <foreach collection="list" item="item">
+            INTO AUTH(
+            USER_NO,
+            USER_ROLE_CD
+            ) VALUES (
+            #{item.userNo},
+            #{item.auth}
+            )
+        </foreach>
+        SELECT 1 FROM DUAL
+    </insert>
+    <insert id="insertAptHoTyBatch">
+
+        INSERT ALL
+
+        <foreach collection="list" item="item">
+
+            INTO APT_HO_TY(
+            HO_TY_NO,
+            APT_CMPLEX_NO,
+            TY_NM,
+            EXCLUSIVE_SIZE,
+            ROOM_CNT,
+            BATHROOM_CNT
+            ) VALUES (
+            #{item.hoTyNo},
+            #{item.aptCmplexNo},
+            #{item.tyNm},
+            #{item.exclusiveSize},
+            #{item.roomCnt},
+            #{item.bathroomCnt}
+            )
+
+        </foreach>
+
+        SELECT 1 FROM DUAL
+
+    </insert>
+
+    <select id="getMemberSeq" resultType="long" useCache="false">
+        SELECT SEQ_MEMBER.NEXTVAL
+        FROM DUAL
+    </select>
+
+    <select id="getMgmtOfcNoSeq" resultType="long" useCache="false">
+        SELECT SEQ_MGMT_OFFICE.NEXTVAL
+        FROM DUAL
+    </select>
+
+
+    <select id="selectSidoList" resultType="string">
+        SELECT DISTINCT SIDO_NM
+        FROM LAW_DONG
+    </select>
+
+    <select id="selectSigunguList" resultType="string">
+        SELECT DISTINCT SIGUNGU_NM
+        FROM LAW_DONG
+        WHERE SIDO_NM = #{sido}
+    </select>
+
+    <select id="selectEmdList" resultType="string">
+        SELECT DISTINCT DONG_NM
+        FROM LAW_DONG
+        WHERE SIDO_NM = #{sido}
+          AND SIGUNGU_NM = #{sigungu}
+    </select>
+
+    <select id="selectAptList" resultType="kr.or.ddit.domain.apt.apiApartment.vo.AptComplexEntity">
+        SELECT *
+        FROM APT_COMPLEX
+        WHERE 1=1
+
+        <if test="sido != null and sido != ''">
+            AND SIDO_NM = #{sido}
+        </if>
+
+        <if test="sigungu != null and sigungu != ''">
+            AND SIGUNGU_NM = #{sigungu}
+        </if>
+
+        <if test="emd != null and emd != ''">
+            AND EMD_NM = #{emd}
+        </if>
+    </select>
+
+    <select id="selectNoCoordList" resultType="kr.or.ddit.domain.apt.apiApartment.vo.AptComplexEntity">
+        SELECT APT_CMPLEX_NO,
+               DOROJUSO
+        FROM APT_COMPLEX
+        WHERE LAT_VAL = 0
+           OR LON_VAL = 0
+    </select>
+
+    <select id="selectAvailableUnits"
+            resultType="kr.or.ddit.domain.apt.main.vo.AptDetailVO">
+
+        SELECT
+        D.HO_NO,
+        D.HO,
+        D.FLOOR,
+        D.HO_TY_NO,
+        U.DONG_NO,
+        U.APT_CMPLEX_NO
+        FROM APT_DETAIL D
+        JOIN APT_UNIT U
+        ON D.DONG_NO = U.DONG_NO
+
+        WHERE U.APT_CMPLEX_NO IN
+
+        <foreach collection="aptList"
+                 item="apt"
+                 open="("
+                 separator=","
+                 close=")">
+            #{apt}
+        </foreach>
+
+        AND D.HO_STTS_CD = 'EMPTY'
+
+        AND NOT EXISTS (
+        SELECT 1
+        FROM RENT_LISTING RL
+        WHERE RL.HO_NO = D.HO_NO
+        )
+
+    </select>
+
+    <update id="updateLatLng">
+        UPDATE APT_COMPLEX
+        SET LAT_VAL = #{latVal},
+            LON_VAL = #{lonVal}
+        WHERE APT_CMPLEX_NO = #{aptCmplexNo}
+    </update>
+
+    <update id="updateEmpty">
+        UPDATE APT_DETAIL
+        SET HO_STTS_CD = 'LIVE'
+        WHERE HO_NO = #{hoNo}
+    </update>
+    <update id="updateUnit"
+            parameterType="kr.or.ddit.domain.apt.main.vo.AptUnitVO">
+
+        UPDATE APT_UNIT
+
+        SET DONG_NM  = #{dongNm},
+            FLOOR    = #{floor},
+            UNIT_CNT = #{unitCnt}
+
+        WHERE DONG_NO =
+              #{dongNo}
+
+    </update>
+
+    <update id="updateComplex"
+            parameterType="kr.or.ddit.domain.apt.main.vo.AptComplexVO">
+
+        UPDATE APT_COMPLEX
+
+        SET APT_CMPLEX_NM = #{aptCmplexNm},
+            CNSCO_NM      = #{cnscoNm},
+            HEAT_TY       = #{heatTy},
+            PKG_CNT       = #{pkgCnt},
+            FREE_PKG_CNT  = #{freePkgCnt},
+            CC_CNT        = #{ccCnt}
+
+        WHERE APT_CMPLEX_NO =
+              #{aptCmplexNo}
+
+    </update>
+
+    <insert id="insertApt">
+
+        INSERT INTO APT_COMPLEX (APT_CMPLEX_NO,
+                                 APT_CMPLEX_NM,
+                                 BJD_CD,
+                                 SIDO_NM,
+                                 SIGUNGU_NM,
+                                 EMD_NM,
+                                 LAT_VAL,
+                                 LON_VAL,
+                                 UNIT_CNT,
+                                 BLD_YR,
+                                 CNSCO_NM,
+                                 HEAT_TY,
+                                 PKG_CNT,
+                                 MAX_FLOOR,
+                                 DONG_CNT,
+                                 DOROJUSO,
+                                 CC_CNT)
+        VALUES (#{aptCmplexNo},
+                #{aptCmplexNm},
+                #{bjdCd},
+                #{sidoNm},
+                #{sigunguNm},
+                #{emdNm},
+                #{latVal},
+                #{lonVal},
+                #{unitCnt},
+                #{bldYr},
+                #{cnscoNm},
+                #{heatTy},
+                #{pkgCnt},
+                #{maxFloor},
+                #{dongCnt},
+                #{dorojuso},
+                #{ccCnt})
+
+    </insert>
+
+    <insert id="insertMgmtOffice">
+
+        INSERT INTO MGMT_OFFICE(MGMT_OFC_NO,
+                                APT_CMPLEX_NO,
+                                MGMT_OFC_NM,
+                                MGMT_OFC_TELNO,
+                                REG_DT)
+        VALUES (#{mgmtOfcNo},
+                #{aptCmplexNo},
+                #{mgmtOfcNm},
+                #{mgmtOfcTelno},
+                SYSDATE)
+
+    </insert>
+
+    <insert id="insertMember">
+
+        INSERT INTO MEMBER(USER_NO,
+                           USER_ID,
+                           USER_PW,
+                           USER_NM,
+                           USER_RRNO,
+                           USER_TELNO)
+        VALUES (#{userNo},
+                #{userId},
+                #{userPw},
+                #{userNm},
+                #{userRrno},
+                #{userTelno})
+
+    </insert>
+
+    <insert id="insertManager">
+
+        INSERT INTO MANAGER(USER_NO,
+                            MGMT_OFC_NO,
+                            MNGR_DUTY_CD)
+        VALUES (#{userNo},
+                #{mgmtOfcNo},
+                #{mngrDutyCd})
+
+    </insert>
+
+    <insert id="insertAuth">
+
+        INSERT INTO AUTH(USER_NO,
+                         USER_ROLE_CD)
+        VALUES (#{userNo},
+                #{auth})
+
+    </insert>
+
+    <select id="existsApt" resultType="int">
+
+        SELECT COUNT(*)
+        FROM APT_COMPLEX
+        WHERE APT_CMPLEX_NO = #{kaptCode}
+
+    </select>
+
+    <select id="selectAptComplex" resultType="kr.or.ddit.domain.apt.main.vo.AptComplexVO">
+        SELECT APT_CMPLEX_NO
+             , APT_CMPLEX_NM
+             , BJD_CD
+             , SIDO_NM
+             , SIGUNGU_NM
+             , EMD_NM
+             , LAT_VAL
+             , LON_VAL
+             , UNIT_CNT
+             , BLD_YR
+             , CNSCO_NM
+             , IMG_FILE_NO
+             , RPRSNT_IMG_FILE_NO
+             , HEAT_TY
+             , PKG_CNT
+             , MAX_FLOOR
+             , FREE_PKG_CNT
+             , DONG_CNT
+             , DOROJUSO
+             , CC_CNT
+        FROM APT_COMPLEX
+        WHERE APT_CMPLEX_NO = #{aptCmplexNo}
+    </select>
+
+    <select id="selectAptUnitList" resultType="kr.or.ddit.domain.apt.main.vo.AptUnitVO">
+
+        SELECT DONG_NO
+             , DONG_NM
+             , FLOOR
+             , UNIT_CNT
+             , APT_CMPLEX_NO
+        FROM APT_UNIT
+        WHERE APT_CMPLEX_NO = #{aptCmplexNo}
+        ORDER BY TO_NUMBER(DONG_NM)
+
+    </select>
+
+    <insert id="insertMgmtOfficeBank">
+
+        INSERT INTO MGMT_OFC_BANK_ACNT(OFC_BANK_ACNT_NO,
+                                       MGMT_OFC_ACNT_NO,
+                                       MGMT_OFC_ACNT_HLDR_NM,
+                                       MGMT_OFC_BANK_CD,
+                                       MGMT_OFC_NO)
+        VALUES (SEQ_OFC_BANK_ACNT.NEXTVAL,
+                #{mgmtOfcAcntNo},
+                #{mgmtOfcAcntHldrNm},
+                #{mgmtOfcBankCd},
+                #{mgmtOfcNo})
+
+    </insert>
+
+    <insert id="insertAptHoTy">
+
+        INSERT INTO APT_HO_TY (HO_TY_NO,
+                               APT_CMPLEX_NO,
+                               TY_NM,
+                               EXCLUSIVE_SIZE,
+                               ROOM_CNT,
+                               BATHROOM_CNT)
+        VALUES (#{hoTyNo},
+                #{aptCmplexNo},
+                #{tyNm},
+                #{exclusiveSize},
+                #{roomCnt},
+                #{bathroomCnt})
+    </insert>
+
+</mapper>

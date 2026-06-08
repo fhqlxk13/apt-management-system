@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.complaint.mapper.ICvplMapper">
+
+    <!-- 민원 신청(등록) -->
+    <insert id="insertCvplApply" parameterType="kr.or.ddit.domain.apt.complaint.vo.CvplVO">
+        <selectKey keyProperty="cvplNo" resultType="string" order="BEFORE">
+            SELECT to_char(seq_cvpl.nextval) FROM dual
+        </selectKey>
+        INSERT INTO cvpl /* kr.or.ddit.domain.apt.complaint.mapper.ICvplMapper.insertCvplApply */
+        ( cvpl_no, cvpl_ty_cd, cvpl_loc, cvpl_cn, cvpl_stts_cd
+        , cvpl_reg_dt, cvpl_mdf_dt, cvpl_rcpt_dt, cvpl_end_dt
+        , cvpl_prrt, cvpl_file_no, cvpl_ttl, user_no, ho_no, apt_cmplex_no)
+        VALUES ( #{cvplNo}, #{cvplTyCd}, #{cvplLoc}, #{cvplCn}, 'APLY'
+        , sysdate, null, null, null
+        , null, #{cvplFileNo}, #{cvplTtl}, #{userNo}, #{hoNo}, #{aptCmplexNo})
+    </insert>
+
+    <!-- 민원 이력 인서트 -->
+    <insert id="insertCvplHstry" parameterType="kr.or.ddit.domain.apt.complaint.vo.CvplHstryVO">
+        <selectKey keyProperty="cvplHstryId" resultType="string" order="BEFORE">
+            SELECT seq_cvpl_hstry.nextval FROM dual
+        </selectKey>
+        INSERT INTO cvpl_hstry /* kr.or.ddit.domain.apt.complaint.mapper.ICvplMapper.insertCvplHstry */
+        ( cvpl_hstry_id, cvpl_ans, pic_id, cvpl_reg_dt, cvpl_stts_cd, cvpl_no)
+        VALUES ( #{cvplHstryId}, #{cvplAns}, #{picId}, sysdate, #{cvplSttsCd}, #{cvplNo})
+    </insert>
+
+    <!-- 본인 민원 리스트 조회 -->
+    <select id="selectCvplListByAptCmplexNo" resultType="kr.or.ddit.domain.apt.complaint.vo.CvplVO">
+        SELECT cvpl_no, cvpl_ty_cd, cvpl_loc, cvpl_cn, cvpl_stts_cd
+             , cvpl_reg_dt, cvpl_mdf_dt, cvpl_rcpt_dt, cvpl_end_dt
+             , cvpl_prrt, cvpl_file_no, cvpl_ttl, user_no, ho_no, apt_cmplex_no
+        FROM cvpl
+        WHERE user_no = #{userNo}
+          AND apt_cmplex_no = #{aptCmplexNo}
+        ORDER BY cvpl_reg_dt DESC
+    </select>
+
+    <!-- 본인 민원 건수 -->
+    <select id="selectCvplCount" resultType="java.lang.Integer"
+            parameterType="kr.or.ddit.domain.apt.complaint.vo.CvplVO">
+        SELECT COUNT(*)
+        FROM cvpl
+        WHERE user_no = #{userNo}
+          AND apt_cmplex_no = #{aptCmplexNo}
+    </select>
+
+    <!-- 본인 민원 페이징 조회 -->
+    <select id="selectMyCvplList" resultType="kr.or.ddit.domain.apt.complaint.vo.CvplVO">
+        SELECT *
+        FROM (SELECT a.*, ROWNUM rnum
+              FROM (SELECT cvpl_no, cvpl_ty_cd, cvpl_loc, cvpl_cn, cvpl_stts_cd
+                         , cvpl_reg_dt, cvpl_mdf_dt, cvpl_rcpt_dt, cvpl_end_dt
+                         , cvpl_prrt, cvpl_file_no, cvpl_ttl, user_no, ho_no, apt_cmplex_no
+                    FROM cvpl
+                    WHERE user_no = #{searchVO.userNo}
+                      AND apt_cmplex_no = #{searchVO.aptCmplexNo}
+                    ORDER BY cvpl_reg_dt DESC) a
+                 <![CDATA[ WHERE ROWNUM <= #{endRow} ]]>
+               )
+        WHERE rnum >= #{startRow}
+    </select>
+
+    <!-- 단지 전체 민원 목록 (페이징 없음) -->
+    <select id="selectCvplListAllByAptCmplexNo" resultType="kr.or.ddit.domain.apt.complaint.vo.CvplVO">
+        SELECT c.cvpl_no, cvpl_ty_cd, cvpl_loc, cvpl_cn, cvpl_stts_cd
+             , cvpl_reg_dt, cvpl_mdf_dt, cvpl_rcpt_dt, cvpl_end_dt
+             , cvpl_prrt, cvpl_file_no, cvpl_ttl
+             , c.user_no, m.user_id, m.user_nm, ho_no, apt_cmplex_no
+        FROM cvpl c
+                 INNER JOIN member m ON (m.user_no = c.user_no)
+        WHERE apt_cmplex_no = #{aptCmplexNo}
+        ORDER BY cvpl_reg_dt DESC
+    </select>
+
+    <!-- 민원 간략 조회 (권한 체크용) -->
+    <select id="selectOneCvplBrief" resultType="kr.or.ddit.domain.apt.complaint.vo.CvplVO">
+        SELECT c.cvpl_no, c.user_no, m.user_id, m.user_nm, ho_no, apt_cmplex_no
+        FROM cvpl c
+                 INNER JOIN member m ON (m.user_no = c.user_no)
+        WHERE cvpl_no = #{cvplNo}
+    </select>
+
+    <!-- 민원 상세 조회 -->
+    <select id="selectOneCvplDetailByCvplNo" resultType="kr.or.ddit.domain.apt.complaint.vo.CvplVO">
+        SELECT cvpl_no, cvpl_ty_cd, cvpl_loc, cvpl_cn, cvpl_stts_cd
+             , cvpl_reg_dt, cvpl_mdf_dt, cvpl_rcpt_dt, cvpl_end_dt
+             , cvpl_file_no, cvpl_ttl, user_no
+        FROM cvpl
+        WHERE cvpl_no = #{cvplNo}
+    </select>
+
+    <!-- 민원 최신 처리 메모/반려 사유 조회 -->
+    <select id="selectLatestCvplAns" resultType="string" parameterType="string">
+        SELECT cvpl_ans
+        FROM (
+            SELECT cvpl_ans
+            FROM cvpl_hstry
+            WHERE cvpl_no = #{cvplNo}
+              AND cvpl_ans IS NOT NULL
+            ORDER BY cvpl_reg_dt DESC
+        )
+        WHERE ROWNUM = 1
+    </select>
+
+    <!-- 단지 전체 민원 건수 (카테고리 + 상태 + 제목 검색 포함) -->
+    <select id="selectCvplCountByAptCmplexNo" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM cvpl
+        WHERE apt_cmplex_no = #{searchVO.aptCmplexNo}
+        <if test="searchVO.cvplTyCd != null and searchVO.cvplTyCd != ''">
+            AND cvpl_ty_cd = #{searchVO.cvplTyCd}
+        </if>
+        <if test="searchVO.cvplSttsCd != null and searchVO.cvplSttsCd != ''">
+            AND cvpl_stts_cd = #{searchVO.cvplSttsCd}
+        </if>
+        <if test="searchWord != null and searchWord != ''">
+            AND cvpl_ttl LIKE '%' || #{searchWord} || '%'
+        </if>
+    </select>
+
+    <!-- 민원 취소 -->
+    <update id="updateCvplSttsToCancel">
+        UPDATE cvpl
+        SET cvpl_stts_cd = 'CNCL'
+        WHERE cvpl_no = #{cvplNo}
+    </update>
+
+    <!-- 단지 전체 민원 페이징 조회 (카테고리 + 상태 + 제목 검색 포함) -->
+    <select id="selectCvplListAllByAptCmplexNoPaged" resultType="kr.or.ddit.domain.apt.complaint.vo.CvplVO">
+        SELECT *
+        FROM (SELECT a.*, ROWNUM rnum
+        FROM (SELECT c.cvpl_no, cvpl_ty_cd, cvpl_loc, cvpl_cn, cvpl_stts_cd
+        , cvpl_reg_dt, cvpl_mdf_dt, cvpl_rcpt_dt, cvpl_end_dt
+        , cvpl_prrt, cvpl_file_no, cvpl_ttl
+        , c.user_no, m.user_id, m.user_nm, ho_no, apt_cmplex_no
+        FROM cvpl c
+        INNER JOIN member m ON (m.user_no = c.user_no)
+        WHERE apt_cmplex_no = #{searchVO.aptCmplexNo}
+        <if test="searchVO.cvplTyCd != null and searchVO.cvplTyCd != ''">
+            AND cvpl_ty_cd = #{searchVO.cvplTyCd}
+        </if>
+        <if test="searchVO.cvplSttsCd != null and searchVO.cvplSttsCd != ''">
+            AND cvpl_stts_cd = #{searchVO.cvplSttsCd}
+        </if>
+        <if test="searchWord != null and searchWord != ''">
+            AND cvpl_ttl LIKE '%' || #{searchWord} || '%'
+        </if>
+        ORDER BY cvpl_reg_dt DESC) a
+        <![CDATA[ WHERE ROWNUM <= #{endRow} ]]>
+        )
+        WHERE rnum >= #{startRow}
+    </select>
+
+</mapper>

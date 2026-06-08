@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.central.mapper.IContractUserMapper">
+
+
+    <!-- rent_ctrt 테이블에서 user_no로 가장 최근 rent_ctrt_no 1건 조회
+    사용 목적: 서류 제출 시 해당 사용자의 임대계약번호 찾기 -->
+    <select id="selectRentCtrtNo" parameterType="string" resultType="string">
+        SELECT rent_ctrt_no         /*kr.or.ddit.domain.central.mapper.IContractUserMapper.selectRentCtrtNo*/
+        FROM rent_ctrt
+        WHERE user_no = #{userNo}
+        ORDER BY reg_dt DESC
+            FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <!-- 제출서류 insert -->
+    <insert id="insertContractDoc" parameterType="kr.or.ddit.domain.central.vo.ContractUserVO">
+        <selectKey keyProperty="sbmsnDocNo" resultType="string" order="BEFORE">
+            SELECT seq_sbmsn_doc.nextval FROM dual              /*kr.or.ddit.domain.central.mapper.IContractUserMapper.insertContractDoc*/
+        </selectKey>
+        INSERT INTO sbmsn_doc (
+        sbmsn_doc_no
+        , sbmsn_doc_ty_cd
+        , atch_file_id
+        , aplct_no
+        ) VALUES (
+        #{sbmsnDocNo}
+        , #{sbmsnDocTyCd}
+        , #{atchFileId}
+        , #{aplctNo}
+        )
+    </insert>
+
+    <!--aplct 테이블에 INSERT
+    aplct_no 형식: YYMMDD_userNo_순번
+    청약 신청 시 사용, 초기 상태는 SUBMIT-->
+    <insert id="insertAplct" parameterType="map">
+        <selectKey keyProperty="aplctNo" resultType="string" order="BEFORE">
+            SELECT TO_CHAR(SYSDATE, 'YYMMDD') || '_' ||     /*kr.or.ddit.domain.central.mapper.IContractUserMapper.insertAplct*/
+            #{userNo} || '_' ||
+            LPAD(NVL(
+            (SELECT COUNT(*) + 1 FROM aplct
+            WHERE aplct_no LIKE TO_CHAR(SYSDATE, 'YYMMDD') || '_' || #{userNo} || '%')
+            , 1), 2, '0')
+            FROM dual
+        </selectKey>
+        INSERT INTO aplct (
+        aplct_no
+        , ho_ty_no
+        , ann_no
+        , user_no
+        , aplct_stts_cd
+        , reg_dt
+        ) VALUES (
+        #{aplctNo}
+        , #{hoTyNo}
+        , #{annNo}
+        , #{userNo}
+        , 'SUBMIT'
+        , SYSDATE
+        )
+    </insert>
+
+    <!-- userNo로 제출서류 조회 -->
+    <!--<select id="selectContractDoc" parameterType="string" resultType="kr.or.ddit.domain.central.vo.ContractUserVO">
+        SELECT sd.sbmsn_doc_no
+             , sd.sbmsn_doc_ty_cd
+             , sd.sbmsn_doc_stts_cd
+             , sd.rjct_rsn_cn
+             , sd.atch_file_id
+             , sd.rent_ctrt_no
+             , rc.ctrt_stts_cd
+        FROM sbmsn_doc sd
+                 INNER JOIN rent_ctrt rc ON sd.rent_ctrt_no = rc.rent_ctrt_no
+        WHERE rc.user_no = #{userNo}
+        ORDER BY sd.reg_dt DESC
+    </select>-->
+
+    <!--rent_listing + apt_detail + apt_ho_ty + apt_unit + apt_complex JOIN
+    단지번호로 매물 정보(면적, 보증금, 월임대료, 세대수 등) 조회 -->
+    <select id="selectRentListingByAptCmplexNo" parameterType="string" resultType="map">
+        SELECT ht.EXCLUSIVE_SIZE
+             , ht.room_cnt
+             , ht.bathroom_cnt
+             , rl.dpst_amt
+             , rl.mthly_rent_amt
+             , ac.apt_cmplex_nm
+             , ac.dorojuso
+        FROM rent_listing rl
+                 INNER JOIN apt_detail ad ON rl.ho_no = ad.ho_no
+                 INNER JOIN apt_ho_ty ht ON ad.ho_ty_no = ht.ho_ty_no
+                 INNER JOIN apt_complex ac ON ht.apt_cmplex_no = ac.apt_cmplex_no
+        WHERE ht.apt_cmplex_no = #{aptCmplexNo}
+    </select>
+
+    <select id="selectExcluseAreaDetail" resultType="map">
+        SELECT ht.exclusive_size
+             , ht.ty_nm
+             , ht.room_cnt
+             , ht.bathroom_cnt
+             , ht.image_file_no
+             , MIN(rl.dpst_amt)       AS dpst_amt
+             , MIN(rl.mthly_rent_amt) AS mthly_rent_amt
+        FROM rent_listing rl
+                 INNER JOIN apt_detail ad ON rl.ho_no = ad.ho_no
+                 INNER JOIN apt_ho_ty ht ON ad.ho_ty_no = ht.ho_ty_no
+        WHERE ht.apt_cmplex_no = #{aptCmplexNo}
+          AND rl.ann_no = #{annNo}
+          AND rl.rcrt_lstg_stts_cd = 'SUBSCRIBE'
+        GROUP BY ht.exclusive_size
+               , ht.ty_nm
+               , ht.room_cnt
+               , ht.bathroom_cnt
+               , ht.image_file_no
+        ORDER BY ht.ty_nm
+    </select>
+
+    <!--apt_ho_ty 단독 조회
+    단지번호로 타입별 전용면적, 방수, 욕실수 조회
+    공고 상세페이지 공급정보 표시에 사용-->
+    <select id="selectHoTyNo" resultType="string" parameterType="map">
+        SELECT ho_ty_no                 /*kr.or.ddit.domain.central.mapper.IContractUserMapper.selectHoTyNo*/
+        FROM apt_ho_ty
+        WHERE apt_cmplex_no = #{aptCmplexNo}
+          AND ty_nm = #{tyNm}
+          AND exclusive_size = #{exclusiveSize}
+          AND ROWNUM = 1
+    </select>
+
+    <!--aplct + apt_ho_ty + center_ann_board_post + apt_complex + member JOIN
+    user_no로 해당 사용자의 청약 신청 목록 조회
+    청약 조회 목록 페이지에 사용-->
+    <select id="selectAplctList" resultType="map" parameterType="string">
+        SELECT a.aplct_no           /*신청번호*/            /*kr.or.ddit.domain.central.mapper.IContractUserMapper.selectAplctList*/
+             , a.ann_no             /*공고번호*/
+             , a.aplct_stts_cd      /*신청상태코드*/
+             , a.reg_dt             /*등록일시*/
+             , aht.exclusive_size   /*전용면적*/
+             , aht.ty_nm            /*타입명*/
+             , cab.ttl              /*제목*/
+             , cab.rcrt_end_dt      /*모집종료일*/
+             , ac.apt_cmplex_nm     /*아파트 단지 명*/
+             , m.user_nm            /*사용자명*/
+             , m.user_telno         /*사용자 전화번호*/
+        FROM aplct a
+                 INNER JOIN apt_ho_ty aht on a.ho_ty_no = aht.ho_ty_no
+                 INNER JOIN center_ann_board_post cab on a.ann_no = cab.ann_no
+                 INNER JOIN apt_complex ac on ac.apt_cmplex_no = aht.apt_cmplex_no
+                 INNER JOIN member m ON m.user_no = a.user_no
+        WHERE a.user_no = #{userNo}
+        ORDER BY a.reg_dt DESC
+    </select>
+
+    <!--aplct + apt_ho_ty + center_ann_board_post + apt_complex + member JOIN
+    aplct_no로 청약 신청 단건 상세 조회
+    청약 신청 상세페이지에 사용-->
+    <select id="selectOneContractHistoryDetail" resultType="map" parameterType="string">
+        SELECT a.aplct_no                   /*kr.or.ddit.domain.central.mapper.IContractUserMapper.selectOneContractHistoryDetail*/
+             , a.ann_no
+             , a.aplct_stts_cd
+             , a.reg_dt
+             , a.rjct_rsn_cn
+             , aht.exclusive_size
+             , aht.ty_nm
+             , cab.ttl
+             , cab.rcrt_end_dt
+             , ac.apt_cmplex_nm
+             , m.user_nm
+             , m.user_telno
+        FROM aplct a
+                 INNER JOIN apt_ho_ty aht ON a.ho_ty_no = aht.ho_ty_no
+                 INNER JOIN center_ann_board_post cab ON cab.ann_no = a.ann_no
+                 INNER JOIN apt_complex ac ON ac.apt_cmplex_no = aht.apt_cmplex_no
+                 INNER JOIN member m ON m.user_no = a.user_no
+        WHERE a.aplct_no = #{aplctNo}
+    </select>
+
+    <!--제출 서류 조회-->
+    <select id="selectSbmsnDocList" resultType="map" parameterType="string">
+        SELECT sbmsn_doc_no             /*kr.or.ddit.domain.central.mapper.IContractUserMapper.selectSbmsnDocList*/
+              ,sbmsn_doc_ty_cd
+              ,reg_dt
+              ,atch_file_id
+              ,aplct_no
+        FROM sbmsn_doc
+        WHERE aplct_no = #{aplctNo}
+        ORDER BY reg_dt DESC
+    </select>
+
+    <!--청약 신청 중복 조회-->
+    <select id="selectAplctcount" resultType="int" parameterType="map">
+        SELECT count(*)             /*kr.or.ddit.domain.central.mapper.IContractUserMapper.selectAplctcount*/
+        FROM aplct
+        WHERE user_no = #{userNo}
+        AND ann_no = #{annNo}
+    </select>
+
+    <!--청약 신청 상세조회-->
+    <select id="selectAplctDocList" resultType="map" parameterType="string">
+        SELECT doc_ty.sbmsn_doc_ty_cd
+             , (SELECT sd.sbmsn_doc_no FROM sbmsn_doc sd
+                WHERE sd.sbmsn_doc_ty_cd = doc_ty.sbmsn_doc_ty_cd
+                  AND sd.aplct_no = #{aplctNo}
+                  AND ROWNUM = 1) AS sbmsn_doc_no
+             , (SELECT sd.atch_file_id FROM sbmsn_doc sd
+                WHERE sd.sbmsn_doc_ty_cd = doc_ty.sbmsn_doc_ty_cd
+                  AND sd.aplct_no = #{aplctNo}
+                  AND ROWNUM = 1) AS atch_file_id
+             , (SELECT sd.reg_dt FROM sbmsn_doc sd
+                WHERE sd.sbmsn_doc_ty_cd = doc_ty.sbmsn_doc_ty_cd
+                  AND sd.aplct_no = #{aplctNo}
+                  AND ROWNUM = 1) AS reg_dt
+        FROM (
+                 SELECT DISTINCT TRIM(REGEXP_SUBSTR(cap.sbmsn_doc, '[^,]+', 1, lv.lvl)) AS sbmsn_doc_ty_cd
+                 FROM aplct a
+                          INNER JOIN center_ann_board_post cap ON cap.ann_no = a.ann_no
+                          INNER JOIN (
+                     SELECT LEVEL AS lvl FROM dual CONNECT BY LEVEL &lt;= 20
+                 ) lv ON lv.lvl &lt;= REGEXP_COUNT(cap.sbmsn_doc, ',') + 1
+                 WHERE a.aplct_no = #{aplctNo}
+             ) doc_ty
+    </select>
+
+    <!-- 제출한 서류 수 조회 -->
+    <select id="selectSubmittedDocCount" resultType="int">
+        SELECT COUNT(*)
+        FROM sbmsn_doc
+        WHERE aplct_no = #{aplctNo}
+        AND atch_file_id IS NOT NULL
+    </select>
+
+    <!-- 필요 서류 수: 공고 center_ann_board_post.sbmsn_doc 기준 (업로드 화면과 동일) -->
+    <select id="selectRequiredDocCount" resultType="int">
+        SELECT COUNT(*)
+        FROM (
+                 SELECT DISTINCT TRIM(REGEXP_SUBSTR(cap.sbmsn_doc, '[^,]+', 1, lv.lvl)) AS sbmsn_doc_ty_cd
+                 FROM aplct a
+                          INNER JOIN center_ann_board_post cap ON cap.ann_no = a.ann_no
+                          INNER JOIN (
+                     SELECT LEVEL AS lvl FROM dual CONNECT BY LEVEL &lt;= 20
+                 ) lv ON lv.lvl &lt;= REGEXP_COUNT(cap.sbmsn_doc, ',') + 1
+                 WHERE a.aplct_no = #{aplctNo}
+             ) doc_ty
+        WHERE doc_ty.sbmsn_doc_ty_cd IS NOT NULL
+    </select>
+
+    <!--공고 조회수 증가-->
+    <update id="updateInqCnt" parameterType="string">
+        UPDATE center_ann_board_post                /*kr.or.ddit.domain.central.mapper.IContractUserMapper.updateInqCnt*/
+        SET inq_cnt = NVL(inq_cnt, 0) + 1
+        WHERE ann_no = #{annNo}
+    </update>
+
+    <!--aplct_stts_cd → CANCEL로 변경
+    신청 취소 시 사용-->
+    <update id="cancelContract" parameterType="string">
+        UPDATE aplct                    /*kr.or.ddit.domain.central.mapper.IContractUserMapper.cancelContract*/
+        SET aplct_stts_cd = 'CANCEL'
+        WHERE aplct_no = #{aplctNo}
+    </update>
+    <update id="isAllSubmitted" parameterType="string">
+        UPDATE aplct
+        SET aplct_stts_cd = 'INSPECTION',
+            mdf_dt = SYSDATE
+        WHERE aplct_no = #{aplctNo}
+    </update>
+
+    <!-- 서류 제출 중복 방지 -->
+    <delete id="deleteContractDoc">
+        DELETE
+        FROM sbmsn_doc
+        WHERE aplct_no = #{aplctNo}
+        AND sbmsn_doc_ty_cd = #{sbmsnDocTyCd}
+    </delete>
+
+</mapper>

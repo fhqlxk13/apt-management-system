@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.domain.apt.mgmtOffice.resident.mapper.IMngResidentAuthMapper">
+
+
+
+    <select id="selectResidentAuthList"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.resident.vo.MngResidentAuthVO">
+
+        SELECT
+            rr.RQST_NO,
+            rr.RQST_TY_CD,
+            TO_CHAR(rr.RCPT_DT, 'YYYY-MM-DD')      AS RCPT_DT,
+            TO_CHAR(rr.MVIN_PRD_DT, 'YYYY-MM-DD') AS MVIN_PRD_DT,
+            TO_CHAR(rr.MVOUT_PRD_DT, 'YYYY-MM-DD') AS MVOUT_PRD_DT,
+            TO_CHAR(rr.APRV_DT, 'YYYY-MM-DD')      AS APRV_DT,
+            rr.MVOUT_RSN_CN,
+            rr.RJCT_RSN_CN,
+
+            m.USER_NM,
+            m.USER_TELNO,
+
+            ad.DONG_NO AS DONG,
+            ad.HO,
+
+            CASE
+                WHEN rr.RJCT_RSN_CN IS NOT NULL THEN 'RJCT'
+                WHEN rr.APRV_DT IS NOT NULL THEN 'APRV'
+                ELSE 'WAIT'
+                END AS RQST_STTS_CD
+
+        FROM RESIDENT_RQST rr
+
+                 LEFT JOIN MEMBER m
+                           ON rr.USER_NO = m.USER_NO
+
+                 LEFT JOIN APT_DETAIL ad
+                           ON rr.HO_NO = ad.HO_NO
+
+        ORDER BY rr.RCPT_DT DESC
+
+    </select>
+
+    <update id="rejectResidentAuth"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.resident.vo.MngResidentAuthVO">
+
+        UPDATE RESIDENT_RQST
+        SET
+            RJCT_RSN_CN = #{rjctRsnCn},
+            MDF_DT = SYSDATE
+        WHERE RQST_NO = #{rqstNo}
+
+    </update>
+
+    <update id="approveResidentAuth"
+            parameterType="kr.or.ddit.domain.apt.mgmtOffice.resident.vo.MngResidentAuthVO">
+
+        UPDATE RESIDENT_RQST
+        SET
+            APRV_DT = SYSDATE,
+            MDF_DT = SYSDATE
+        WHERE RQST_NO = #{rqstNo}
+
+    </update>
+
+
+
+    <select id="selectResidentAuthByRqstNo"
+            parameterType="int"
+            resultType="kr.or.ddit.domain.apt.mgmtOffice.resident.vo.MngResidentAuthVO">
+
+        SELECT
+            rr.RQST_NO,
+            rr.USER_NO,
+            rr.HO_NO,
+            rr.RQST_TY_CD,
+            rr.MVIN_PRD_DT,
+            rr.MVOUT_PRD_DT
+        FROM RESIDENT_RQST rr
+        WHERE rr.RQST_NO = #{rqstNo}
+
+    </select>
+
+
+    <update id="updateResidentLive"
+            parameterType="map">
+
+        UPDATE HSHLD_HEAD
+        SET
+            INOUT_CD = 'LIVE'
+        WHERE HO_NO = #{hoNo} and USER_NO = #{userNo}
+
+    </update>
+    <update id="updateAuth">
+        UPDATE AUTH
+        SET
+            USER_ROLE_CD = 'ROLE_RESIDENT'
+        WHERE
+            USER_NO = #{userNo}
+    </update>
+
+</mapper>
