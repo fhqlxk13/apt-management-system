@@ -313,6 +313,7 @@
                                                                     data-partner-name="${fn:escapeXml(history.partnerNm)}"
                                                                     data-cont-no="${fn:escapeXml(history.contNo)}"
                                                                     data-cont-name="${fn:escapeXml(history.contNm)}"
+                                                                    data-cont-cn="${fn:escapeXml(history.contCn)}"
                                                                     data-cont-start="${fn:escapeXml(history.contBgngDt)}"
                                                                     data-cont-end="${fn:escapeXml(history.contEndDt)}"
                                                                     data-check-content="${fn:escapeXml(history.chkCn)}"
@@ -466,8 +467,11 @@
 
             document.getElementById("modalOwnerType").textContent = partnerNo ? "협력업체점검" : "자체점검";
             document.getElementById("modalPartnerNm").textContent = partnerNo ? safeText(button.getAttribute("data-partner-name")) : "-";
-            document.getElementById("modalContNo").textContent = safeText(button.getAttribute("data-cont-no"));
-            document.getElementById("modalContNm").textContent = safeText(button.getAttribute("data-cont-name"));
+            var contNo = button.getAttribute("data-cont-no") || "";
+            var contNm = button.getAttribute("data-cont-name") || "";
+            var contCn = button.getAttribute("data-cont-cn") || "";
+            document.getElementById("modalContNo").textContent = safeText(contNo);
+            document.getElementById("modalContNm").textContent = safeText(contNm);
             document.getElementById("modalContPeriod").textContent = contPeriod;
             document.getElementById("modalHistoryCn").textContent = safeText(button.getAttribute("data-check-content"));
             document.getElementById("modalHistoryRmk").textContent = safeText(button.getAttribute("data-check-remark"));

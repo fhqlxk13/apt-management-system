@@ -141,6 +141,8 @@ public class FacilityCheckHstryVO {
     /** 계약명 */
     private String contNm;
 
+    private String contCn;
+
     /** 계약시작일 */
     private String contBgngDt;
 

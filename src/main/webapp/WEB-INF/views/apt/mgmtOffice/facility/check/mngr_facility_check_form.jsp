@@ -53,20 +53,28 @@
         #fchPage .title-sub { margin-left:auto; color:var(--muted); font-size:11px; font-weight:400; }
 
         /* 상단 대상 카드 */
+        /* target-grid 기본 stretch: 두 카드가 항상 같은 높이를 유지 */
         #fchPage .target-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-        #fchPage .target-card { border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+        /* target-card flex column: target-head 고정, target-body가 나머지 높이를 채우도록 */
+        #fchPage .target-card { border:1px solid var(--line); border-radius:6px; overflow:hidden; display:flex; flex-direction:column; }
         #fchPage .target-head { display:flex; align-items:center; justify-content:space-between; min-height:38px; padding:0 12px; border-bottom:1px solid var(--line); background:var(--soft); }
         #fchPage .target-title { display:flex; align-items:center; gap:6px; color:var(--head); font-size:12px; font-weight:800; }
         #fchPage .target-title .material-symbols-rounded { font-size:16px; color:var(--acc); }
         #fchPage .target-fixed { color:#7a887d; font-size:11px; font-weight:700; }
         #fchPage .target-locked { display:flex; align-items:center; gap:3px; color:#9ca3af; font-size:11px; font-weight:700; }
         #fchPage .target-locked .material-symbols-rounded { font-size:13px; }
-        #fchPage .target-body { padding:12px 14px; }
-        #fchPage .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:110px; padding:14px; border:1px dashed #cfd8d1; border-radius:5px; background:#fbfcfb; text-align:center; }
+        /* target-body flex:1 + flex column: selected-state가 내부에서 flex:1로 늘어날 수 있도록 */
+        #fchPage .target-body { padding:12px 14px; flex:1; display:flex; flex-direction:column; }
+        /* empty-state flex:1: 미선택 상태에서도 body 높이를 꽉 채움 */
+        #fchPage .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; min-height:110px; padding:14px; border:1px dashed #cfd8d1; border-radius:5px; background:#fbfcfb; text-align:center; }
         #fchPage .empty-state .material-symbols-rounded { font-size:26px; color:#9aa8a0; margin-bottom:6px; }
         #fchPage .empty-state p { margin:0 0 10px; color:#6f7d72; font-size:12px; font-weight:700; }
+        /* selected-state: 콘텐츠를 상단에 모으고 여백은 카드 하단으로 — flex 없이 자연 흐름 */
         #fchPage .selected-state { min-height:110px; }
+        #fchPage .selected-state.register-centered-state { display:flex; flex-direction:column; min-height:148px; }
+        #fchPage .selected-state.register-centered-state .facility-info-wrap { margin:auto 0; }
         #fchPage .selected-actions { display:flex; justify-content:flex-end; margin-top:10px; }
+        /* 이력번호/처리과정 컨텍스트 바: 카드 상단 compact 인라인 표시, 시설 정보와 점선으로 구분 */
         #fchPage .owner-choice { display:flex; align-items:center; gap:8px; margin-bottom:10px; padding:8px 10px; border:1px solid var(--line); border-radius:5px; background:#fbfcfb; }
         #fchPage .owner-choice-label { color:#4a5c4e; font-size:11px; font-weight:800; white-space:nowrap; }
         #fchPage .owner-radio { display:inline-flex; align-items:center; gap:4px; color:#243027; font-size:12px; font-weight:700; cursor:pointer; }
@@ -74,6 +82,10 @@
         #fchPage .self-check-box { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:110px; padding:14px; border:1px dashed #cfd8d1; border-radius:5px; background:#fbfcfb; text-align:center; }
         #fchPage .self-check-box .material-symbols-rounded { font-size:26px; color:#6f7d72; margin-bottom:6px; }
         #fchPage .self-check-box p { margin:0; color:#4a5c4e; font-size:12px; font-weight:800; }
+        /* facility-info-wrap: 두 섹션 박스를 세로로 쌓음 */
+        #fchPage .facility-info-wrap { display:flex; flex-direction:column; gap:8px; }
+        #fchPage .info-section { border:1px solid var(--line); border-radius:4px; overflow:hidden; }
+        #fchPage .info-section-label { display:block; padding:4px 8px; background:#f0f3f0; color:#6b7a6e; font-size:10px; font-weight:800; border-bottom:1px solid var(--line); letter-spacing:0.02em; }
         #fchPage .info-tbl { width:100%; border-collapse:collapse; table-layout:fixed; }
         #fchPage .info-tbl th { width:68px; height:34px; padding:0 8px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); background:var(--th); color:#27382b; font-size:11px; font-weight:800; text-align:left; white-space:nowrap; }
         #fchPage .info-tbl td { height:34px; padding:0 10px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); color:#111827; font-size:12px; font-weight:600; word-break:break-word; }
@@ -95,10 +107,14 @@
         #fchPage .area-title { display:flex; align-items:center; gap:5px; margin-bottom:8px; color:#4a5c4e; font-size:11px; font-weight:800; }
         #fchPage .area-title .material-symbols-rounded { font-size:15px; color:var(--acc); }
 
-        /* 필터 한 줄 */
-        #fchPage .history-filter { display:grid; grid-template-columns:.85fr 1fr .8fr .8fr .8fr minmax(140px,1fr) auto; gap:6px; align-items:end; margin-bottom:8px; padding:10px; border:1px solid var(--line); border-radius:6px; background:#fbfcfb; }
+        /* 이력 필터 */
+        #fchPage .history-filter { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px 10px; align-items:end; margin-bottom:8px; padding:10px; border:1px solid var(--line); border-radius:6px; background:#fbfcfb; }
         #fchPage .history-filter>.f-field { min-width:0; }
-        #fchPage .history-filter>.f-btns  { display:flex; gap:5px; }
+        /* 검색어+초기화를 2칸 span으로 합쳐 입력란이 버튼 옆까지 채워지도록 함 */
+        #fchPage .history-filter>.f-field-search { grid-column:span 2; }
+        #fchPage .f-search-row { display:flex; gap:6px; }
+        #fchPage .f-search-row .form-input { flex:1; min-width:0; }
+        #fchPage .history-filter>.f-btns  { display:flex; justify-content:flex-end; gap:5px; }
         #fchPage .field-label { display:block; margin-bottom:4px; color:#4a5c4e; font-size:11px; font-weight:800; }
         #fchPage .form-select, #fchPage .form-input { width:100%; height:30px; padding:0 8px; border:1px solid var(--line); border-radius:4px; background:var(--bg); color:#1f2d23; font-size:12px; box-sizing:border-box; }
         #fchPage .form-select:focus, #fchPage .form-input:focus { border-color:var(--acc); outline:none; box-shadow:0 0 0 2px rgba(46,92,56,.08); }
@@ -107,17 +123,19 @@
         /* 이력 목록 */
         #fchPage .history-list { height:440px; overflow-y:auto; border:1px solid var(--line); border-radius:6px; background:var(--bg); padding:8px; box-sizing:border-box; }
         #fchPage .history-empty { display:flex; align-items:center; justify-content:center; min-height:100px; color:#7a887d; font-size:12px; font-weight:700; text-align:center; }
-        #fchPage .history-item { display:grid; grid-template-columns:82px minmax(0,1fr); gap:8px; width:100%; margin-bottom:6px; padding:9px 10px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:inherit; text-align:left; font-family:inherit; cursor:pointer; box-sizing:border-box; }
+        #fchPage .history-item { display:grid; grid-template-columns:92px minmax(0,1fr); gap:10px; width:100%; margin-bottom:6px; padding:10px 11px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:inherit; text-align:left; font-family:inherit; cursor:pointer; box-sizing:border-box; }
         #fchPage .history-item:last-child { margin-bottom:0; }
         #fchPage .history-item:hover     { border-color:#bdd7c5; background:#f8fcf9; }
         #fchPage .history-item.is-active { border-color:var(--acc); background:var(--acc-l); }
-        #fchPage .h-date    { color:#111827; font-size:12px; font-weight:800; line-height:1.4; }
+        #fchPage .h-side    { display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
+        #fchPage .h-date    { color:#111827; font-size:12px; font-weight:800; line-height:1.35; }
+        #fchPage .h-flow-chip { display:inline-flex; align-items:center; max-width:100%; min-height:20px; padding:0 4px 1px; color:#355340; font-size:10px; font-weight:800; line-height:1; background:linear-gradient(transparent 42%, rgba(184, 214, 189, .72) 42%, rgba(184, 214, 189, .72) 92%, transparent 92%); }
         #fchPage .h-main    { min-width:0; }
         #fchPage .h-meta    { display:flex; align-items:center; gap:5px; margin-bottom:4px; }
         #fchPage .h-type    { color:#39443d; font-size:11px; font-weight:800; }
+        #fchPage .h-summary { display:block; margin-bottom:4px; color:#1f2937; font-size:11px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         #fchPage .h-partner { display:block; color:#6b7280; font-size:11px; margin-bottom:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         #fchPage .h-contract { display:block; color:#4b5563; font-size:11px; margin-bottom:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        #fchPage .h-flow    { display:block; color:#8a9a8e; font-size:10px; margin-bottom:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         #fchPage .h-cn      { display:block; color:#374151; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         #fchPage .badge { display:inline-flex; align-items:center; justify-content:center; min-height:18px; padding:0 6px; border-radius:3px; font-size:10px; font-weight:700; border:1px solid transparent; white-space:nowrap; }
         #fchPage .badge-wait  { background:#f3f4f6; color:#4b5563; border-color:#d1d5db; }
@@ -294,26 +312,58 @@
                                         </c:if>
                                         <%-- 시설 선택 완료 상태 --%>
                                         <div id="facilitySelectedState" class="${(not isLocked and empty check.facilityNo) ? 'selected-state is-hidden' : 'selected-state'}">
-                                            <table class="info-tbl">
-                                                <tr>
-                                                    <th>시설명</th>
-                                                    <td><span id="facilityNmText">${empty check.facilityNm ? '-' : check.facilityNm}</span></td>
-                                                    <th>시설번호</th>
-                                                    <td><span id="facilityNoText" class="mono">${empty check.facilityNo ? '-' : check.facilityNo}</span></td>
-                                                </tr>
-                                                <tr>
-                                                    <th>시설유형</th>
-                                                    <td><span id="facilityTyText">${empty check.facilityTyNm ? '-' : check.facilityTyNm}</span></td>
-                                                    <th>사용여부</th>
-                                                    <td><span id="facilityUseYnText">${check.useYn eq 'Y' ? '사용' : empty check.useYn ? '-' : '미사용'}</span></td>
-                                                </tr>
-                                                <tr>
-                                                    <th>위치</th>
-                                                    <td><span id="facilityLocText" class="ellipsis">${empty check.locCn ? '-' : check.locCn}</span></td>
-                                                    <th>설치일자</th>
-                                                    <td><span id="facilityInstlDtText">${empty check.instlDt ? '-' : check.instlDt}</span></td>
-                                                </tr>
-                                            </table>
+                                            <div class="facility-info-wrap">
+                                                <div class="info-section">
+                                                    <span class="info-section-label">시설 정보</span>
+                                                    <table class="info-tbl">
+                                                        <tr>
+                                                            <th>시설명</th>
+                                                            <td><span id="facilityNmText">${empty check.facilityNm ? '-' : check.facilityNm}</span></td>
+                                                            <th>시설번호</th>
+                                                            <td><span id="facilityNoText" class="mono">${empty check.facilityNo ? '-' : check.facilityNo}</span></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th>시설유형</th>
+                                                            <td><span id="facilityTyText">${empty check.facilityTyNm ? '-' : check.facilityTyNm}</span></td>
+                                                            <th>사용여부</th>
+                                                            <td><span id="facilityUseYnText">${check.useYn eq 'Y' ? '사용' : empty check.useYn ? '-' : '미사용'}</span></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th>위치</th>
+                                                            <td><span id="facilityLocText" class="ellipsis">${empty check.locCn ? '-' : check.locCn}</span></td>
+                                                            <th>설치일자</th>
+                                                            <td><span id="facilityInstlDtText">${empty check.instlDt ? '-' : check.instlDt}</span></td>
+                                                        </tr>
+                                                    </table>
+                                                </div>
+                                                <%-- 두 번째 섹션: register/empty → 점검현황, detail/update/follow → 이력정보 --%>
+                                                <div class="info-section">
+                                                    <%-- 등록 모드: 최근점검일·점검횟수 표시 --%>
+                                                    <div id="facilityStatsSection">
+                                                        <span class="info-section-label">점검 현황</span>
+                                                        <table class="info-tbl">
+                                                            <tr>
+                                                                <th>최근점검일</th>
+                                                                <td><span id="facilityLastChkDtText">-</span></td>
+                                                                <th>점검횟수</th>
+                                                                <td><span id="facilityChkCntText">-</span></td>
+                                                            </tr>
+                                                        </table>
+                                                    </div>
+                                                    <%-- detail/update/follow 모드: 이력번호·처리과정번호 표시 --%>
+                                                    <div id="facilityHistoryInfoSection" class="is-hidden">
+                                                        <span class="info-section-label">이력 정보</span>
+                                                        <table class="info-tbl">
+                                                            <tr>
+                                                                <th>이력번호</th>
+                                                                <td><span id="facilityHistoryNoText" class="mono">-</span></td>
+                                                                <th>처리과정</th>
+                                                                <td><span id="facilityFlowNoText" class="mono">-</span></td>
+                                                            </tr>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
                                             <c:if test="${not isLocked}">
                                                 <div class="selected-actions">
                                                     <button type="button" class="btn" id="reopenFacilityModalBtn">다시 선택</button>
@@ -415,7 +465,7 @@
                                                             - check.contNo 가 있으면 해당 계약을 selected 상태로 표시
                                                         --%>
                                                         <c:if test="${not empty check.contNo}">
-                                                            <option value="${check.contNo}" data-cont-ty-cd="" selected>
+                                                            <option value="${check.contNo}" data-cont-ty-cd="" data-cont-cn="${fn:escapeXml(check.contCn)}" selected>
                                                                     ${empty check.contNm ? check.contNo : check.contNm}
                                                                 <c:if test="${not empty check.contBgngDt}">
                                                                     (${check.contBgngDt} ~ ${empty check.contEndDt ? '진행중' : check.contEndDt})
@@ -464,23 +514,18 @@
                                             <span class="split-desc">간략 이력</span>
                                         </div>
                                         <div class="split-body">
+                                            <%-- 이력 필터: 4열 2행 구성. 점검분류 제거, 작업유형은 select로 교체 --%>
                                             <div class="history-filter">
+                                                <%-- 행1: 작업유형 · 점검상태 · 이용제한 · 처리과정 --%>
                                                 <div class="f-field">
-                                                    <label class="field-label" for="historyFilterChkCtgryCd">점검분류</label>
-                                                    <select class="form-select" id="historyFilterChkCtgryCd">
+                                                    <%-- 점검분류 제거: 요약 목록에서는 작업유형 select 하나로 충분함 --%>
+                                                    <label class="field-label" for="historyFilterChkTyCd">작업유형</label>
+                                                    <select class="form-select" id="historyFilterChkTyCd">
                                                         <option value="">전체</option>
-                                                        <c:forEach var="code" items="${checkCategoryList}">
+                                                        <c:forEach var="code" items="${checkTypeList}">
                                                             <option value="${code.codeNoCd}">${code.codeName}</option>
                                                         </c:forEach>
                                                     </select>
-                                                </div>
-                                                <div class="f-field">
-                                                    <label class="field-label" for="historyFilterChkTyNmInput">작업유형</label>
-                                                    <div class="type-autocomplete">
-                                                        <input type="text" class="form-input" id="historyFilterChkTyNmInput" placeholder="전체 또는 작업유형 검색" autocomplete="off">
-                                                        <input type="hidden" id="historyFilterChkTyCd" value="">
-                                                        <div id="historyFilterChkTyDropdown" class="type-dropdown is-hidden"></div>
-                                                    </div>
                                                 </div>
                                                 <div class="f-field">
                                                     <label class="field-label" for="historyFilterChkSttsCd">점검상태</label>
@@ -500,17 +545,28 @@
                                                     </select>
                                                 </div>
                                                 <div class="f-field">
+                                                    <%-- 처리과정 옵션은 이력 로드 후 JS(renderProcessOptions)가 동적으로 채움 --%>
                                                     <label class="field-label" for="historyFilterProcess">처리과정</label>
                                                     <select class="form-select" id="historyFilterProcess">
                                                         <option value="">전체</option>
                                                     </select>
                                                 </div>
+                                                <%-- 행2: 작업일 시작 · 작업일 종료 · 검색어 · 초기화 --%>
                                                 <div class="f-field">
-                                                    <label class="field-label" for="historyFilterKeyword">검색어</label>
-                                                    <input type="text" class="form-input" id="historyFilterKeyword" placeholder="내용·업체명·처리과정번호">
+                                                    <label class="field-label" for="historyFilterStartDt">작업일 시작</label>
+                                                    <input type="date" class="form-input" id="historyFilterStartDt">
                                                 </div>
-                                                <div class="f-btns">
-                                                    <button type="button" class="btn" id="historyResetBtn">초기화</button>
+                                                <div class="f-field">
+                                                    <label class="field-label" for="historyFilterEndDt">작업일 종료</label>
+                                                    <input type="date" class="form-input" id="historyFilterEndDt">
+                                                </div>
+                                                <%-- 검색어+초기화를 2칸 span으로 합침: 입력란이 버튼 옆까지 채워져 들뜨지 않음 --%>
+                                                <div class="f-field f-field-search">
+                                                    <label class="field-label" for="historyFilterKeyword">검색어</label>
+                                                    <div class="f-search-row">
+                                                        <input type="text" class="form-input" id="historyFilterKeyword" placeholder="내용·업체명·처리과정번호">
+                                                        <button type="button" class="btn" id="historyResetBtn">초기화</button>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div class="history-list" id="facilityHistoryList">
@@ -828,9 +884,7 @@
         function fillSelectedHistorySummary(h) {
             if (!h) { hide('selectedHistorySummary'); return; }
             setText('historyOwnerText', getOwnerText(h));
-            var contText = h.contNm || h.contNo || '-';
-            if (h.contNo && h.contNm) contText = h.contNm + ' (' + h.contNo + ')';
-            setText('historyContractText', contText);
+            setText('historyContractText', formatContractText(h));
             show('selectedHistorySummary');
         }
 
@@ -839,6 +893,110 @@
             hide('selectedHistorySummary');
             setText('historyOwnerText', '-');
             setText('historyContractText', '-');
+        }
+
+        /* 시설 카드 두 번째 섹션을 모드에 따라 전환한다.
+           showMeta=true  → 이력정보(이력번호/처리과정) 표시 (detail·update·follow)
+           showMeta=false → 점검현황(최근점검일/점검횟수) 표시 (register·empty) */
+        function syncFacilityHistoryMeta(history, showMeta) {
+            setText('facilityHistoryNoText', history && history.facChkHstryNo ? history.facChkHstryNo : '-');
+            setText('facilityFlowNoText',    history && history.chkFlowNo     ? history.chkFlowNo     : '-');
+            if (showMeta) {
+                show('facilityHistoryInfoSection');
+                hide('facilityStatsSection');
+            } else {
+                hide('facilityHistoryInfoSection');
+                show('facilityStatsSection');
+            }
+        }
+
+        /* allList 기준으로 시설 카드의 최근점검일/점검횟수를 갱신한다. */
+        function syncFacilityStats(list) {
+            var cnt = list ? list.length : 0;
+            var lastDt = '-';
+            if (cnt > 0) {
+                var dates = list.map(function (h) { return h.chkDt || ''; }).filter(function (d) { return d; });
+                if (dates.length) lastDt = dates.slice().sort().pop();
+            }
+            setText('facilityLastChkDtText', lastDt);
+            setText('facilityChkCntText', cnt > 0 ? cnt + '건' : '-');
+        }
+
+        /* 등록 모드에서는 시설 정보 표를 카드 중앙 쪽에 둔다. */
+        function syncFacilityCardLayout(mode) {
+            var card = el('facilitySelectedState');
+            // 카드가 아직 없으면 레이아웃 변경을 건너뛴다.
+            if (!card) return;
+            // 신규 등록에서만 표를 가운데 쪽으로 이동시킨다.
+            if (mode === 'register') card.classList.add('register-centered-state');
+            else card.classList.remove('register-centered-state');
+        }
+
+        function formatContractText(contractLike) {
+            if (!contractLike) return '-';
+
+            var head = contractLike.contNm || contractLike.contNo || '';
+            if (contractLike.contNm && contractLike.contNo) {
+                head = contractLike.contNm + ' (' + contractLike.contNo + ')';
+            }
+
+            var period = contractLike.contBgngDt
+                ? contractLike.contBgngDt + ' ~ ' + (contractLike.contEndDt || '진행중')
+                : '';
+            var parts = [head, period].filter(function (part) {
+                return part && String(part).trim();
+            });
+
+            return parts.length ? parts.join(' / ') : '-';
+        }
+
+        function formatContractListText(contractLike) {
+            if (!contractLike) return '-';
+
+            var head = contractLike.contNm || contractLike.contNo || '';
+            if (contractLike.contNm && contractLike.contNo) {
+                head = contractLike.contNm + ' (' + contractLike.contNo + ')';
+            }
+
+            return head || '-';
+        }
+
+        /* 이력 1건 기준으로 상단 협력업체/계약 컨텍스트를 맞춘다. */
+        function syncContractSelectionFromHistory(h, shouldLoadContracts) {
+            var contSel = el('contNoSelect');
+            // 계약 select 가 없으면 추가 동기화는 생략한다.
+            if (!contSel) return Promise.resolve();
+
+            // 업체가 없는 이력은 자체점검 상태로 되돌린다.
+            if (!h || !h.partnerNo) {
+                setVal('contNo', '');
+                applyOwnerType('SELF');
+                contSel.innerHTML = '<option value="">계약 없음 (계약 미연결 점검)</option>';
+                syncContNo();
+                return Promise.resolve();
+            }
+
+            // hidden 계약번호를 먼저 맞춘다.
+            setVal('contNo', h.contNo || '');
+            // 상단 업체 카드도 이력 기준으로 즉시 갱신한다.
+            applyOwnerFromHistory(h);
+
+            // 비동기 재조회 전에도 현재 계약이 무엇인지 바로 보이게 한다.
+            contSel.innerHTML = '<option value="">계약 없음 (계약 미연결 점검)</option>';
+            if (h.contNo) {
+                contSel.innerHTML += '<option value="' + esc(h.contNo) + '"'
+                    + ' data-cont-ty-cd=""'
+                    + ' data-cont-cn="' + esc(h.contCn || '') + '"'
+                    + ' data-partner-no="' + esc(h.partnerNo || '') + '"'
+                    + ' selected>'
+                    + esc(formatContractText(h)) + '</option>';
+                contSel.value = h.contNo;
+            }
+            syncContNo();
+
+            // 수정/후속에서는 실제 계약 목록도 다시 로드해 select 상태를 자연스럽게 복원한다.
+            if (shouldLoadContracts !== false) return loadPartnerContracts(h.partnerNo);
+            return Promise.resolve();
         }
 
         /* ── 모달 열기 / 닫기 ── */
@@ -883,6 +1041,40 @@
             if (!flowNo) return false;
             return allList.some(function (h) {
                 return h && h.chkFlowNo === flowNo && h.chkSttsCd === 'DONE';
+            });
+        }
+
+        function flowSortValue(flowNo) {
+            var value = String(flowNo || '');
+            var match = value.match(/(\d+)(?!.*\d)/);
+            if (match) return parseInt(match[1], 10);
+            return -1;
+        }
+
+        function compareHistoryByDateDesc(a, b) {
+            var aDate = String((a && a.chkDt) || '');
+            var bDate = String((b && b.chkDt) || '');
+            if (aDate !== bDate) return aDate > bDate ? -1 : 1;
+
+            var aNo = String((a && a.facChkHstryNo) || '');
+            var bNo = String((b && b.facChkHstryNo) || '');
+            if (aNo !== bNo) return aNo > bNo ? -1 : 1;
+            return 0;
+        }
+
+        function sortHistoryList(list) {
+            return (list || []).slice().sort(function (a, b) {
+                var aFlow = String((a && a.chkFlowNo) || '');
+                var bFlow = String((b && b.chkFlowNo) || '');
+                var aFlowValue = flowSortValue(aFlow);
+                var bFlowValue = flowSortValue(bFlow);
+
+                if (aFlow && !bFlow) return -1;
+                if (!aFlow && bFlow) return 1;
+                if (aFlowValue !== bFlowValue) return bFlowValue - aFlowValue;
+                if (aFlow !== bFlow) return aFlow > bFlow ? -1 : 1;
+
+                return compareHistoryByDateDesc(a, b);
             });
         }
 
@@ -1000,18 +1192,26 @@
 
         /* 이력 객체 기준 점검 주체 UI 표시 */
         function applyOwnerFromHistory(h) {
+            // 업체가 없으면 자체점검 카드만 보이게 한다.
             if (!h || !h.partnerNo) { applyOwnerType('SELF'); return; }
+            // 점검 주체 hidden 값도 이력 기준으로 바꾼다.
             setVal('chkOwnerType', 'PARTNER');
+            // 업체번호를 현재 컨텍스트로 유지한다.
             setVal('partnerNo', h.partnerNo || '');
-            setText('partnerNoText',     h.partnerNo);
-            setText('partnerNmText',     h.partnerNm);
-            setText('bizTyText',         h.bizTyNm);
-            setText('partnerPicNmText',  h.picNm);
-            setText('partnerPicTelText', h.picTelno);
-            setText('partnerEmailText',  h.picEmail);
+            // 상단 업체 카드 내용을 즉시 갱신한다.
+            setText('partnerNoText',     h.partnerNo || '-');
+            setText('partnerNmText',     h.partnerNm || '-');
+            setText('bizTyText',         h.bizTyNm || '-');
+            setText('partnerPicNmText',  h.picNm || '-');
+            setText('partnerPicTelText', h.picTelno || '-');
+            setText('partnerEmailText',  h.picEmail || '-');
+            // 자체점검 안내는 숨긴다.
             hide('partnerSelfState');
+            // 협력업체 영역은 펼친다.
             show('partnerChoiceState');
+            // 미선택 안내는 숨긴다.
             hide('partnerEmptyState');
+            // 실제 업체 카드만 노출한다.
             show('partnerSelectedState');
             var partnerRadio = el('checkOwnerPartner');
             var selfRadio    = el('checkOwnerSelf');
@@ -1028,7 +1228,7 @@
 
         /* ── 왼쪽 이력 목록 렌더링 ──
            - 등록 화면에서는 참고용 간략 이력만 표시한다.
-           - 상세 내용은 별도 상세 화면에서 확인하므로 카드에는 업체/계약/처리과정만 보여준다. */
+           - 카드에는 식별과 요약에 필요한 정보만 남긴다. */
         function renderList(list) {
             var box = el('facilityHistoryList');
             if (!list || list.length === 0) {
@@ -1036,20 +1236,19 @@
                 return;
             }
             box.innerHTML = list.map(function (h) {
-                var contText = h.contNm || h.contNo || '-';
-                if (h.contNm && h.contNo) contText = h.contNm + ' (' + h.contNo + ')';
-
                 return '<button type="button" class="history-item" data-no="' + esc(h.facChkHstryNo) + '">'
-                    + '<div class="h-date">' + esc(h.chkDt) + '</div>'
+                    + '<div class="h-side">'
+                    +   '<div class="h-date">' + esc(h.chkDt) + '</div>'
+                    +   '<div class="h-flow-chip">' + esc(h.chkFlowNo || '-') + '</div>'
+                    + '</div>'
                     + '<div class="h-main">'
                     +   '<div class="h-meta">'
                     +     '<span class="h-type">' + esc(h.chkCtgryNm || getCheckCategoryName(getHistoryCategory(h)) || '-') + ' · ' + esc(h.chkTyNm || '-') + '</span>'
                     +     '<span class="badge ' + badgeCls(h.chkSttsCd) + '">' + esc(h.chkSttsNm) + '</span>'
                     +   '</div>'
+                    +   '<span class="h-summary">' + esc(h.chkCn || '-') + '</span>'
                     +   '<span class="h-partner">업체: ' + esc(getOwnerText(h)) + '</span>'
-                    +   '<span class="h-contract">계약: ' + esc(contText) + '</span>'
-                    +   '<span class="h-flow">처리과정 ' + esc(h.chkFlowNo || '-') + '</span>'
-                    +   '<span class="h-cn">내용: ' + esc(h.chkCn || '-') + '</span>'
+                    +   '<span class="h-contract">계약: ' + esc(formatContractListText(h)) + '</span>'
                     + '</div>'
                     + '</button>';
             }).join('');
@@ -1089,7 +1288,7 @@
             /* 로딩 중 표시 */
             contSel.innerHTML = '<option value="">계약 목록 불러오는 중...</option>';
 
-            fetchJson(CTX + '/manager/checkHistory/partner/contracts/'
+            return fetchJson(CTX + '/manager/checkHistory/partner/contracts/'
                 + encodeURIComponent(OFC_NO) + '/'
                 + encodeURIComponent(facilityNo) + '/'
                 + encodeURIComponent(partnerNo))
@@ -1103,10 +1302,10 @@
 
                     list.forEach(function (c) {
                         /* 계약명 + 계약기간 표시 */
-                        var label = (c.contNm || c.contNo)
-                            + (c.contBgngDt ? ' (' + c.contBgngDt + ' ~ ' + (c.contEndDt || '진행중') + ')' : '');
+                        var label = formatContractText(c);
                         html += '<option value="' + esc(c.contNo) + '"'
                             + ' data-cont-ty-cd="' + esc(c.contTyCd || '') + '"'
+                            + ' data-cont-cn="' + esc(c.contCn || '') + '"'
                             + ' data-partner-no="' + esc(partnerNo || '') + '">'
                             + esc(label) + '</option>';
                     });
@@ -1121,11 +1320,13 @@
                     /* select 변경 시 hidden input / 계약유형 연동 */
                     syncContNo();
                     updateCurrentContractType();
+                    return list;
                 })
                 .catch(function () {
                     contSel.innerHTML = '<option value="">계약 목록 조회 실패</option>';
                     setVal('contNo', '');
                     updateCurrentContractType();
+                    return [];
                 });
         }
 
@@ -1134,11 +1335,11 @@
             var html = includeEmptyOption ? '<option value="">계약 없음 (계약 미연결 점검)</option>' : '';
 
             (list || []).forEach(function (c) {
-                var label = (c.contNm || c.contNo)
-                    + (c.contBgngDt ? ' (' + c.contBgngDt + ' ~ ' + (c.contEndDt || '진행중') + ')' : '');
+                var label = formatContractText(c);
 
                 html += '<option value="' + esc(c.contNo || '') + '"'
                     + ' data-cont-ty-cd="' + esc(c.contTyCd || '') + '"'
+                    + ' data-cont-cn="' + esc(c.contCn || '') + '"'
                     + ' data-partner-no="' + esc(c.partnerNo || '') + '"'
                     + ' data-partner-nm="' + esc(c.partnerNm || '') + '"'
                     + ' data-biz-ty="' + esc(c.bizTyNm || '') + '"'
@@ -1215,10 +1416,12 @@
             return fetchJson(CTX + '/manager/checkHistory/history/list/'
                 + encodeURIComponent(OFC_NO) + '/' + encodeURIComponent(facilityNo))
                 .then(function (data) {
-                    allList = (data && data.success ? data.historyList : []) || [];
-                    latest  = allList.length > 0 ? allList[0] : null;
+                    var rawList = (data && data.success ? data.historyList : []) || [];
+                    allList = sortHistoryList(rawList);
+                    latest  = rawList.slice().sort(compareHistoryByDateDesc)[0] || null;
                     renderProcessOptions(allList);
                     renderList(allList);
+                    syncFacilityStats(allList);
 
                     if (IS_UPDATE) {
                         var initNo = '${check.facChkHstryNo}';
@@ -1293,6 +1496,10 @@
                 setText('formChkFlowNoText', '-');
                 setText('currentHistoryNoText', '-');
                 clearForm();
+                // 선택 이력 메타는 비운다.
+                syncFacilityHistoryMeta(null, false);
+                // 중앙 정렬도 해제한다.
+                syncFacilityCardLayout('empty');
             }
             else if (mode === 'register') {
                 /* 신규 등록 상태 */
@@ -1308,6 +1515,10 @@
                 setReadonly(false);
                 document.querySelectorAll('#facilityHistoryList .history-item').forEach(function (btn) { btn.classList.remove('is-active'); });
                 if (!IS_ADMIN) { show('saveHistoryBtn'); el('saveHistoryBtn').textContent = '등록'; }
+                // 등록 화면에서는 이력 메타를 숨긴다.
+                syncFacilityHistoryMeta(null, false);
+                // 대신 시설 표를 카드 중앙 쪽에 둔다.
+                syncFacilityCardLayout('register');
             }
             else if (mode === 'detail') {
                 /* 기존 이력 상세 확인 상태 */
@@ -1320,6 +1531,12 @@
                 setText('currentHistoryNoText', h.facChkHstryNo || '-');
                 setVal('chkFlowNo', h.chkFlowNo || '');
                 fillForm(h, false);
+                // 시설 카드에 현재 선택 이력 식별정보를 표시한다.
+                syncFacilityHistoryMeta(h, true);
+                // 상세 모드는 일반 정렬을 쓴다.
+                syncFacilityCardLayout('detail');
+                // 상단 협력업체/계약 컨텍스트도 클릭한 이력 기준으로 맞춘다.
+                syncContractSelectionFromHistory(h, false);
                 /* 상세 요약은 오른쪽 폼에 별도 표시하지 않는다. 간략 정보는 왼쪽 카드에서 확인한다. */
                 if (!IS_ADMIN && !IS_UPDATE) {
                     /* 신규 등록 진입에서는 이력을 클릭해도 후속 등록은 열지 않음 */
@@ -1350,13 +1567,17 @@
                 show('baseHistoryRow');
                 setVal('chkFlowNo', followFlowNo);
                 clearForm();
+                // 후속 등록 기준 이력을 시설 카드에 식별정보로 표시한다.
+                syncFacilityHistoryMeta(base, true);
+                // 후속 등록은 상세 레이아웃을 그대로 사용한다.
+                syncFacilityCardLayout('follow');
                 /* 기준 이력 정보는 왼쪽 active 카드와 상단 대상 정보로 확인한다. */
                 /* 후속 등록은 기준 이력의 업체/계약/작업유형/처리과정을 이어받음 */
                 if (base.partnerNo) {
-                    setVal('contNo', base.contNo || '');
-                    applyOwnerFromHistory(base);
-                    loadPartnerContracts(base.partnerNo);
+                    // 상단 업체/계약 카드도 기준 이력 기준으로 맞춘다.
+                    syncContractSelectionFromHistory(base, true);
                 } else {
+                    // 자체점검 후속등록이면 자체점검 상태를 유지한다.
                     applyOwnerType('SELF');
                     setVal('contNo', base.contNo || '');
                 }
@@ -1384,6 +1605,12 @@
                 setText('currentHistoryNoText', uh.facChkHstryNo || '${check.facChkHstryNo}' || '-');
                 setVal('chkFlowNo', uh.chkFlowNo || '');
                 fillForm(uh);
+                // 수정 대상 이력도 시설 카드에 함께 보여 준다.
+                syncFacilityHistoryMeta(uh, true);
+                // 수정 모드에서는 중앙 정렬을 쓰지 않는다.
+                syncFacilityCardLayout('update');
+                // 상단 협력업체/계약 카드도 현재 수정 대상으로 다시 맞춘다.
+                syncContractSelectionFromHistory(uh, true);
                 if (el('chkCtgryCd')) delete el('chkCtgryCd').dataset.locked;
                 /* 수정 대상 정보는 폼 값으로만 표시한다. */
                 setReadonly(false);
@@ -1396,11 +1623,13 @@
 
         /* ── 이력 필터 (클라이언트 사이드) ── */
         function applyFilter() {
-            var ctgry   = el('historyFilterChkCtgryCd') ? el('historyFilterChkCtgryCd').value : '';
-            var ty      = el('historyFilterChkTyCd').value;
+            /* 점검분류(ctgry) 제거: 작업유형 select로 직접 필터링하므로 별도 분류 조건 불필요 */
+            var ty      = el('historyFilterChkTyCd') ? el('historyFilterChkTyCd').value : '';
             var st      = el('historyFilterChkSttsCd').value;
             var restrict = el('historyFilterUseRestrictYn').value;
             var process = el('historyFilterProcess').value;
+            var startDt = el('historyFilterStartDt').value;
+            var endDt   = el('historyFilterEndDt').value;
             var kw      = el('historyFilterKeyword').value.trim().toLowerCase();
 
             var filtered = allList.filter(function (h) {
@@ -1409,8 +1638,9 @@
                 var kwOk      = !kw || [h.chkCn, h.rmk, h.partnerNm, ownerText, h.chkFlowNo, h.facChkHstryNo].join(' ').toLowerCase().indexOf(kw) > -1;
                 var processOk = !process || processNo === process;
                 var restrictOk = !restrict || (h.useRestrictYn || 'N') === restrict;
+                var dateOk = (!startDt || (h.chkDt || '') >= startDt) && (!endDt || (h.chkDt || '') <= endDt);
                 if (process === '__NO_FLOW__') processOk = !processNo;
-                return (!ctgry || getHistoryCategory(h) === ctgry) && (!ty || h.chkTyCd === ty) && (!st || h.chkSttsCd === st) && restrictOk && processOk && kwOk;
+                return (!ty || h.chkTyCd === ty) && (!st || h.chkSttsCd === st) && restrictOk && processOk && dateOk && kwOk;
             });
 
             if (filtered.length === 0) {
@@ -1433,12 +1663,13 @@
 
         /* 이력 필터 초기화 */
         function resetFilter() {
-            setVal('historyFilterChkCtgryCd', '');
-            setVal('historyFilterChkTyCd',   '');
-            setVal('historyFilterChkTyNmInput', '');
+            /* historyFilterChkCtgryCd(점검분류), historyFilterChkTyNmInput(자동완성) 삭제됨 */
+            setVal('historyFilterChkTyCd',   '');   /* 작업유형 select */
             setVal('historyFilterChkSttsCd', '');
             setVal('historyFilterUseRestrictYn', '');
             setVal('historyFilterProcess',   '');
+            setVal('historyFilterStartDt',   '');
+            setVal('historyFilterEndDt',     '');
             setVal('historyFilterKeyword',   '');
             renderList(allList);
             if (IS_UPDATE && allList.length > 0) {
@@ -1543,6 +1774,9 @@
             setText('facilityInstlDtText', row.dataset.instlDt);
             setText('facilityUseYnText',   useYn === 'Y' ? '사용' : useYn === 'N' ? '미사용' : '-');
             setText('formFacilityNoText',  row.dataset.facilityNo);
+            /* 새 시설 선택 시 통계 초기화 — loadHistory 완료 후 syncFacilityStats가 채움 */
+            setText('facilityLastChkDtText', '-');
+            setText('facilityChkCntText', '-');
 
             el('facilityEmptyState').classList.add('is-hidden');
             el('facilitySelectedState').classList.remove('is-hidden');
@@ -1599,13 +1833,11 @@
                 setVal(inputId, typeOption.getAttribute('data-name') || '');
                 setVal(hiddenId, typeOption.getAttribute('data-code') || '');
                 if (hiddenId === 'chkTyCd') {
+                    /* 폼 작업유형 선택 시 점검분류(chkCtgryCd) 자동 연동 */
                     setVal('chkCtgryCd', typeOption.getAttribute('data-category') || '');
                 }
-                if (hiddenId === 'historyFilterChkTyCd' && el('historyFilterChkCtgryCd') && !el('historyFilterChkCtgryCd').value) {
-                    setVal('historyFilterChkCtgryCd', typeOption.getAttribute('data-category') || '');
-                }
+                /* 필터 자동완성(historyFilterChkTyCd) 제거됨: select로 교체되어 이 경로 불필요 */
                 hide(dropdownId);
-                if (hiddenId === 'historyFilterChkTyCd') applyFilter();
                 return;
             }
 
@@ -1731,35 +1963,18 @@
             });
         }
 
-        var historyFilterTypeInput = el('historyFilterChkTyNmInput');
-        var historyFilterCtgry = el('historyFilterChkCtgryCd');
-        if (historyFilterCtgry) {
-            historyFilterCtgry.addEventListener('change', function () {
-                setVal('historyFilterChkTyCd', '');
-                setVal('historyFilterChkTyNmInput', '');
-                applyFilter();
-            });
-        }
-        if (historyFilterTypeInput) {
-            historyFilterTypeInput.addEventListener('input', function () {
-                setVal('historyFilterChkTyCd', '');
-                renderTypeDropdown('historyFilterChkTyNmInput', 'historyFilterChkTyCd', 'historyFilterChkTyDropdown', false);
-            });
-            historyFilterTypeInput.addEventListener('focus', function () {
-                renderTypeDropdown('historyFilterChkTyNmInput', 'historyFilterChkTyCd', 'historyFilterChkTyDropdown', false);
-            });
-        }
+        /* 필터 자동완성(historyFilterChkCtgryCd, historyFilterChkTyNmInput) 제거됨:
+           작업유형이 select로 교체되어 별도 input/focus 이벤트 불필요 */
 
+        /* 폼 작업유형 자동완성 드롭다운 닫기 (필터 자동완성은 select로 교체되어 대상에서 제외) */
         document.addEventListener('click', function (e) {
             if (!e.target.closest('.type-autocomplete')) {
                 hide('chkTyDropdown');
-                hide('historyFilterChkTyDropdown');
             }
         });
 
-
-        /* 이력 필터는 검색 버튼 없이 변경 즉시 적용한다. */
-        ['historyFilterChkSttsCd','historyFilterUseRestrictYn','historyFilterProcess'].forEach(function (id) {
+        /* 이력 필터 select/date 변경 즉시 적용 (작업유형 select 포함) */
+        ['historyFilterChkTyCd','historyFilterChkSttsCd','historyFilterUseRestrictYn','historyFilterProcess','historyFilterStartDt','historyFilterEndDt'].forEach(function (id) {
             var target = el(id);
             if (target) target.addEventListener('change', applyFilter);
         });
@@ -1769,7 +1984,8 @@
             if (e.key !== 'Enter') return;
             var id = e.target && e.target.id;
             if (id === 'historyFilterKeyword') { e.preventDefault(); applyFilter();    return; }
-            if (id === 'historyFilterChkTyNmInput') { e.preventDefault(); applyFilter(); return; }
+            /* historyFilterChkTyNmInput 제거됨: 작업유형 select는 change 이벤트로 처리 */
+            if (id === 'historyFilterStartDt' || id === 'historyFilterEndDt') { e.preventDefault(); applyFilter(); return; }
             if (id === 'chkTyNmInput') { e.preventDefault(); return; }
             if (id === 'facilityModalSearch')  { e.preventDefault(); searchFacility(); return; }
             if (id === 'partnerModalSearch')   { e.preventDefault(); searchPartner();  return; }

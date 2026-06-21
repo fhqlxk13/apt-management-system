@@ -251,7 +251,7 @@ public class MeterHstryController {
      * - CSV 내부 csv_idntf_key, ext_cust_no를 읽어 공급/검침 설정을 자동으로 찾음
      * - 실제 등록은 하지 않고 화면 확인용 요약과 일부 행만 반환함
      */
-    @PreAuthorize("@authService.hasAccess(principal, #mgmtOfcNo)")
+    @PreAuthorize("@authService.canMgmtCrud(principal, #mgmtOfcNo)")
     @PostMapping("/preview/{mgmtOfcNo}")
     @ResponseBody
     public Map<String, Object> previewCsv(
@@ -273,7 +273,7 @@ public class MeterHstryController {
     /**
      * 검침 CSV 업로드
      */
-    @PreAuthorize("@authService.hasAccess(principal, #mgmtOfcNo)")
+    @PreAuthorize("@authService.canMgmtCrud(principal, #mgmtOfcNo)")
     @PostMapping("/upload/{mgmtOfcNo}")
     public String uploadCsv(
             @PathVariable String mgmtOfcNo,
@@ -369,7 +369,7 @@ public class MeterHstryController {
     /**
      * 검침 이력 수정
      */
-    @PreAuthorize("@authService.hasAccess(principal, #mgmtOfcNo)")
+    @PreAuthorize("@authService.canMgmtCrud(principal, #mgmtOfcNo)")
     @PostMapping("/update/{mgmtOfcNo}")
     public String update(
             @PathVariable String mgmtOfcNo,

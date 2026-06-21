@@ -344,6 +344,7 @@
              , to_char(fch.mdf_dt, 'yyyy-mm-dd') as mdf_dt
              , fch.cont_no
              , fc.cont_nm
+             , fc.cont_cn
              , to_char(fc.cont_bgng_dt, 'yyyy.mm.dd') as cont_bgng_dt
              , to_char(fc.cont_end_dt,  'yyyy.mm.dd') as cont_end_dt
         from facility_check_hstry fch
@@ -583,12 +584,20 @@
              , fch.rmk
              , to_char(fch.reg_dt, 'yyyy-mm-dd') as reg_dt
              , to_char(fch.mdf_dt, 'yyyy-mm-dd') as mdf_dt
+             , fch.cont_no
+             , fc.cont_nm
+             , fc.cont_cn
+             , to_char(fc.cont_bgng_dt, 'yyyy.mm.dd') as cont_bgng_dt
+             , to_char(fc.cont_end_dt,  'yyyy.mm.dd') as cont_end_dt
         from facility_check_hstry fch
                  inner join facility f
                             on fch.facility_no = f.facility_no
                  left outer join partner p
                                  on fch.partner_no = p.partner_no
                                      and p.apt_cmplex_no = f.apt_cmplex_no
+                 left join facility_contract fc
+                           on fc.partner_no = fch.partner_no
+                               and fc.cont_no = fch.cont_no
                  inner join mgmt_office mo
                             on mo.apt_cmplex_no = f.apt_cmplex_no
                  left join common_code chk_ty
@@ -729,6 +738,7 @@
             resultType="map">
         select fc.cont_no        as "contNo"
         , fc.cont_nm        as "contNm"
+        , fc.cont_cn        as "contCn"
         , fc.cont_ty_cd     as "contTyCd"
         , fc.cont_target_cd as "contTargetCd"
         , fc.cont_stts_cd   as "contSttsCd"
@@ -754,6 +764,7 @@
             resultType="map">
         select fc.cont_no        as "contNo"
         , fc.cont_nm        as "contNm"
+        , fc.cont_cn        as "contCn"
         , fc.cont_ty_cd     as "contTyCd"
         , fc.cont_target_cd as "contTargetCd"
         , fc.cont_stts_cd   as "contSttsCd"
